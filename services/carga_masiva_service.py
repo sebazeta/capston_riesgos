@@ -26,7 +26,9 @@ TIPOS_ACTIVO_VALIDOS = ["Servidor Físico", "Servidor Virtual"]
 
 CAMPOS_REQUERIDOS = ["nombre_activo", "tipo_activo", "ubicacion", "propietario", "tipo_servicio"]
 
-CAMPOS_OPCIONALES = ["app_critica", "descripcion"]
+CAMPOS_OPCIONALES = ["app_critica", "descripcion", "id_host", "tipo_dependencia"]
+
+TIPOS_DEPENDENCIA_VALIDOS = ["total", "parcial", "ninguna"]
 
 CAMPOS_MAPEO_BD = {
     "nombre_activo": "Nombre_Activo",
@@ -35,7 +37,9 @@ CAMPOS_MAPEO_BD = {
     "propietario": "Propietario",
     "tipo_servicio": "Tipo_Servicio",
     "app_critica": "App_Critica",
-    "descripcion": "Descripcion"
+    "descripcion": "Descripcion",
+    "id_host": "ID_Host",
+    "tipo_dependencia": "Tipo_Dependencia"
 }
 
 
@@ -166,9 +170,26 @@ def validar_activo(activo: Dict, fila: int) -> Tuple[bool, Dict, List[ErrorValid
     for campo in CAMPOS_OPCIONALES:
         valor = activo_lower.get(campo, "")
         if valor:
-            activo_normalizado[CAMPOS_MAPEO_BD[campo]] = str(valor).strip()
+            valor_str = str(valor).strip()
+            # Validar tipo_dependencia si se proporciona
+            if campo == "tipo_dependencia" and valor_str:
+                if valor_str.lower() not in TIPOS_DEPENDENCIA_VALIDOS:
+                    errores.append(ErrorValidacion(
+                        fila=fila,
+                        campo=campo,
+                        mensaje=f"Tipo dependencia inválido. Valores permitidos: {', '.join(TIPOS_DEPENDENCIA_VALIDOS)}",
+                        valor_recibido=valor_str
+                    ))
+                else:
+                    activo_normalizado[CAMPOS_MAPEO_BD[campo]] = valor_str.lower()
+            else:
+                activo_normalizado[CAMPOS_MAPEO_BD[campo]] = valor_str
         else:
-            activo_normalizado[CAMPOS_MAPEO_BD[campo]] = ""
+            # Valores por defecto para campos de concentración
+            if campo == "tipo_dependencia":
+                activo_normalizado[CAMPOS_MAPEO_BD[campo]] = "total"
+            else:
+                activo_normalizado[CAMPOS_MAPEO_BD[campo]] = ""
     
     return len(errores) == 0, activo_normalizado, errores
 
@@ -354,6 +375,8 @@ def _procesar_lista_activos(activos_raw: List[Dict], eval_id: str,
             "Tipo_Servicio": activo_norm["Tipo_Servicio"],
             "App_Critica": activo_norm.get("App_Critica", ""),
             "Descripcion": activo_norm.get("Descripcion", ""),
+            "ID_Host": activo_norm.get("ID_Host", ""),
+            "Tipo_Dependencia": activo_norm.get("Tipo_Dependencia", "total"),
             "Estado": "Pendiente",
             "Fecha_Creacion": dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
@@ -397,13 +420,24 @@ def generar_plantilla_json() -> str:
     plantilla = {
         "activos": [
             {
+                "nombre_activo": "Host VMware Principal",
+                "tipo_activo": "Servidor Físico",
+                "ubicacion": "DataCenter Principal",
+                "propietario": "Infraestructura",
+                "tipo_servicio": "Virtualización",
+                "app_critica": "VMware ESXi",
+                "descripcion": "Host físico que aloja máquinas virtuales de producción"
+            },
+            {
                 "nombre_activo": "Servidor Base de Datos",
                 "tipo_activo": "Servidor Virtual",
                 "ubicacion": "DataCenter Principal",
                 "propietario": "Departamento TI",
                 "tipo_servicio": "Base de Datos",
                 "app_critica": "ERP Corporativo",
-                "descripcion": "Servidor de producción para base de datos Oracle"
+                "descripcion": "Servidor de producción para base de datos Oracle",
+                "id_host": "ACT-EVA-001-001",
+                "tipo_dependencia": "total"
             },
             {
                 "nombre_activo": "Servidor Web Producción",
@@ -412,7 +446,9 @@ def generar_plantilla_json() -> str:
                 "propietario": "Departamento TI",
                 "tipo_servicio": "Aplicación Web",
                 "app_critica": "Portal Corporativo",
-                "descripcion": "Servidor web con Apache y aplicaciones PHP"
+                "descripcion": "Servidor web con Apache y aplicaciones PHP",
+                "id_host": "ACT-EVA-001-001",
+                "tipo_dependencia": "parcial"
             },
             {
                 "nombre_activo": "Servidor Backup",
@@ -432,13 +468,26 @@ def generar_plantilla_excel() -> pd.DataFrame:
     """Genera un DataFrame plantilla para Excel"""
     datos = [
         {
+            "nombre_activo": "Host VMware Principal",
+            "tipo_activo": "Servidor Físico",
+            "ubicacion": "DataCenter Principal",
+            "propietario": "Infraestructura",
+            "tipo_servicio": "Virtualización",
+            "app_critica": "VMware ESXi",
+            "descripcion": "Host físico que aloja máquinas virtuales",
+            "id_host": "",
+            "tipo_dependencia": ""
+        },
+        {
             "nombre_activo": "Servidor Base de Datos",
             "tipo_activo": "Servidor Virtual",
             "ubicacion": "DataCenter Principal",
             "propietario": "Departamento TI",
             "tipo_servicio": "Base de Datos",
             "app_critica": "ERP Corporativo",
-            "descripcion": "Servidor de producción para base de datos Oracle"
+            "descripcion": "Servidor de producción para base de datos Oracle",
+            "id_host": "ACT-EVA-001-001",
+            "tipo_dependencia": "total"
         },
         {
             "nombre_activo": "Servidor Web Producción",
@@ -447,16 +496,9 @@ def generar_plantilla_excel() -> pd.DataFrame:
             "propietario": "Departamento TI",
             "tipo_servicio": "Aplicación Web",
             "app_critica": "Portal Corporativo",
-            "descripcion": "Servidor web con Apache y aplicaciones PHP"
-        },
-        {
-            "nombre_activo": "Servidor Backup",
-            "tipo_activo": "Servidor Físico",
-            "ubicacion": "DataCenter Secundario",
-            "propietario": "Infraestructura",
-            "tipo_servicio": "Respaldos",
-            "app_critica": "No",
-            "descripcion": "Servidor de respaldos con Veeam"
+            "descripcion": "Servidor web con Apache y aplicaciones PHP",
+            "id_host": "ACT-EVA-001-001",
+            "tipo_dependencia": "parcial"
         }
     ]
     return pd.DataFrame(datos)
@@ -474,7 +516,10 @@ def get_campos_info() -> Dict:
         ],
         "opcionales": [
             {"campo": "app_critica", "descripcion": "Aplicación crítica que aloja", "ejemplo": "ERP, Banner, SAP"},
-            {"campo": "descripcion", "descripcion": "Descripción adicional", "ejemplo": "Servidor principal de producción"}
+            {"campo": "descripcion", "descripcion": "Descripción adicional", "ejemplo": "Servidor principal de producción"},
+            {"campo": "id_host", "descripcion": "ID del host físico (para VMs)", "ejemplo": "ACT-EVA-001-001"},
+            {"campo": "tipo_dependencia", "descripcion": "Tipo de dependencia con el host", "ejemplo": "total, parcial, ninguna"}
         ],
-        "tipos_validos": TIPOS_ACTIVO_VALIDOS
+        "tipos_validos": TIPOS_ACTIVO_VALIDOS,
+        "tipos_dependencia_validos": TIPOS_DEPENDENCIA_VALIDOS
     }

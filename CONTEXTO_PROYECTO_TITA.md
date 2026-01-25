@@ -1,7 +1,7 @@
 # PROYECTO TITA - Documentación Completa del Sistema
 
 **Sistema de Evaluación de Riesgos MAGERIT/ISO 27002**  
-*Versión: 2.2 | Última actualización: 25 Enero 2026*
+*Versión: 2.4 | Última actualización: 25 Enero 2026*
 
 ---
 
@@ -58,6 +58,7 @@ Desarrollar una herramienta que automatice y estandarice el proceso de evaluaci�
 | 9 | Cálculo de nivel de madurez (CMMI 1-5) | ✅ Implementado |
 | 10 | Comparativa de madurez entre evaluaciones | ✅ Implementado |
 | 11 | Carga masiva de activos (JSON/Excel) | ✅ Implementado |
+| 12 | Riesgo por concentración (Host-VM) | ✅ Implementado |
 
 ### 2.3 Alcance
 - **Tipos de activos soportados**: Servidores Físicos, Servidores Virtuales
@@ -659,6 +660,73 @@ Módulo para importar activos de forma masiva desde JSON o Excel:
 | `render_carga_masiva(eval_id, eval_nombre)` | Interfaz completa con tabs JSON/Excel/Ayuda |
 | `render_carga_masiva_modal(eval_id, eval_nombre)` | Versión simplificada para modal |
 
+### 7.13 Servicio de Riesgo por Concentración (NUEVO)
+
+**Ubicación**: `services/concentration_risk_service.py`
+
+Implementa el modelo híbrido de riesgo por dependencia entre hosts físicos y máquinas virtuales, basado en MAGERIT v3, Libro II, Capítulo 4 (Propagación de impacto).
+
+| Fase | Dirección | Descripción |
+|------|-----------|-------------|
+| **Blast Radius** | VM → Host | El host hereda criticidad de sus VMs dependientes |
+| **Herencia** | Host → VM | Las VMs heredan riesgo del host comprometido |
+
+**Fórmulas implementadas:**
+
+```
+Blast_Radius = Σ(Criticidad_VMi × Peso_Dependencia_VMi)
+Factor_Concentración = min(4, floor(Blast_Radius / 5))
+Impacto_D_Host_Ajustado = min(5, Impacto_D_Host + Factor_Concentración)
+Riesgo_VM_Final = max(Riesgo_VM_Propio, Riesgo_Host × 0.7)
+```
+
+**Dataclasses:**
+
+| Clase | Propósito |
+|-------|-----------|
+| `DependenciaVM` | Representa la relación VM-Host |
+| `ResultadoConcentracion` | Resultado del cálculo de blast radius |
+| `RiesgoHeredado` | Riesgo heredado por una VM desde su host |
+
+**Funciones principales:**
+
+| Función | Descripción |
+|---------|-------------|
+| `init_concentration_tables()` | Crea columnas ID_Host, Tipo_Dependencia y tablas |
+| `asignar_host_a_vm(eval_id, id_vm, id_host, tipo)` | Asigna dependencia VM→Host |
+| `calcular_blast_radius(eval_id, id_host)` | Calcula blast radius de un host |
+| `calcular_riesgo_heredado(eval_id, id_vm)` | Calcula riesgo heredado por VM |
+| `calcular_concentracion_evaluacion(eval_id)` | Fase 1: Blast radius para todos los hosts |
+| `calcular_herencia_evaluacion(eval_id)` | Fase 2: Herencia para todas las VMs |
+| `get_hosts_spof(eval_id)` | Obtiene hosts identificados como SPOF |
+| `get_ranking_hosts_blast_radius(eval_id)` | Ranking de hosts por blast radius |
+
+**Tipos de dependencia:**
+
+| Tipo | Peso | Descripción |
+|------|------|-------------|
+| `total` | 1.0 | VM depende completamente del host |
+| `parcial` | 0.5 | VM puede migrar a otro host |
+| `ninguna` | 0.0 | VM independiente (ej: multi-cloud) |
+
+### 7.14 UI Riesgo por Concentración (NUEVO)
+
+**Ubicación**: `components/concentration_risk_ui.py`
+
+| Función | Descripción |
+|---------|-------------|
+| `render_asignacion_dependencias(eval_id)` | Panel para asignar VMs a hosts |
+| `render_dashboard_concentracion(eval_id)` | Dashboard con métricas, alertas SPOF, gráficos |
+| `render_concentracion_tab(eval_id)` | Tab completo (combina asignación + dashboard) |
+| `render_concentracion_mini_card(eval_id)` | Tarjeta resumen para dashboard principal |
+
+**Tablas de BD creadas:**
+
+| Tabla | Propósito |
+|-------|-----------|
+| `RESULTADOS_CONCENTRACION` | Blast radius calculado por host |
+| `RIESGO_HEREDADO` | Riesgo heredado por cada VM |
+
 ---
 
 ## 8. Banco de Preguntas
@@ -831,7 +899,7 @@ Escala 1-5 para Disponibilidad, Integridad y Confidencialidad:
 
 ```
 capston_riesgos/
-├── app_final.py              # Aplicación principal Streamlit
+├── app_final.py              # Aplicación principal Streamlit (9 tabs)
 ├── init_sqlite.py            # Script de inicialización de BD
 ├── seed_catalogos_magerit.py # Seed de 52 amenazas + 93 controles
 ├── tita_database.db          # Base de datos SQLite (NO EDITAR MANUALMENTE)
@@ -848,7 +916,8 @@ capston_riesgos/
 │   ├── ollama_magerit_service.py # IA con validación MAGERIT
 │   ├── magerit_engine.py     # Motor de cálculo MAGERIT v3
 │   ├── maturity_service.py   # Cálculo de nivel de madurez CMMI
-│   ├── carga_masiva_service.py # ✨ NUEVO: Carga masiva JSON/Excel
+│   ├── carga_masiva_service.py # Carga masiva JSON/Excel con campos concentración
+│   ├── concentration_risk_service.py # ✨ NUEVO: Riesgo por concentración Host-VM
 │   ├── ia_validation_service.py  # Validación IA local
 │   └── knowledge_base_service.py # Knowledge Base MAGERIT
 │
@@ -856,13 +925,17 @@ capston_riesgos/
 │   ├── __init__.py           # Exports de componentes
 │   ├── dashboard_magerit.py  # Dashboards visuales
 │   ├── ia_validation_ui.py   # UI validación IA
-│   └── carga_masiva_ui.py    # ✨ NUEVO: UI carga masiva de activos
+│   ├── carga_masiva_ui.py    # UI carga masiva de activos
+│   └── concentration_risk_ui.py # ✨ NUEVO: UI riesgo por concentración
 │
 ├── knowledge_base/           # Archivos de conocimiento
 │   ├── MAGERIT_CRITERIOS.md  # Documentación metodología MAGERIT
 │   ├── amenazas_magerit.json # Catálogo 52 amenazas en JSON
 │   ├── controles_iso27002.json # Catálogo 93 controles en JSON
 │   └── system_prompt.md      # System prompt para IA
+│
+├── docs/
+│   └── ADR_RIESGO_CONCENTRACION.md # ✨ Arquitectura Decision Record
 │
 ├── config/
 │   └── settings.py           # Configuraciones, constantes
@@ -1070,6 +1143,7 @@ El impacto final se calcula agregando respuestas por dimensión.
 
 | Fecha | Versión | Cambios |
 |-------|---------|---------|
+| 25 Enero 2026 | 2.4 | **NUEVO**: Riesgo por concentración (Host-VM) con modelo Blast Radius + Herencia, tab dedicado con dashboard, integración en carga masiva (campos id_host, tipo_dependencia), botón eliminar evaluación con confirmación |
 | 25 Enero 2026 | 2.2 | **NUEVO**: Carga masiva de activos (JSON/Excel) con validación, plantillas descargables |
 | 24 Enero 2026 | 2.1 | Sistema de madurez CMMI, comparativas funcionales, fix re-evaluaciones |
 | Enero 2026 | 2.0 | Migración de Excel a SQLite, documentación completa |

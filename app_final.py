@@ -80,6 +80,15 @@ except ImportError as e:
     CARGA_MASIVA_DISPONIBLE = False
     print(f"Warning: Carga Masiva not available: {e}")
 
+# Componentes de Riesgo por Concentración
+try:
+    from components.concentration_risk_ui import render_concentracion_tab
+    from services.concentration_risk_service import init_concentration_tables, get_resumen_concentracion
+    CONCENTRACION_DISPONIBLE = True
+except ImportError as e:
+    CONCENTRACION_DISPONIBLE = False
+    print(f"Warning: Concentration Risk not available: {e}")
+
 from config.settings import (
     CUESTIONARIOS_HEADERS, RESPUESTAS_HEADERS, IMPACTO_HEADERS,
     ANALISIS_RIESGO_HEADERS, RISK_COLORS, get_risk_level,
@@ -253,7 +262,7 @@ with st.sidebar:
 
 # ==================== TABS ====================
 
-tab0, tab_ia, tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+tab0, tab_ia, tab1, tab2, tab3, tab4, tab5, tab_conc, tab6 = st.tabs([
     "🏠 Evaluaciones",
     "🛡️ Validación IA",
     "📦 Activos",
@@ -261,6 +270,7 @@ tab0, tab_ia, tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "🤖 Evaluación MAGERIT",
     "📈 Dashboard Riesgos",
     "🎯 Madurez",
+    "🔗 Concentración",
     "🔄 Comparativas"
 ])
 
@@ -338,13 +348,44 @@ with tab0:
                 with scol2:
                     st.write("")  # Espaciador
                     st.write("")
-                    if st.button("🚀 **Gestionar**", key="t0_trabajar", type="primary", use_container_width=True):
-                        st.session_state["eval_actual"] = eval_selec
-                        eval_data = evals[evals["ID_Evaluacion"] == eval_selec].iloc[0]
-                        st.session_state["eval_nombre"] = eval_data["Nombre"]
-                        st.success(f"✅ Evaluación **{eval_selec}** activada")
-                        st.balloons()
-                        st.rerun()
+                    bcol1, bcol2 = st.columns(2)
+                    with bcol1:
+                        if st.button("🚀 **Gestionar**", key="t0_trabajar", type="primary", use_container_width=True):
+                            st.session_state["eval_actual"] = eval_selec
+                            eval_data = evals[evals["ID_Evaluacion"] == eval_selec].iloc[0]
+                            st.session_state["eval_nombre"] = eval_data["Nombre"]
+                            st.success(f"✅ Evaluación **{eval_selec}** activada")
+                            st.balloons()
+                            st.rerun()
+                    with bcol2:
+                        if st.button("🗑️ Eliminar", key="t0_eliminar", type="secondary", use_container_width=True):
+                            st.session_state["eval_a_eliminar"] = eval_selec
+                
+                # Diálogo de confirmación para eliminar
+                if st.session_state.get("eval_a_eliminar") == eval_selec:
+                    st.warning(f"⚠️ ¿Seguro que deseas eliminar la evaluación **{eval_selec}**? Esta acción eliminará todos sus activos, cuestionarios y resultados.")
+                    dcol1, dcol2 = st.columns(2)
+                    with dcol1:
+                        if st.button("✅ Sí, eliminar", key="t0_confirmar_elim", type="primary"):
+                            from services.database_service import delete_rows
+                            # Eliminar datos relacionados
+                            delete_rows("RESPUESTAS", {"ID_Evaluacion": eval_selec})
+                            delete_rows("CUESTIONARIOS", {"ID_Evaluacion": eval_selec})
+                            delete_rows("IMPACTO_ACTIVOS", {"ID_Evaluacion": eval_selec})
+                            delete_rows("INVENTARIO_ACTIVOS", {"ID_Evaluacion": eval_selec})
+                            delete_rows("RESULTADOS_MAGERIT", {"ID_Evaluacion": eval_selec})
+                            delete_rows("EVALUACIONES", {"ID_Evaluacion": eval_selec})
+                            # Limpiar estado
+                            if st.session_state.get("eval_actual") == eval_selec:
+                                st.session_state["eval_actual"] = None
+                                st.session_state["eval_nombre"] = None
+                            st.session_state["eval_a_eliminar"] = None
+                            st.success(f"🗑️ Evaluación **{eval_selec}** eliminada correctamente")
+                            st.rerun()
+                    with dcol2:
+                        if st.button("❌ Cancelar", key="t0_cancelar_elim"):
+                            st.session_state["eval_a_eliminar"] = None
+                            st.rerun()
     
     # COLUMNA 2: Crear nueva evaluación
     with col2:
@@ -1526,6 +1567,22 @@ with tab5:
                 st.write(f"{icono} **{ctrl['codigo']}**: {ctrl['nombre']} - {ctrl['nivel']}")
         else:
             st.info("No hay controles identificados. Complete los cuestionarios primero.")
+
+
+# ==================== TAB CONCENTRACIÓN: RIESGO POR DEPENDENCIAS ====================
+with tab_conc:
+    st.header("🔗 Riesgo por Concentración (Host-VM)")
+    
+    if not CONCENTRACION_DISPONIBLE:
+        st.error("❌ El módulo de concentración no está disponible.")
+    elif not st.session_state.get("eval_actual"):
+        st.info("⚠️ Selecciona una evaluación en el tab 'Evaluaciones' para analizar concentración.")
+    else:
+        # Inicializar tablas si es necesario
+        init_concentration_tables()
+        
+        # Renderizar el tab completo de concentración
+        render_concentracion_tab(st.session_state["eval_actual"])
 
 
 # ==================== TAB 6: COMPARATIVAS ====================

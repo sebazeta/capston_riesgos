@@ -36,6 +36,13 @@ from .carga_masiva_ui import (
     render_carga_masiva_modal
 )
 
+from .concentration_risk_ui import (
+    render_asignacion_dependencias,
+    render_dashboard_concentracion,
+    render_concentracion_mini_card,
+    render_concentracion_tab
+)
+
 __all__ = [
     # Dashboard MAGERIT
     'render_mapa_calor_riesgos',
@@ -64,5 +71,10 @@ __all__ = [
     'render_seccion_evidencias',
     # Carga Masiva
     'render_carga_masiva',
-    'render_carga_masiva_modal'
+    'render_carga_masiva_modal',
+    # Riesgo por Concentración
+    'render_asignacion_dependencias',
+    'render_dashboard_concentracion',
+    'render_concentracion_mini_card',
+    'render_concentracion_tab'
 ]

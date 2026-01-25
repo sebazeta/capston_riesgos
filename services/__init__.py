@@ -130,6 +130,25 @@ from .carga_masiva_service import (
     ErrorValidacion
 )
 
+# Servicio de Riesgo por Concentración (Host-VM)
+from .concentration_risk_service import (
+    init_concentration_tables,
+    asignar_host_a_vm,
+    get_vms_de_host,
+    get_hosts_evaluacion,
+    calcular_blast_radius,
+    calcular_riesgo_heredado,
+    calcular_concentracion_evaluacion,
+    calcular_herencia_evaluacion,
+    get_hosts_spof,
+    get_ranking_hosts_blast_radius,
+    get_vms_con_riesgo_heredado,
+    get_resumen_concentracion,
+    DependenciaVM,
+    ResultadoConcentracion,
+    RiesgoHeredado
+)
+
 __all__ = [
     # Database SQLite
     'init_database',
@@ -222,5 +241,21 @@ __all__ = [
     'generar_plantilla_excel',
     'get_campos_info',
     'ResultadoCarga',
-    'ErrorValidacion'
+    'ErrorValidacion',
+    # Concentration Risk Service
+    'init_concentration_tables',
+    'asignar_host_a_vm',
+    'get_vms_de_host',
+    'get_hosts_evaluacion',
+    'calcular_blast_radius',
+    'calcular_riesgo_heredado',
+    'calcular_concentracion_evaluacion',
+    'calcular_herencia_evaluacion',
+    'get_hosts_spof',
+    'get_ranking_hosts_blast_radius',
+    'get_vms_con_riesgo_heredado',
+    'get_resumen_concentracion',
+    'DependenciaVM',
+    'ResultadoConcentracion',
+    'RiesgoHeredado'
 ]
