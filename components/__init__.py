@@ -43,6 +43,10 @@ from .concentration_risk_ui import (
     render_concentracion_tab
 )
 
+from .ia_advanced_ui import (
+    render_ia_avanzada_ui
+)
+
 __all__ = [
     # Dashboard MAGERIT
     'render_mapa_calor_riesgos',
@@ -76,5 +80,7 @@ __all__ = [
     'render_asignacion_dependencias',
     'render_dashboard_concentracion',
     'render_concentracion_mini_card',
-    'render_concentracion_tab'
+    'render_concentracion_tab',
+    # IA Avanzada
+    'render_ia_avanzada_ui'
 ]

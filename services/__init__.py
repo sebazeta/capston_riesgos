@@ -149,6 +149,34 @@ from .concentration_risk_service import (
     RiesgoHeredado
 )
 
+# Servicio de IA Avanzada
+from .ia_advanced_service import (
+    generar_plan_tratamiento,
+    generar_planes_evaluacion,
+    consultar_chatbot_magerit,
+    generar_resumen_ejecutivo,
+    generar_prediccion_riesgo,
+    generar_priorizacion_controles,
+    verificar_ia_disponible,
+    obtener_amenazas_evaluacion,
+    obtener_controles_evaluacion,
+    guardar_resultado_ia,
+    cargar_resultado_ia,
+    eliminar_resultado_ia,
+    PlanTratamiento,
+    ResumenEjecutivo,
+    PrediccionRiesgo,
+    ControlPriorizado
+)
+
+# Servicio de Exportación
+from .export_service import (
+    generar_documento_ejecutivo,
+    generar_datos_powerbi,
+    exportar_powerbi_excel,
+    exportar_powerbi_csv
+)
+
 __all__ = [
     # Database SQLite
     'init_database',
@@ -257,5 +285,17 @@ __all__ = [
     'get_resumen_concentracion',
     'DependenciaVM',
     'ResultadoConcentracion',
-    'RiesgoHeredado'
+    'RiesgoHeredado',
+    # IA Advanced Service
+    'generar_plan_tratamiento',
+    'generar_planes_evaluacion',
+    'consultar_chatbot_magerit',
+    'generar_resumen_ejecutivo',
+    'generar_prediccion_riesgo',
+    'generar_priorizacion_controles',
+    'verificar_ia_disponible',
+    'PlanTratamiento',
+    'ResumenEjecutivo',
+    'PrediccionRiesgo',
+    'ControlPriorizado'
 ]

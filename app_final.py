@@ -89,6 +89,14 @@ except ImportError as e:
     CONCENTRACION_DISPONIBLE = False
     print(f"Warning: Concentration Risk not available: {e}")
 
+# Componentes de IA Avanzada
+try:
+    from components.ia_advanced_ui import render_ia_avanzada_ui
+    IA_AVANZADA_DISPONIBLE = True
+except ImportError as e:
+    IA_AVANZADA_DISPONIBLE = False
+    print(f"Warning: IA Avanzada not available: {e}")
+
 from config.settings import (
     CUESTIONARIOS_HEADERS, RESPUESTAS_HEADERS, IMPACTO_HEADERS,
     ANALISIS_RIESGO_HEADERS, RISK_COLORS, get_risk_level,
@@ -262,7 +270,7 @@ with st.sidebar:
 
 # ==================== TABS ====================
 
-tab0, tab_ia, tab1, tab2, tab3, tab4, tab5, tab_conc, tab6 = st.tabs([
+tab0, tab_ia, tab1, tab2, tab3, tab4, tab5, tab_conc, tab_ia_adv, tab6 = st.tabs([
     "🏠 Evaluaciones",
     "🛡️ Validación IA",
     "📦 Activos",
@@ -271,6 +279,7 @@ tab0, tab_ia, tab1, tab2, tab3, tab4, tab5, tab_conc, tab6 = st.tabs([
     "📈 Dashboard Riesgos",
     "🎯 Madurez",
     "🔗 Concentración",
+    "🧠 IA Avanzada",
     "🔄 Comparativas"
 ])
 
@@ -1583,6 +1592,14 @@ with tab_conc:
         
         # Renderizar el tab completo de concentración
         render_concentracion_tab(st.session_state["eval_actual"])
+
+
+# ==================== TAB IA AVANZADA: FUNCIONALIDADES INTELIGENTES ====================
+with tab_ia_adv:
+    if not IA_AVANZADA_DISPONIBLE:
+        st.error("❌ El módulo de IA Avanzada no está disponible.")
+    else:
+        render_ia_avanzada_ui()
 
 
 # ==================== TAB 6: COMPARATIVAS ====================
