@@ -1,0 +1,36 @@
+# Proyecto TITA - Evaluación de Riesgos MAGERIT/ISO 27002
+# Generado: 22 Enero 2026
+
+# Core Framework
+streamlit>=1.30.0
+
+# Data Processing
+pandas>=2.1.0
+numpy>=1.26.0
+
+# Excel I/O
+openpyxl>=3.1.0
+
+# IA Integration
+requests>=2.31.0
+
+# Visualizations (para dashboards futuros)
+plotly>=5.18.0
+matplotlib>=3.8.0
+
+# Authentication (opcional, para seguridad)
+streamlit-authenticator>=0.2.3
+pyyaml>=6.0
+
+# Testing (para desarrollo)
+# pytest>=7.4.0
+# pytest-cov>=4.1.0
+
+# Database (para migración futura)
+# sqlalchemy>=2.0.0
+# psycopg2-binary>=2.9.0
+
+# API Backend (para migración futura)
+# fastapi>=0.104.0
+# uvicorn>=0.24.0
+# pydantic>=2.5.0

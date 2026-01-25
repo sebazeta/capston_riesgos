@@ -12,26 +12,35 @@ SHEETS = {
     "CATALOGO_AMENAZAS_MAGERIT": ["Cod_MAGERIT", "Categoria", "Amenaza", "Descripcion", "Dimension(D/I/C)", "Severidad_Base(1-5)"],
     "CATALOGO_ISO27002_2022": ["Control", "Nombre", "Dominio", "Descripcion"],
 
-    "INVENTARIO_ACTIVOS": ["ID_Activo", "Nombre_Activo", "Tipo_Activo", "Subtipo", "Propietario", "Ubicacion",
-                       "Criticidad_Negocio(1-5)", "Internet_Expuesto(0/1)", "Datos_Sensibles(0/1)",
-                       "RTO_objetivo_horas", "RPO_objetivo_horas", "BIA_impacto(1-5)"],
+    # Activos - columnas sincronizadas con activo_service.py
+    "INVENTARIO_ACTIVOS": ["ID_Evaluacion", "ID_Activo", "Nombre_Activo", "Tipo_Activo", 
+                           "Ubicacion", "Propietario", "Tipo_Servicio", "App_Critica",
+                           "Estado", "Fecha_Creacion"],
 
-    # NUEVO: Banco de preguntas base (estándar)
-    "BANCO_PREGUNTAS": ["ID_Pregunta", "Tipo_Activo", "Dimension(D/I/C)", "Pregunta", "Tipo_Respuesta(0/1|1-5)", "Peso(1-5)"],
+    # Bancos de preguntas por tipo de activo
+    "BANCO_PREGUNTAS_FISICAS": ["ID_Pregunta", "Tipo_Activo", "Bloque", "Dimension", "Pregunta", 
+                                 "Opcion_1", "Opcion_2", "Opcion_3", "Opcion_4", "Peso"],
+    "BANCO_PREGUNTAS_VIRTUALES": ["ID_Pregunta", "Tipo_Activo", "Bloque", "Dimension", "Pregunta", 
+                                   "Opcion_1", "Opcion_2", "Opcion_3", "Opcion_4", "Peso"],
 
-    # NUEVO: Cuestionario generado por IA para cada activo
-    "CUESTIONARIO_GENERADO": ["ID_Evaluacion", "ID_Activo", "Fecha", "ID_Pregunta", "Pregunta", "Tipo_Respuesta", "Peso", "Fuente(IA/Base)"],
+    # Cuestionarios generados para cada activo
+    "CUESTIONARIOS": ["ID_Evaluacion", "ID_Activo", "Fecha_Version", "ID_Pregunta", "Bloque",
+                      "Dimension", "Pregunta", "Opcion_1", "Opcion_2", "Opcion_3", "Opcion_4", "Peso"],
 
-    # NUEVO: Respuestas del usuario
-    "RESPUESTAS": ["ID_Evaluacion", "ID_Activo", "Fecha", "ID_Pregunta", "Respuesta"],
+    # Respuestas del usuario
+    "RESPUESTAS": ["ID_Evaluacion", "ID_Activo", "Fecha_Cuestionario", "ID_Pregunta", "Bloque",
+                   "Pregunta", "Respuesta", "Valor_Numerico", "Peso", "Dimension", "Fecha"],
 
-    "VALORACION_DIC": ["ID_Evaluacion", "ID_Activo", "Fecha", "Disponibilidad(1-5)", "Integridad(1-5)", "Confidencialidad(1-5)",
-                       "Just_D", "Just_I", "Just_C"],
+    # Impacto DIC (valoración MAGERIT)
+    "IMPACTO_ACTIVOS": ["ID_Evaluacion", "ID_Activo", "Fecha", "Impacto_D", "Impacto_I", "Impacto_C",
+                        "Justificacion_D", "Justificacion_I", "Justificacion_C"],
 
     "AMENAZAS_VULNERAB": ["ID_Evaluacion", "ID_Riesgo", "ID_Activo", "Fecha", "Cod_MAGERIT", "Amenaza",
                           "Vulnerabilidad", "Dimension(D/I/C)", "Severidad(1-5)"],
 
-    "ANALISIS_RIESGO": ["ID_Evaluacion", "ID_Riesgo", "ID_Activo", "Fecha", "Probabilidad(1-5)", "Impacto(1-5)", "Riesgo_Inherente(1-25)"],
+    "ANALISIS_RIESGO": ["ID_Evaluacion", "ID_Activo", "Fecha", "Tipo_Activo", "Nombre_Activo",
+                        "Probabilidad", "Impacto", "Riesgo_Inherente", "Nivel_Riesgo",
+                        "Recomendaciones", "Estado", "Modelo_IA"],
 
     "SALVAGUARDAS": ["ID_Evaluacion", "ID_Riesgo", "ID_Activo", "Fecha", "Control_ISO27002", "Nombre_Control", "Descripcion", "Efectividad(0-100)"],
 

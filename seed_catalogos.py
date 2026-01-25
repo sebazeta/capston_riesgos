@@ -46,14 +46,8 @@ def main():
     ]
     append_rows(wb["CATALOGO_ISO27002_2022"], controles)
 
-    # Banco de preguntas base (para que la IA no invente de cero)
-    preguntas = [
-        {"ID_Pregunta":"P-001","Tipo_Activo":"Servidor","Dimension(D/I/C)":"D","Pregunta":"¿Tiene backups automáticos verificados?","Tipo_Respuesta(0/1|1-5)":"0/1","Peso(1-5)":5},
-        {"ID_Pregunta":"P-002","Tipo_Activo":"Servidor","Dimension(D/I/C)":"I","Pregunta":"¿Tiene monitoreo centralizado y alertas?","Tipo_Respuesta(0/1|1-5)":"0/1","Peso(1-5)":4},
-        {"ID_Pregunta":"P-003","Tipo_Activo":"Base de datos","Dimension(D/I/C)":"C","Pregunta":"¿Los datos sensibles están cifrados en reposo?","Tipo_Respuesta(0/1|1-5)":"0/1","Peso(1-5)":5},
-        {"ID_Pregunta":"P-004","Tipo_Activo":"Aplicación","Dimension(D/I/C)":"I","Pregunta":"¿Existe control de cambios y despliegue?","Tipo_Respuesta(0/1|1-5)":"0/1","Peso(1-5)":3},
-    ]
-    append_rows(wb["BANCO_PREGUNTAS"], preguntas)
+    # Los bancos de preguntas ahora se crean con crear_bancos_preguntas.py
+    # Ya no usamos BANCO_PREGUNTAS genérico
 
     wb.save(EXCEL_PATH)
     print("Catálogos sembrados (subset inicial).")

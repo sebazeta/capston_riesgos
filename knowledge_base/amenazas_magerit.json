@@ -1,0 +1,97 @@
+{
+  "version": "MAGERIT v3",
+  "descripcion": "Catálogo oficial de amenazas según metodología MAGERIT v3",
+  "total_amenazas": 52,
+  "categorias": [
+    {
+      "codigo": "D",
+      "nombre": "Desastres Naturales",
+      "descripcion": "Sucesos que pueden ocurrir sin intervención humana: fenómenos naturales",
+      "amenazas": [
+        {"codigo": "D.1", "nombre": "Fuego", "descripcion": "Incendio de origen natural"},
+        {"codigo": "D.2", "nombre": "Daños por agua", "descripcion": "Inundación de origen natural"}
+      ]
+    },
+    {
+      "codigo": "I",
+      "nombre": "De origen industrial",
+      "descripcion": "Sucesos que pueden ocurrir de forma accidental, derivados de la actividad humana de tipo industrial",
+      "amenazas": [
+        {"codigo": "I.1", "nombre": "Fuego", "descripcion": "Incendio de origen industrial"},
+        {"codigo": "I.2", "nombre": "Daños por agua", "descripcion": "Inundación por escape, fuga o rotura"},
+        {"codigo": "I.3", "nombre": "Contaminación mecánica", "descripcion": "Polvo, suciedad, vibraciones"},
+        {"codigo": "I.4", "nombre": "Contaminación electromagnética", "descripcion": "Interferencias electromagnéticas"},
+        {"codigo": "I.5", "nombre": "Avería de origen físico o lógico", "descripcion": "Fallo de hardware o software"},
+        {"codigo": "I.6", "nombre": "Corte del suministro eléctrico", "descripcion": "Interrupción del servicio eléctrico"},
+        {"codigo": "I.7", "nombre": "Condiciones inadecuadas de temperatura o humedad", "descripcion": "Fallo del sistema de climatización"},
+        {"codigo": "I.8", "nombre": "Fallo de servicios de comunicaciones", "descripcion": "Interrupción de comunicaciones"},
+        {"codigo": "I.9", "nombre": "Interrupción de otros servicios y suministros esenciales", "descripcion": "Dependencias externas"},
+        {"codigo": "I.10", "nombre": "Degradación de los soportes de almacenamiento", "descripcion": "Deterioro de medios de almacenamiento"},
+        {"codigo": "I.11", "nombre": "Emanaciones electromagnéticas", "descripcion": "Emisiones que pueden ser interceptadas"}
+      ]
+    },
+    {
+      "codigo": "E",
+      "nombre": "Errores y fallos no intencionados",
+      "descripcion": "Fallos no intencionales causados por las personas",
+      "amenazas": [
+        {"codigo": "E.1", "nombre": "Errores de los usuarios", "descripcion": "Equivocaciones de personas al usar servicios"},
+        {"codigo": "E.2", "nombre": "Errores del administrador", "descripcion": "Equivocaciones de administradores"},
+        {"codigo": "E.3", "nombre": "Errores de monitorización", "descripcion": "Registro incompleto de actividades"},
+        {"codigo": "E.4", "nombre": "Errores de configuración", "descripcion": "Configuración incorrecta de sistemas"},
+        {"codigo": "E.7", "nombre": "Deficiencias en la organización", "descripcion": "Cuando no está claro quién hace qué"},
+        {"codigo": "E.8", "nombre": "Difusión de software dañino", "descripcion": "Propagación accidental de malware"},
+        {"codigo": "E.9", "nombre": "Errores de [re-]encaminamiento", "descripcion": "Envío de información a destino incorrecto"},
+        {"codigo": "E.10", "nombre": "Errores de secuencia", "descripcion": "Alteración del orden de los mensajes"},
+        {"codigo": "E.14", "nombre": "Escapes de información", "descripcion": "Información llega a quien no debe"},
+        {"codigo": "E.15", "nombre": "Alteración accidental de la información", "descripcion": "Modificación involuntaria de datos"},
+        {"codigo": "E.18", "nombre": "Destrucción de información", "descripcion": "Pérdida accidental de información"},
+        {"codigo": "E.19", "nombre": "Fugas de información", "descripcion": "Revelación de información por descuido"},
+        {"codigo": "E.20", "nombre": "Vulnerabilidades de los programas", "descripcion": "Defectos en el código del software"},
+        {"codigo": "E.21", "nombre": "Errores de mantenimiento / actualización de programas", "descripcion": "Deficiencias en actualizaciones"},
+        {"codigo": "E.23", "nombre": "Errores de mantenimiento / actualización de equipos", "descripcion": "Deficiencias en mantenimiento hardware"},
+        {"codigo": "E.24", "nombre": "Caída del sistema por agotamiento de recursos", "descripcion": "Recursos insuficientes"},
+        {"codigo": "E.25", "nombre": "Pérdida de equipos", "descripcion": "Pérdida accidental de dispositivos"},
+        {"codigo": "E.28", "nombre": "Indisponibilidad del personal", "descripcion": "Ausencia de personal necesario"}
+      ]
+    },
+    {
+      "codigo": "A",
+      "nombre": "Ataques intencionados",
+      "descripcion": "Fallos deliberados causados por las personas de forma intencionada",
+      "amenazas": [
+        {"codigo": "A.3", "nombre": "Manipulación de los registros de actividad", "descripcion": "Alteración de logs"},
+        {"codigo": "A.4", "nombre": "Manipulación de la configuración", "descripcion": "Alteración maliciosa de configuración"},
+        {"codigo": "A.5", "nombre": "Suplantación de la identidad del usuario", "descripcion": "Hacerse pasar por otro usuario"},
+        {"codigo": "A.6", "nombre": "Abuso de privilegios de acceso", "descripcion": "Uso excesivo de permisos"},
+        {"codigo": "A.7", "nombre": "Uso no previsto", "descripcion": "Uso del sistema para fines no autorizados"},
+        {"codigo": "A.8", "nombre": "Difusión de software dañino", "descripcion": "Propagación deliberada de malware"},
+        {"codigo": "A.9", "nombre": "[Re-]encaminamiento de mensajes", "descripcion": "Desvío deliberado de comunicaciones"},
+        {"codigo": "A.10", "nombre": "Alteración de secuencia", "descripcion": "Alteración maliciosa del orden"},
+        {"codigo": "A.11", "nombre": "Acceso no autorizado", "descripcion": "Intrusión sin autorización"},
+        {"codigo": "A.12", "nombre": "Análisis de tráfico", "descripcion": "Interceptación para obtener patrones"},
+        {"codigo": "A.13", "nombre": "Repudio", "descripcion": "Negación de acciones realizadas"},
+        {"codigo": "A.14", "nombre": "Interceptación de información", "descripcion": "Escucha de comunicaciones"},
+        {"codigo": "A.15", "nombre": "Modificación deliberada de la información", "descripcion": "Alteración maliciosa de datos"},
+        {"codigo": "A.18", "nombre": "Destrucción de información", "descripcion": "Eliminación deliberada de información"},
+        {"codigo": "A.19", "nombre": "Divulgación de información", "descripcion": "Revelación no autorizada"},
+        {"codigo": "A.22", "nombre": "Manipulación de programas", "descripcion": "Alteración maliciosa de software"},
+        {"codigo": "A.23", "nombre": "Manipulación de los equipos", "descripcion": "Alteración física de hardware"},
+        {"codigo": "A.24", "nombre": "Denegación de servicio", "descripcion": "Ataque para interrumpir servicios"},
+        {"codigo": "A.25", "nombre": "Robo", "descripcion": "Sustracción de equipos o información"},
+        {"codigo": "A.26", "nombre": "Ataque destructivo", "descripcion": "Destrucción física"},
+        {"codigo": "A.27", "nombre": "Ocupación enemiga", "descripcion": "Toma de control de instalaciones"},
+        {"codigo": "A.28", "nombre": "Indisponibilidad del personal", "descripcion": "Coacción o secuestro de personal"},
+        {"codigo": "A.29", "nombre": "Extorsión", "descripcion": "Chantaje para obtener beneficios"},
+        {"codigo": "A.30", "nombre": "Ingeniería social", "descripcion": "Manipulación psicológica"}
+      ]
+    }
+  ],
+  "dimensiones_afectadas": {
+    "D": "Disponibilidad",
+    "I": "Integridad", 
+    "C": "Confidencialidad",
+    "A": "Autenticidad",
+    "T": "Trazabilidad"
+  }
+}
