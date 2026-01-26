@@ -441,5 +441,327 @@ Niveles de riesgo:
 ---
 
 **Documento generado para:** TITA - Sistema de Evaluación de Riesgos  
-**Versión:** 2.4  
-**Fecha:** $(date)
+**Versión:** 2.5  
+**Fecha:** 25 Enero 2026
+
+---
+
+## 🧠 MÓDULO IA AVANZADA (NUEVO v2.5)
+
+### Diagrama de Flujo IA Avanzada
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                        🤖 IA AVANZADA (Tab Independiente)                       │
+│                                                                                 │
+│  ┌────────────────┐ ┌────────────────┐ ┌────────────────┐ ┌────────────────┐   │
+│  │ 📝 Planes de   │ │ 💬 Chatbot     │ │ 📋 Resumen     │ │ 🔮 Predicción  │   │
+│  │   Tratamiento  │ │   MAGERIT      │ │   Ejecutivo    │ │   de Riesgo    │   │
+│  └───────┬────────┘ └───────┬────────┘ └───────┬────────┘ └───────┬────────┘   │
+│          │                  │                  │                  │            │
+│  ┌────────────────┐                                                            │
+│  │ 🎯 Priorización│                                                            │
+│  │   de Controles │                                                            │
+│  └───────┬────────┘                                                            │
+└──────────┼──────────────────┼──────────────────┼──────────────────┼────────────┘
+           │                  │                  │                  │
+           └──────────────────┴────────┬─────────┴──────────────────┘
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                     🧠 SERVICIO IA AVANZADA (ia_advanced_service.py)            │
+│                                                                                 │
+│  ┌───────────────────────────────────────────────────────────────────────────┐  │
+│  │                    FUNCIONES PRINCIPALES                                  │  │
+│  │                                                                           │  │
+│  │  1. generar_plan_tratamiento(eval_id, activo_id, codigo_amenaza, modelo)  │  │
+│  │     → PlanTratamiento (acciones corto/mediano/largo plazo)                │  │
+│  │                                                                           │  │
+│  │  2. consultar_chatbot_magerit(eval_id, pregunta, historial, modelo)       │  │
+│  │     → Respuesta contextualizada con datos de la evaluación                │  │
+│  │                                                                           │  │
+│  │  3. generar_resumen_ejecutivo(eval_id, modelo)                            │  │
+│  │     → ResumenEjecutivo (hallazgos, recomendaciones, inversión)            │  │
+│  │                                                                           │  │
+│  │  4. generar_prediccion_riesgo(eval_id, meses, modelo)                     │  │
+│  │     → PrediccionRiesgo (tendencia, proyecciones, factores)                │  │
+│  │                                                                           │  │
+│  │  5. generar_priorizacion_controles(eval_id, modelo)                       │  │
+│  │     → List[ControlPriorizado] (ordenados por ROI de seguridad)            │  │
+│  │                                                                           │  │
+│  └───────────────────────────────────────────────────────────────────────────┘  │
+│                                       │                                         │
+│                                       ▼                                         │
+│  ┌───────────────────────────────────────────────────────────────────────────┐  │
+│  │                    LLAMADA A OLLAMA                                       │  │
+│  │                                                                           │  │
+│  │  llamar_ollama_avanzado(prompt, modelo, max_tokens, temperature)          │  │
+│  │  ┌─────────────────────────────────────────────────────────────────────┐  │  │
+│  │  │ HTTP POST → http://localhost:11434/api/generate                     │  │  │
+│  │  │                                                                     │  │  │
+│  │  │ PARÁMETROS OPTIMIZADOS:                                             │  │  │
+│  │  │ • model: "llama3.2:1b" (ligero y rápido)                            │  │  │
+│  │  │ • temperature: 0.3 (respuestas coherentes)                          │  │  │
+│  │  │ • num_predict: 1500-2000 tokens                                     │  │  │
+│  │  │ • timeout: 45 segundos                                              │  │  │
+│  │  └─────────────────────────────────────────────────────────────────────┘  │  │
+│  └───────────────────────────────────────────────────────────────────────────┘  │
+│                                       │                                         │
+│            ┌──────────────────────────┴──────────────────────────┐              │
+│            ▼                                                     ▼              │
+│  ┌───────────────────────────┐                     ┌───────────────────────────┐│
+│  │    ✅ RESPUESTA OK        │                     │    ❌ RESPUESTA FALLA     ││
+│  │   (JSON válido)           │                     │   (Timeout, error, etc)   ││
+│  │                           │                     │                           ││
+│  │ extraer_json_seguro()     │                     │ Función _generar_xxx_     ││
+│  │                           │                     │ heuristico()              ││
+│  └───────────────────────────┘                     └───────────────────────────┘│
+│                                       │                                         │
+└───────────────────────────────────────┼─────────────────────────────────────────┘
+                                        │
+                                        ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                     💾 PERSISTENCIA DE RESULTADOS IA                            │
+│                                                                                 │
+│  ┌───────────────────────────────────────────────────────────────────────────┐  │
+│  │  Tabla: IA_RESULTADOS_AVANZADOS                                           │  │
+│  │                                                                           │  │
+│  │  • id_evaluacion: TEXT (FK a EVALUACIONES)                                │  │
+│  │  • tipo_resultado: TEXT (resumen_ejecutivo, prediccion_riesgo, etc.)      │  │
+│  │  • datos_json: TEXT (resultado serializado)                               │  │
+│  │  • fecha_generacion: TEXT                                                 │  │
+│  │  • modelo_ia: TEXT                                                        │  │
+│  │                                                                           │  │
+│  │  UNIQUE(id_evaluacion, tipo_resultado) → Solo un resultado por tipo       │  │
+│  └───────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                 │
+│  Funciones de persistencia:                                                     │
+│  • guardar_resultado_ia(eval_id, tipo, datos, modelo)                           │
+│  • cargar_resultado_ia(eval_id, tipo) → dict o None                             │
+│  • eliminar_resultado_ia(eval_id, tipo)                                         │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Flujo de Persistencia (Regenerar vs Generar)
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                    FLUJO UI CON PERSISTENCIA                     │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Usuario abre tab IA Avanzada                                    │
+│              │                                                   │
+│              ▼                                                   │
+│  ┌────────────────────────────────┐                              │
+│  │  cargar_resultado_ia(eval_id,  │                              │
+│  │  "resumen_ejecutivo")          │                              │
+│  └───────────┬────────────────────┘                              │
+│              │                                                   │
+│     ┌────────┴────────┐                                          │
+│     │                 │                                          │
+│     ▼                 ▼                                          │
+│  ┌──────────┐    ┌───────────┐                                   │
+│  │ EXISTE   │    │ NO EXISTE │                                   │
+│  │ resultado│    │ resultado │                                   │
+│  └────┬─────┘    └─────┬─────┘                                   │
+│       │                │                                         │
+│       ▼                ▼                                         │
+│  ┌───────────────┐  ┌───────────────┐                            │
+│  │ 🔄 Regenerar  │  │ 📄 Generar    │  ← Botón mostrado          │
+│  │   + Fecha     │  │   (Primary)   │                            │
+│  └───────────────┘  └───────────────┘                            │
+│              │                                                   │
+│              ▼                                                   │
+│  Usuario hace clic                                               │
+│              │                                                   │
+│              ▼                                                   │
+│  ┌───────────────────────────────────┐                           │
+│  │  Generar con IA                   │                           │
+│  │  guardar_resultado_ia(...)        │                           │
+│  │  st.rerun()                       │                           │
+│  └───────────────────────────────────┘                           │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Dataclasses Principales
+
+```python
+@dataclass
+class PlanTratamiento:
+    id_evaluacion: str
+    id_activo: str
+    codigo_amenaza: str
+    nombre_amenaza: str
+    nivel_riesgo: str
+    acciones_corto_plazo: List[Dict]   # [{"accion", "responsable", "plazo", "costo"}]
+    acciones_mediano_plazo: List[Dict]
+    acciones_largo_plazo: List[Dict]
+    responsable_general: str
+    presupuesto_total: str
+    kpis: List[str]
+    modelo_ia: str
+
+@dataclass
+class ResumenEjecutivo:
+    id_evaluacion: str
+    fecha_generacion: str
+    total_activos: int
+    total_amenazas: int
+    distribucion_riesgo: Dict[str, int]
+    hallazgos_principales: List[str]
+    activos_criticos: List[Dict]
+    recomendaciones_prioritarias: List[str]
+    inversion_estimada: str              # "$10,000 - $30,000 USD"
+    reduccion_riesgo_esperada: str       # "40-60%"
+    conclusion: str
+    modelo_ia: str
+
+@dataclass
+class PrediccionRiesgo:
+    id_evaluacion: str
+    riesgo_actual: float
+    riesgo_residual: float
+    tendencia: str                       # "INCREMENTO", "ESTABLE", "DECREMENTO"
+    proyecciones: Dict[str, float]       # {"mes_1": 10.5, "mes_3": 11.2}
+    factores_incremento: List[str]
+    factores_mitigacion: List[str]
+    recomendacion: str
+    fecha_generacion: str
+    modelo_ia: str
+
+@dataclass
+class ControlPriorizado:
+    codigo: str
+    nombre: str
+    categoria: str
+    riesgos_que_mitiga: int
+    activos_afectados: List[str]
+    costo_estimado: str                  # "BAJO", "MEDIO", "ALTO"
+    tiempo_implementacion: str
+    roi_seguridad: int                   # 1-5 (5 = mayor retorno)
+    justificacion: str
+    orden_prioridad: int
+```
+
+### Servicio de Exportación (export_service.py)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    EXPORTACIÓN PARA EJECUTIVOS                  │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ResumenEjecutivo                                               │
+│         │                                                       │
+│         ├──────► generar_documento_ejecutivo(resumen, "html")   │
+│         │           └─► HTML profesional con CSS                │
+│         │               • Header con logo y fecha               │
+│         │               • Métricas en cards                     │
+│         │               • Tabla de activos críticos             │
+│         │               • Lista de hallazgos                    │
+│         │               • Recomendaciones prioritarias          │
+│         │               • Footer con disclaimer                 │
+│         │                                                       │
+│         ├──────► generar_documento_ejecutivo(resumen, "markdown")│
+│         │           └─► Markdown para edición posterior         │
+│         │                                                       │
+│         └──────► resumen.to_dict()                              │
+│                     └─► JSON para integración                   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Integración con Power BI
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    DATASETS PARA POWER BI                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  generar_datos_powerbi(eval_id)                                 │
+│         │                                                       │
+│         └─► Dict[str, DataFrame] con 8 tablas:                  │
+│                                                                 │
+│             • Activos             → Inventario completo         │
+│             • Resultados_MAGERIT  → Riesgos por activo          │
+│             • Amenazas            → Detalle de amenazas         │
+│             • Controles_Recomendados → ISO 27002 sugeridos      │
+│             • Distribucion_Riesgos → Conteo por nivel           │
+│             • Impacto_Dimensiones → Promedio DIC                │
+│             • Tipos_Amenaza       → Categorías                  │
+│             • Metadata            → Info de evaluación          │
+│                                                                 │
+│  exportar_powerbi_excel(eval_id, ruta)                          │
+│         └─► Excel multi-hoja (.xlsx)                            │
+│             • Una hoja por dataset                              │
+│             • Listo para importar en Power BI                   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Chatbot Consultor MAGERIT
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    CHATBOT MAGERIT                              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Usuario escribe pregunta                                       │
+│         │                                                       │
+│         ▼                                                       │
+│  consultar_chatbot_magerit(eval_id, pregunta, historial, modelo)│
+│         │                                                       │
+│         ├─► Carga contexto de la evaluación:                    │
+│         │   • Total activos, amenazas                           │
+│         │   • Distribución de riesgos                           │
+│         │   • Top 5 activos más críticos                        │
+│         │                                                       │
+│         ├─► Construye prompt con:                               │
+│         │   • Rol: "Consultor experto MAGERIT"                  │
+│         │   • Contexto de evaluación                            │
+│         │   • Historial de conversación                         │
+│         │   • Pregunta actual                                   │
+│         │                                                       │
+│         └─► Llama a Ollama (temperature: 0.3)                   │
+│                   │                                             │
+│                   ▼                                             │
+│         Respuesta coherente y contextualizada                   │
+│                                                                 │
+│  Historial guardado en: st.session_state["ia_chat_history"]     │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Archivos del Módulo IA Avanzada
+
+| Archivo | Propósito | Líneas |
+|---------|-----------|--------|
+| `services/ia_advanced_service.py` | Servicios principales de IA Avanzada | ~1270 |
+| `components/ia_advanced_ui.py` | Interfaz de usuario Streamlit | ~950 |
+| `services/export_service.py` | Exportación HTML/MD/Excel | ~500 |
+
+### Funciones Clave por Archivo
+
+**ia_advanced_service.py:**
+| Función | Descripción |
+|---------|-------------|
+| `generar_plan_tratamiento()` | Plan de acciones para amenaza específica |
+| `generar_planes_evaluacion()` | Planes para todas las amenazas críticas |
+| `consultar_chatbot_magerit()` | Respuesta del chatbot contextualizada |
+| `generar_resumen_ejecutivo()` | Informe para alta gerencia |
+| `generar_prediccion_riesgo()` | Proyección de riesgo futuro |
+| `generar_priorizacion_controles()` | Ordenamiento por ROI |
+| `obtener_amenazas_evaluacion()` | Extrae amenazas de JSON |
+| `obtener_controles_evaluacion()` | Extrae controles de JSON |
+| `guardar_resultado_ia()` | Persiste resultado en BD |
+| `cargar_resultado_ia()` | Recupera resultado de BD |
+
+**export_service.py:**
+| Función | Descripción |
+|---------|-------------|
+| `generar_documento_ejecutivo()` | HTML/MD/TXT profesional |
+| `_generar_html_ejecutivo()` | Template HTML con CSS |
+| `generar_datos_powerbi()` | 8 DataFrames optimizados |
+| `exportar_powerbi_excel()` | Excel multi-hoja |
+
+---

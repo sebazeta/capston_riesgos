@@ -1,7 +1,7 @@
 # PROYECTO TITA - Documentación Completa del Sistema
 
 **Sistema de Evaluación de Riesgos MAGERIT/ISO 27002**  
-*Versión: 2.4 | Última actualización: 25 Enero 2026*
+*Versión: 2.5 | Última actualización: 25 Enero 2026*
 
 ---
 
@@ -16,10 +16,11 @@
 7. [Módulos y Funcionalidades](#7-módulos-y-funcionalidades)
 8. [Banco de Preguntas](#8-banco-de-preguntas)
 9. [Integración con IA](#9-integración-con-ia)
-10. [Catálogos y Estándares](#10-catálogos-y-estándares)
-11. [Estructura de Archivos](#11-estructura-de-archivos)
-12. [Guía de Desarrollo](#12-guía-de-desarrollo)
-13. [Reglas de Negocio Críticas](#13-reglas-de-negocio-críticas)
+10. [IA Avanzada](#10-ia-avanzada)
+11. [Catálogos y Estándares](#11-catálogos-y-estándares)
+12. [Estructura de Archivos](#12-estructura-de-archivos)
+13. [Guía de Desarrollo](#13-guía-de-desarrollo)
+14. [Reglas de Negocio Críticas](#14-reglas-de-negocio-críticas)
 
 ---
 
@@ -59,6 +60,9 @@ Desarrollar una herramienta que automatice y estandarice el proceso de evaluaci�
 | 10 | Comparativa de madurez entre evaluaciones | ✅ Implementado |
 | 11 | Carga masiva de activos (JSON/Excel) | ✅ Implementado |
 | 12 | Riesgo por concentración (Host-VM) | ✅ Implementado |
+| 13 | IA Avanzada (5 funcionalidades) | ✅ Implementado |
+| 14 | Exportación para Power BI | ✅ Implementado |
+| 15 | Persistencia de resultados IA | ✅ Implementado |
 
 ### 2.3 Alcance
 - **Tipos de activos soportados**: Servidores Físicos, Servidores Virtuales
@@ -279,7 +283,7 @@ CREATE TABLE ANALISIS_RIESGO (
 );
 ```
 
-#### RESULTADOS_MADUREZ (NUEVO)
+#### RESULTADOS_MADUREZ
 ```sql
 CREATE TABLE RESULTADOS_MADUREZ (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -296,6 +300,20 @@ CREATE TABLE RESULTADOS_MADUREZ (
     Activos_Evaluados INTEGER,
     Total_Activos INTEGER,
     Observaciones TEXT
+);
+```
+
+#### IA_RESULTADOS_AVANZADOS (NUEVO v2.5)
+```sql
+CREATE TABLE IA_RESULTADOS_AVANZADOS (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_evaluacion TEXT NOT NULL,
+    tipo_resultado TEXT NOT NULL,    -- resumen_ejecutivo, prediccion_riesgo, 
+                                     -- priorizacion_controles, planes_tratamiento
+    datos_json TEXT NOT NULL,        -- Resultado serializado en JSON
+    fecha_generacion TEXT NOT NULL,
+    modelo_ia TEXT,
+    UNIQUE(id_evaluacion, tipo_resultado)
 );
 ```
 
@@ -843,7 +861,206 @@ Responde en formato JSON.
 
 ---
 
-## 10. Catálogos y Estándares
+## 10. IA Avanzada
+
+### 10.1 Descripción General
+
+El módulo de **IA Avanzada** extiende las capacidades de análisis del sistema con funcionalidades inteligentes que aprovechan modelos de lenguaje (LLM) a través de Ollama.
+
+**Ubicación de archivos**:
+- **Servicios**: `services/ia_advanced_service.py` (~1270 líneas)
+- **UI**: `components/ia_advanced_ui.py` (~950 líneas)
+- **Exportación**: `services/export_service.py` (~500 líneas)
+
+### 10.2 Funcionalidades (5 Features)
+
+| # | Funcionalidad | Descripción | Persistencia |
+|---|---------------|-------------|--------------|
+| 1 | 📝 Planes de Tratamiento | Genera planes de acción detallados para mitigar amenazas | ✅ BD |
+| 2 | 💬 Chatbot MAGERIT | Consultor interactivo sobre la evaluación | ❌ No aplica |
+| 3 | 📋 Resumen Ejecutivo | Informe profesional para alta gerencia | ✅ BD |
+| 4 | 🔮 Predicción de Riesgo | Proyección de evolución del riesgo a futuro | ✅ BD |
+| 5 | 🎯 Priorización de Controles | Ordena controles por ROI de seguridad | ✅ BD |
+
+### 10.3 Dataclasses Principales
+
+```python
+@dataclass
+class PlanTratamiento:
+    id_evaluacion: str
+    id_activo: str
+    codigo_amenaza: str
+    nombre_amenaza: str
+    nivel_riesgo: str
+    acciones_corto_plazo: List[Dict]   # [{"accion", "responsable", "plazo", "costo"}]
+    acciones_mediano_plazo: List[Dict]
+    acciones_largo_plazo: List[Dict]
+    responsable_general: str
+    presupuesto_total: str
+    kpis: List[str]
+    modelo_ia: str
+
+@dataclass
+class ResumenEjecutivo:
+    id_evaluacion: str
+    fecha_generacion: str
+    total_activos: int
+    total_amenazas: int
+    distribucion_riesgo: Dict[str, int]  # {"CRÍTICO": 2, "ALTO": 5, ...}
+    hallazgos_principales: List[str]
+    activos_criticos: List[Dict]
+    recomendaciones_prioritarias: List[str]
+    inversion_estimada: str              # "$10,000 - $30,000 USD"
+    reduccion_riesgo_esperada: str       # "40-60%"
+    conclusion: str
+    modelo_ia: str
+
+@dataclass
+class PrediccionRiesgo:
+    id_evaluacion: str
+    riesgo_actual: float
+    riesgo_residual: float
+    tendencia: str                       # "INCREMENTO", "ESTABLE", "DECREMENTO"
+    proyecciones: Dict[str, float]       # {"mes_1": 10.5, "mes_3": 11.2, ...}
+    factores_incremento: List[str]
+    factores_mitigacion: List[str]
+    recomendacion: str
+    fecha_generacion: str
+    modelo_ia: str
+
+@dataclass
+class ControlPriorizado:
+    codigo: str
+    nombre: str
+    categoria: str
+    riesgos_que_mitiga: int
+    activos_afectados: List[str]
+    costo_estimado: str                  # "BAJO", "MEDIO", "ALTO"
+    tiempo_implementacion: str
+    roi_seguridad: int                   # 1-5 (5 = mayor retorno)
+    justificacion: str
+    orden_prioridad: int
+```
+
+### 10.4 Persistencia de Resultados IA
+
+Los resultados generados por IA se guardan en la tabla `IA_RESULTADOS_AVANZADOS` para evitar regeneraciones innecesarias.
+
+```sql
+CREATE TABLE IA_RESULTADOS_AVANZADOS (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_evaluacion TEXT NOT NULL,
+    tipo_resultado TEXT NOT NULL,    -- resumen_ejecutivo, prediccion_riesgo, etc.
+    datos_json TEXT NOT NULL,        -- Resultado serializado
+    fecha_generacion TEXT NOT NULL,
+    modelo_ia TEXT,
+    UNIQUE(id_evaluacion, tipo_resultado)
+);
+```
+
+**Funciones de persistencia**:
+
+| Función | Descripción |
+|---------|-------------|
+| `guardar_resultado_ia(eval_id, tipo, datos, modelo)` | Guarda/actualiza resultado |
+| `cargar_resultado_ia(eval_id, tipo)` | Recupera resultado guardado |
+| `eliminar_resultado_ia(eval_id, tipo)` | Elimina resultado |
+
+**Comportamiento UI**:
+- Si existe resultado guardado → Muestra "🔄 Regenerar" + fecha de generación
+- Si no existe → Muestra "Generar" como botón primario
+- Al generar → Guarda automáticamente y hace `st.rerun()`
+
+### 10.5 Funciones de Extracción de Datos
+
+Las amenazas y controles se almacenan en formato JSON dentro de `RESULTADOS_MAGERIT`:
+
+| Función | Descripción |
+|---------|-------------|
+| `obtener_amenazas_evaluacion(eval_id)` | Extrae amenazas de `Amenazas_JSON` |
+| `obtener_controles_evaluacion(eval_id)` | Extrae controles de `amenaza.controles_recomendados` |
+
+**Estructura del JSON de amenazas**:
+```json
+{
+  "codigo": "A.11",
+  "amenaza": "Acceso no autorizado",
+  "tipo_amenaza": "Ataques deliberados",
+  "dimension": "C",
+  "probabilidad": 4,
+  "impacto": 4,
+  "riesgo_inherente": 16,
+  "nivel_riesgo": "CRÍTICO",
+  "controles_recomendados": [
+    {"control": "5.15", "nombre": "Control de acceso", "prioridad": "Alta"}
+  ]
+}
+```
+
+### 10.6 Exportación para Ejecutivos
+
+El servicio `export_service.py` genera documentos profesionales:
+
+**Formatos soportados**:
+
+| Formato | Función | Descripción |
+|---------|---------|-------------|
+| HTML | `generar_documento_ejecutivo(resumen, "html")` | Documento estilizado con CSS profesional |
+| Markdown | `generar_documento_ejecutivo(resumen, "markdown")` | Para edición posterior |
+| JSON | `resumen.to_dict()` | Datos estructurados |
+
+**Ejemplo HTML generado**:
+- Header con logo y fecha
+- Sección de métricas clave (activos, amenazas, distribución)
+- Tabla de activos críticos
+- Lista de hallazgos y recomendaciones
+- Estimaciones de inversión y reducción de riesgo
+- Footer con disclaimer
+
+### 10.7 Integración con Power BI
+
+Se generan datasets optimizados para dashboards en Power BI:
+
+| Dataset | Descripción |
+|---------|-------------|
+| `Activos` | Inventario completo con estados |
+| `Resultados_MAGERIT` | Análisis de riesgo por activo |
+| `Amenazas` | Detalle de amenazas identificadas |
+| `Controles_Recomendados` | Controles sugeridos por amenaza |
+| `Distribucion_Riesgos` | Conteo por nivel de riesgo |
+| `Impacto_Dimensiones` | Promedio DIC por activo |
+| `Tipos_Amenaza` | Clasificación de amenazas |
+| `Metadata` | Información de la evaluación |
+
+**Funciones de exportación**:
+
+| Función | Descripción |
+|---------|-------------|
+| `generar_datos_powerbi(eval_id)` | Genera dict de DataFrames |
+| `exportar_powerbi_excel(eval_id, ruta)` | Exporta a Excel multi-hoja |
+
+### 10.8 Chatbot Consultor MAGERIT
+
+Chatbot interactivo que responde preguntas sobre la evaluación:
+
+**Configuración**:
+- Modelo: `llama3.2:1b` (configurable)
+- Temperatura: `0.3` (respuestas más coherentes)
+- Contexto: Incluye métricas de la evaluación actual
+
+**Preguntas sugeridas**:
+- "¿Cuáles son los principales riesgos identificados?"
+- "¿Qué controles debo implementar primero?"
+- "¿Cómo se calcula el riesgo inherente?"
+- "Resume el estado de la evaluación"
+
+**Historial de conversación**:
+- Se mantiene en `st.session_state["ia_chat_history"]`
+- Botón para limpiar historial
+
+---
+
+## 11. Catálogos y Estándares
 
 ### 10.1 Criterios MAGERIT (Valoración DIC)
 
@@ -895,7 +1112,7 @@ Escala 1-5 para Disponibilidad, Integridad y Confidencialidad:
 
 ---
 
-## 11. Estructura de Archivos
+## 12. Estructura de Archivos
 
 ```
 capston_riesgos/
@@ -1006,7 +1223,7 @@ El botón "Evaluar Activo" está **bloqueado** hasta que:
 
 ---
 
-## 12. Guía de Desarrollo
+## 13. Guía de Desarrollo
 
 ### 12.1 Instalación
 
@@ -1065,7 +1282,7 @@ ollama pull llama3
 
 ---
 
-## 13. Reglas de Negocio Críticas
+## 14. Reglas de Negocio Críticas
 
 ### 13.1 Evaluación como Contenedor
 
@@ -1142,7 +1359,7 @@ El impacto final se calcula agregando respuestas por dimensión.
 ## Historial de Cambios
 
 | Fecha | Versión | Cambios |
-|-------|---------|---------|
+|-------|---------|---------|\n| 25 Enero 2026 | 2.5 | **NUEVO**: Módulo IA Avanzada completo (5 funcionalidades), persistencia de resultados IA en BD, exportación HTML/MD/JSON para ejecutivos, datasets para Power BI (8 tablas), chatbot mejorado (temperatura 0.3), botón "Regenerar" en lugar de regenerar siempre |
 | 25 Enero 2026 | 2.4 | **NUEVO**: Riesgo por concentración (Host-VM) con modelo Blast Radius + Herencia, tab dedicado con dashboard, integración en carga masiva (campos id_host, tipo_dependencia), botón eliminar evaluación con confirmación |
 | 25 Enero 2026 | 2.2 | **NUEVO**: Carga masiva de activos (JSON/Excel) con validación, plantillas descargables |
 | 24 Enero 2026 | 2.1 | Sistema de madurez CMMI, comparativas funcionales, fix re-evaluaciones |
@@ -1153,4 +1370,4 @@ El impacto final se calcula agregando respuestas por dimensión.
 ---
 
 *Documento generado para facilitar el contexto a asistentes de IA y desarrolladores.*
-*Última actualización: 25 Enero 2026*
+*Última actualización: 25 Enero 2026 - Versión 2.5*

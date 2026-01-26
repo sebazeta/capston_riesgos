@@ -803,10 +803,15 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura:
     "Recomendación 2 con acción concreta",
     "Recomendación 3 con acción concreta"
   ],
-  "inversion_estimada": "rango de inversión estimada",
-  "reduccion_riesgo_esperada": "porcentaje estimado",
+  "inversion_estimada": "$15,000 - $45,000 USD",
+  "reduccion_riesgo_esperada": "40-60%",
   "conclusion": "Párrafo de conclusión ejecutiva de 2-3 oraciones"
 }}
+
+IMPORTANTE:
+- Para inversion_estimada: proporciona un rango en USD basado en los {total_amenazas} riesgos identificados (ej: "$10,000 - $30,000 USD")
+- Para reduccion_riesgo_esperada: proporciona un porcentaje realista (ej: "35-50%")
+- Sé específico con números concretos, NO uses texto genérico
 
 Sé específico, profesional y orientado a la acción."""
 
