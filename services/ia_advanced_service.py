@@ -192,6 +192,8 @@ def obtener_amenazas_evaluacion(eval_id: str) -> pd.DataFrame:
                 "nivel_riesgo": am.get("nivel_riesgo", "MEDIO"),
                 "riesgo_residual": am.get("riesgo_residual", 9),
                 "tratamiento": am.get("tratamiento", "mitigar"),
+                "controles_existentes": am.get("controles_existentes", []),
+                "efectividad_controles": am.get("efectividad_controles", 0),
                 "controles_recomendados": am.get("controles_recomendados", [])
             })
     

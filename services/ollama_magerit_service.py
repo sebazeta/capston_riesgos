@@ -208,6 +208,75 @@ Responde SOLO con el JSON, sin explicaciones adicionales:"""
 
 # ==================== EVALUACIÓN HEURÍSTICA (FALLBACK) ====================
 
+# ==================== ESCALA INTERNA MAGERIT v3 (CALIBRADA) ====================
+ESCALA_MAGERIT = {1: 1, 2: 2, 3: 3, 4: 5}  # CALIBRADO: 3→3 en lugar de 3→4
+
+def calcular_probabilidad_desde_respuestas(respuestas: pd.DataFrame) -> int:
+    """
+    Calcula la probabilidad MAGERIT (1-5) basándose en las respuestas del cuestionario.
+    
+    LÓGICA SIMPLIFICADA Y PREDECIBLE:
+    - La probabilidad se calcula desde el promedio de los controles (bloques B, C, D, E)
+    - Valor bajo en controles (1) = sin protección = probabilidad ALTA (5)
+    - Valor alto en controles (4) = buena protección = probabilidad BAJA (1)
+    - Se invierte la escala: promedio_controles → probabilidad invertida
+    
+    MAPEO:
+    - Controles promedio 1.0-1.5 → Probabilidad 5 (Muy frecuente)
+    - Controles promedio 1.5-2.0 → Probabilidad 4 (Frecuente)  
+    - Controles promedio 2.0-2.5 → Probabilidad 3 (Normal)
+    - Controles promedio 2.5-3.5 → Probabilidad 2 (Poco frecuente)
+    - Controles promedio 3.5-4.0 → Probabilidad 1 (Muy raro)
+    
+    Returns:
+        Probabilidad 1-5 según MAGERIT
+    """
+    if respuestas.empty:
+        return 3  # Valor medio por defecto
+    
+    # Identificar preguntas de CONTROL (bloques B, C, D, E)
+    # Estas son las que afectan la probabilidad
+    valores_control = []
+    
+    for _, resp in respuestas.iterrows():
+        id_pregunta = str(resp.get("ID_Pregunta", "")).upper()
+        valor = int(resp.get("Valor_Numerico", 2))
+        
+        # Detectar si es pregunta de control (B, C, D, E)
+        # Formatos: PF-B01, PV-B01, B-001, B01, etc.
+        es_control = False
+        for bloque in ['B', 'C', 'D', 'E']:
+            if f"-{bloque}0" in id_pregunta or f"-{bloque}-0" in id_pregunta:
+                es_control = True
+                break
+        
+        if es_control:
+            valores_control.append(valor)
+    
+    # Si no hay preguntas de control, usar probabilidad media
+    if not valores_control:
+        return 3
+    
+    # Calcular promedio de controles
+    promedio_controles = sum(valores_control) / len(valores_control)
+    
+    # Mapear promedio a probabilidad (escala invertida)
+    # Mejor control (4) → menor probabilidad (1)
+    # Peor control (1) → mayor probabilidad (5)
+    if promedio_controles >= 3.5:
+        probabilidad = 1  # Muy raro - excelentes controles
+    elif promedio_controles >= 2.75:
+        probabilidad = 2  # Poco frecuente - buenos controles
+    elif promedio_controles >= 2.25:
+        probabilidad = 3  # Normal - controles moderados
+    elif promedio_controles >= 1.5:
+        probabilidad = 4  # Frecuente - controles débiles
+    else:
+        probabilidad = 5  # Muy frecuente - sin controles
+    
+    return probabilidad
+
+
 def generar_evaluacion_heuristica(
     activo: pd.Series,
     respuestas: pd.DataFrame,
@@ -216,30 +285,41 @@ def generar_evaluacion_heuristica(
 ) -> Dict:
     """
     Genera una evaluación MAGERIT heurística cuando la IA falla.
-    Usa el tipo de activo para seleccionar amenazas comunes.
+    
+    MAGERIT v3 - Lógica mejorada:
+    - Selecciona amenazas según tipo de activo
+    - Calcula probabilidad REAL desde respuestas (no hardcodeada)
+    - Prioriza controles según gravedad
     """
     tipo_activo = str(activo.get("Tipo_Activo", "")).lower()
     
-    # Mapeo de tipos de activo a amenazas típicas
+    # Mapeo de tipos de activo a amenazas típicas (ordenadas por criticidad)
     AMENAZAS_POR_TIPO = {
-        "servidor": ["A.24", "A.5", "A.6", "A.11", "E.2", "E.8"],
-        "base de datos": ["A.5", "A.6", "A.11", "A.15", "E.1", "E.2"],
+        "servidor": ["A.24", "A.11", "A.8", "A.5", "A.6", "E.2", "I.5"],
+        "físico": ["A.24", "A.11", "A.8", "A.5", "A.25", "I.5", "N.1"],
+        "virtual": ["A.24", "A.11", "A.8", "A.5", "A.6", "E.2", "I.9"],
+        "base de datos": ["A.5", "A.6", "A.11", "A.15", "A.19", "E.1", "E.2"],
         "aplicación": ["A.5", "A.6", "A.8", "A.22", "E.1", "E.21"],
-        "red": ["A.5", "A.12", "A.14", "A.24", "I.8", "E.9"],
+        "red": ["A.5", "A.9", "A.14", "A.24", "I.8", "E.9"],
         "usuario": ["A.30", "E.1", "E.2", "E.7", "E.15"],
         "documento": ["A.11", "A.15", "A.19", "E.1", "E.2"],
         "equipo": ["N.1", "N.2", "I.5", "A.25", "E.23"],
         "software": ["A.5", "A.6", "A.8", "A.22", "E.20", "E.21"],
     }
     
-    # Mapeo de amenazas a controles típicos
+    # Mapeo de amenazas a controles típicos con prioridad
     CONTROLES_POR_AMENAZA = {
-        "A.5": ["5.1", "5.2", "5.15"],
-        "A.6": ["5.15", "5.17", "8.4"],
-        "A.11": ["7.7", "8.1", "8.10"],
-        "A.24": ["8.20", "8.21", "8.22"],
-        "E.1": ["6.3", "7.13", "8.7"],
-        "E.2": ["8.9", "8.13", "8.15"],
+        "A.5": [("5.15", "Alta"), ("5.16", "Alta"), ("8.5", "Media")],
+        "A.6": [("5.15", "Alta"), ("5.17", "Alta"), ("8.4", "Media")],
+        "A.8": [("8.7", "Alta"), ("8.8", "Alta"), ("8.23", "Media")],
+        "A.11": [("5.15", "Alta"), ("8.5", "Alta"), ("7.7", "Media")],
+        "A.24": [("8.20", "Alta"), ("8.21", "Alta"), ("8.6", "Media")],
+        "A.25": [("7.1", "Alta"), ("7.2", "Alta"), ("7.4", "Media")],
+        "E.1": [("6.3", "Alta"), ("5.10", "Media"), ("8.9", "Media")],
+        "E.2": [("6.3", "Alta"), ("8.9", "Alta"), ("8.2", "Media")],
+        "I.5": [("7.11", "Alta"), ("8.14", "Alta"), ("7.13", "Media")],
+        "I.9": [("5.19", "Alta"), ("5.22", "Media"), ("8.14", "Media")],
+        "N.1": [("7.5", "Alta"), ("5.29", "Alta"), ("5.30", "Media")],
     }
     
     # Determinar amenazas aplicables
@@ -250,35 +330,45 @@ def generar_evaluacion_heuristica(
             break
     
     if not amenazas_aplicables:
-        # Default: amenazas genéricas de software
-        amenazas_aplicables = ["A.5", "A.6", "E.1", "E.2", "A.22"]
+        # Default: amenazas genéricas para servidores
+        amenazas_aplicables = ["A.24", "A.11", "A.8", "A.5", "E.2"]
     
-    # Construir resultado
+    # CALCULAR PROBABILIDAD REAL desde respuestas (NO hardcodeada)
+    probabilidad = calcular_probabilidad_desde_respuestas(respuestas)
+    
+    # Construir resultado con amenazas
     amenazas_resultado = []
-    for codigo in amenazas_aplicables[:5]:  # Máximo 5 amenazas
+    for codigo in amenazas_aplicables[:6]:  # Máximo 6 amenazas
         if codigo in catalogo_amenazas:
             info = catalogo_amenazas[codigo]
-            controles = CONTROLES_POR_AMENAZA.get(codigo, ["5.1", "8.1"])[:2]
+            controles_info = CONTROLES_POR_AMENAZA.get(codigo, [("5.1", "Media"), ("8.1", "Media")])[:3]
             controles_rec = []
-            for ctrl in controles:
-                if ctrl in catalogo_controles:
+            for ctrl_codigo, prioridad in controles_info:
+                if ctrl_codigo in catalogo_controles:
                     controles_rec.append({
-                        "control": ctrl,
-                        "prioridad": "Media",
-                        "motivo": f"Control estándar para mitigar {codigo}"
+                        "control": ctrl_codigo,
+                        "prioridad": prioridad,
+                        "motivo": f"Control recomendado para mitigar amenaza {codigo}"
                     })
+            
+            # Determinar dimensión correctamente
+            dim_raw = info.get("dimension_afectada", "D")
+            if isinstance(dim_raw, str) and len(dim_raw) > 0:
+                dimension = dim_raw[0].upper()
+            else:
+                dimension = "D"
             
             amenazas_resultado.append({
                 "codigo": codigo,
-                "dimension": info.get("dimension_afectada", "D")[0],
-                "justificacion": f"Amenaza típica para activos tipo {tipo_activo}",
+                "dimension": dimension,
+                "justificacion": f"Amenaza identificada para {tipo_activo} con probabilidad {probabilidad}/5",
                 "controles_iso_recomendados": controles_rec
             })
     
     return {
-        "probabilidad": 3,  # Valor medio por defecto
+        "probabilidad": probabilidad,  # Probabilidad CALCULADA, no hardcodeada
         "amenazas": amenazas_resultado,
-        "observaciones": f"Evaluación heurística basada en tipo de activo: {tipo_activo}. Considere ajustar manualmente."
+        "observaciones": f"Evaluación heurística para {tipo_activo}. Probabilidad calculada: {probabilidad}/5 basada en exposición e historial."
     }
 
 

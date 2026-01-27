@@ -1,0 +1,8 @@
+[runner]
+# Configuracion del runner
+magicEnabled = true
+
+[theme]
+# Tema base
+base = "light"
+primaryColor = "#ff4b4b"

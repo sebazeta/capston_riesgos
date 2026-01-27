@@ -765,3 +765,180 @@ class ControlPriorizado:
 | `exportar_powerbi_excel()` | Excel multi-hoja |
 
 ---
+## 🔄 FLUJO DE REEVALUACIÓN Y CONTROLES IMPLEMENTADOS
+
+Este flujo permite justificar la reducción de riesgo entre evaluaciones comparando los controles recomendados vs implementados.
+
+### Diagrama del Flujo de Reevaluación
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           EVALUACIÓN 1 (ANTERIOR)                               │
+│                                                                                 │
+│  1. Usuario completa cuestionarios                                              │
+│  2. IA analiza activos con MAGERIT                                              │
+│  3. Sistema genera:                                                             │
+│     • Lista de AMENAZAS identificadas                                           │
+│     • Lista de CONTROLES RECOMENDADOS (ISO 27002)                               │
+│     • Riesgo Inherente y Residual por activo                                    │
+│                                                                                 │
+│  RESULTADOS_MAGERIT.Amenazas_JSON contiene:                                     │
+│  └─► controles_recomendados: [{codigo, nombre, prioridad, motivo}]              │
+│                                                                                 │
+└──────────────────────────────────────┬──────────────────────────────────────────┘
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    PERÍODO ENTRE EVALUACIONES                                   │
+│                                                                                 │
+│  El usuario/organización:                                                       │
+│  ✅ Implementa controles recomendados                                           │
+│  ✅ Documenta las implementaciones                                              │
+│  ✅ Mejora procesos y tecnología                                                │
+│                                                                                 │
+└──────────────────────────────────────┬──────────────────────────────────────────┘
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           EVALUACIÓN 2 (ACTUAL)                                 │
+│                                                                                 │
+│  1. Usuario crea nueva evaluación                                               │
+│  2. Agrega los mismos activos (u otros)                                         │
+│  3. Completa cuestionarios (respuestas pueden variar)                           │
+│  4. IA analiza activos con MAGERIT                                              │
+│     └─► La IA DETECTA los controles ahora implementados                         │
+│                                                                                 │
+│  RESULTADOS_MAGERIT.Amenazas_JSON contiene:                                     │
+│  └─► controles_existentes: ["8.6", "8.22", "5.15", ...]                         │
+│  └─► efectividad_controles: 0.35 (35% de reducción)                             │
+│  └─► riesgo_residual: menor que en Eval1                                        │
+│                                                                                 │
+└──────────────────────────────────────┬──────────────────────────────────────────┘
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    TAB 🔄 COMPARATIVAS - CONTROLES IMPLEMENTADOS                │
+│                                                                                 │
+│  El usuario selecciona:                                                         │
+│  • Evaluación 1 (Anterior)                                                      │
+│  • Evaluación 2 (Actual)                                                        │
+│                                                                                 │
+│  ─────────────────────────────────────────────────────────────────────────────  │
+│                                                                                 │
+│  LÓGICA DE COMPARACIÓN (app_final.py):                                          │
+│                                                                                 │
+│  1. obtener_amenazas_evaluacion(eval_1)                                         │
+│     └─► Extrae controles_recomendados de cada amenaza                           │
+│     └─► Crea lista única de controles sugeridos                                 │
+│                                                                                 │
+│  2. obtener_amenazas_evaluacion(eval_2)                                         │
+│     └─► Extrae controles_existentes de cada amenaza                             │
+│     └─► Crea set de controles detectados como implementados                     │
+│                                                                                 │
+│  3. MATCHING:                                                                   │
+│     Si control_recomendado_eval1 IN controles_existentes_eval2:                 │
+│        → Estado = "✅ IMPLEMENTADO"                                             │
+│     Else:                                                                       │
+│        → Estado = "⏳ Pendiente"                                                 │
+│                                                                                 │
+│  ─────────────────────────────────────────────────────────────────────────────  │
+│                                                                                 │
+│  SALIDA VISUAL:                                                                 │
+│                                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────┐            │
+│  │ 📊 MÉTRICAS                                                     │            │
+│  │ • Controles Recomendados: 15                                    │            │
+│  │ • Implementados: 9                                              │            │
+│  │ • % Cumplimiento: 60%                                           │            │
+│  └─────────────────────────────────────────────────────────────────┘            │
+│                                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────┐            │
+│  │ 📋 TABLA DE CONTROLES                                           │            │
+│  │ Código │ Control              │ Prioridad │ Estado              │            │
+│  │ 8.22   │ Segregación de redes │ ALTA      │ ✅ IMPLEMENTADO     │            │
+│  │ 8.6    │ Gestión de capacidad │ MEDIA     │ ✅ IMPLEMENTADO     │            │
+│  │ 5.15   │ Control de acceso    │ ALTA      │ ⏳ Pendiente        │            │
+│  └─────────────────────────────────────────────────────────────────┘            │
+│                                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────┐            │
+│  │ ✅ JUSTIFICACIÓN DE MEJORA                                      │            │
+│  │ "Se implementaron 9 de 15 controles recomendados (60%),         │            │
+│  │  lo cual contribuyó a reducir el riesgo residual promedio       │            │
+│  │  en 3.2 puntos."                                                │            │
+│  └─────────────────────────────────────────────────────────────────┘            │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Código Clave del Flujo
+
+```python
+# En app_final.py - Tab Comparativas
+
+# 1. Obtener amenazas de ambas evaluaciones
+amenazas_eval1 = obtener_amenazas_evaluacion(eval_1)
+amenazas_eval2 = obtener_amenazas_evaluacion(eval_2)
+
+# 2. Extraer controles recomendados de Eval1
+controles_recomendados_eval1 = []
+for _, row in amenazas_eval1.iterrows():
+    ctrls = row.get("controles_recomendados", [])
+    for ctrl in ctrls:
+        controles_recomendados_eval1.append({
+            "codigo": ctrl["codigo"],
+            "nombre": ctrl["nombre"],
+            "prioridad": ctrl["prioridad"],
+            "amenaza": row["amenaza"],
+            "activo": row["nombre_activo"]
+        })
+
+# 3. Extraer controles existentes de Eval2
+controles_existentes_eval2 = set()
+for _, row in amenazas_eval2.iterrows():
+    ctrls_exist = row.get("controles_existentes", [])
+    for c in ctrls_exist:
+        controles_existentes_eval2.add(c)
+
+# 4. Matching: ¿El control recomendado fue implementado?
+for ctrl in controles_recomendados_eval1:
+    implementado = ctrl["codigo"] in controles_existentes_eval2
+    estado = "✅ IMPLEMENTADO" if implementado else "⏳ Pendiente"
+
+# 5. Calcular métricas
+total_recomendados = len(controles_recomendados_eval1)
+implementados = len([c for c in tabla if "IMPLEMENTADO" in c["Estado"]])
+pct_cumplimiento = (implementados / total_recomendados * 100)
+
+# 6. Justificación si hay mejora
+if implementados > 0 and delta_riesgo_residual < 0:
+    st.success(f"Se implementaron {implementados} controles, "
+               f"reduciendo el riesgo en {abs(delta_riesgo_residual):.1f} puntos")
+```
+
+### Campos Utilizados en Amenazas_JSON
+
+| Campo | Eval1 (Anterior) | Eval2 (Actual) | Propósito |
+|-------|------------------|----------------|-----------|
+| `controles_recomendados` | ✅ Se usa | - | Lista de controles sugeridos por IA |
+| `controles_existentes` | - | ✅ Se usa | Controles detectados como implementados |
+| `efectividad_controles` | 0.1 (baja) | 0.4 (mejorada) | % de reducción de riesgo |
+| `riesgo_residual` | Alto | Menor | Resultado del cálculo con controles |
+
+### Función obtener_amenazas_evaluacion()
+
+Ubicación: `services/ia_advanced_service.py`
+
+```python
+def obtener_amenazas_evaluacion(eval_id: str) -> pd.DataFrame:
+    """
+    Extrae las amenazas de una evaluación desde RESULTADOS_MAGERIT.Amenazas_JSON.
+    Retorna DataFrame con columnas:
+    - id_evaluacion, id_activo, nombre_activo
+    - codigo, amenaza, tipo_amenaza, dimension
+    - probabilidad, impacto, riesgo_inherente, riesgo_residual
+    - controles_existentes, efectividad_controles
+    - controles_recomendados
+    """
+```
+
+---

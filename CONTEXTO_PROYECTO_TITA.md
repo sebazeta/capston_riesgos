@@ -1,7 +1,7 @@
 # PROYECTO TITA - Documentación Completa del Sistema
 
 **Sistema de Evaluación de Riesgos MAGERIT/ISO 27002**  
-*Versión: 2.5 | Última actualización: 25 Enero 2026*
+*Versión: 3.0 | Última actualización: 25 Enero 2026*
 
 ---
 
@@ -14,13 +14,16 @@
 5. [Modelo de Datos](#5-modelo-de-datos)
 6. [Flujos de Funcionamiento](#6-flujos-de-funcionamiento)
 7. [Módulos y Funcionalidades](#7-módulos-y-funcionalidades)
-8. [Banco de Preguntas](#8-banco-de-preguntas)
-9. [Integración con IA](#9-integración-con-ia)
-10. [IA Avanzada](#10-ia-avanzada)
-11. [Catálogos y Estándares](#11-catálogos-y-estándares)
-12. [Estructura de Archivos](#12-estructura-de-archivos)
-13. [Guía de Desarrollo](#13-guía-de-desarrollo)
-14. [Reglas de Negocio Críticas](#14-reglas-de-negocio-críticas)
+8. [Tabs de la Aplicación](#8-tabs-de-la-aplicación)
+9. [Banco de Preguntas](#9-banco-de-preguntas)
+10. [Integración con IA](#10-integración-con-ia)
+11. [IA Avanzada](#11-ia-avanzada)
+12. [Matriz MAGERIT](#12-matriz-magerit)
+13. [Catálogos y Estándares](#13-catálogos-y-estándares)
+14. [Estructura de Archivos](#14-estructura-de-archivos)
+15. [API de Servicios](#15-api-de-servicios)
+16. [Guía de Desarrollo](#16-guía-de-desarrollo)
+17. [Reglas de Negocio Críticas](#17-reglas-de-negocio-críticas)
 
 ---
 
@@ -28,21 +31,24 @@
 
 **Proyecto TITA** es un sistema web de gestión de auditoría de activos críticos de TI que permite realizar evaluaciones de riesgos siguiendo:
 
-- **Metodología MAGERIT** (Metodología de Análisis y Gestión de Riesgos de los Sistemas de Información)
-- **Estándar ISO/IEC 27002:2022** (93 controles de seguridad)
+- **Metodología MAGERIT v3** (Metodología de Análisis y Gestión de Riesgos de los Sistemas de Información)
+- **Estándar ISO/IEC 27002:2022** (93 controles de seguridad organizados en 4 dominios)
 
-El sistema permite a auditores y equipos de seguridad:
-1. Crear evaluaciones de riesgo para activos de infraestructura
-2. Aplicar cuestionarios estandarizados según tipo de activo
-3. Obtener análisis de riesgo asistido por IA (Ollama)
-4. Generar dashboards y reportes ejecutivos
+### Características Principales:
+- ✅ Evaluación automatizada de riesgos con IA (Ollama Local)
+- ✅ Cuestionarios dinámicos por tipo de activo
+- ✅ Matriz MAGERIT completa (Activo-Amenaza)
+- ✅ Dashboards interactivos
+- ✅ Cálculo de nivel de madurez (CMMI 1-5)
+- ✅ Exportación a Excel y Power BI
+- ✅ 100% offline (no requiere conexión a internet)
 
 ---
 
 ## 2. Objetivo del Proyecto
 
 ### 2.1 Objetivo General
-Desarrollar una herramienta que automatice y estandarice el proceso de evaluación de riesgos de activos TI críticos, integrando metodologías reconocidas (MAGERIT, ISO 27002) con inteligencia artificial.
+Desarrollar una herramienta que automatice y estandarice el proceso de evaluación de riesgos de activos TI críticos, integrando metodologías reconocidas (MAGERIT, ISO 27002) con inteligencia artificial local.
 
 ### 2.2 Objetivos Específicos
 
@@ -59,15 +65,16 @@ Desarrollar una herramienta que automatice y estandarice el proceso de evaluaci�
 | 9 | Cálculo de nivel de madurez (CMMI 1-5) | ✅ Implementado |
 | 10 | Comparativa de madurez entre evaluaciones | ✅ Implementado |
 | 11 | Carga masiva de activos (JSON/Excel) | ✅ Implementado |
-| 12 | Riesgo por concentración (Host-VM) | ✅ Implementado |
-| 13 | IA Avanzada (5 funcionalidades) | ✅ Implementado |
-| 14 | Exportación para Power BI | ✅ Implementado |
-| 15 | Persistencia de resultados IA | ✅ Implementado |
+| 12 | IA Avanzada (5 funcionalidades) | ✅ Implementado |
+| 13 | Persistencia de resultados IA | ✅ Implementado |
+| 14 | Matriz MAGERIT v3 completa | ✅ Implementado |
+| 15 | Validación IA de resultados | ✅ Implementado |
 
 ### 2.3 Alcance
 - **Tipos de activos soportados**: Servidores Físicos, Servidores Virtuales
 - **Dimensiones de impacto**: Disponibilidad (D), Integridad (I), Confidencialidad (C)
 - **Preguntas por activo**: 21 preguntas estandarizadas
+- **Controles ISO 27002**: 93 controles en 4 dominios
 
 ---
 
@@ -81,6 +88,7 @@ Desarrollar una herramienta que automatice y estandarice el proceso de evaluaci�
 | **Backend** | Python | 3.14 | Lógica de negocio |
 | **Base de Datos** | SQLite | 3 | Persistencia (ACID-compliant) |
 | **IA** | Ollama | Local | Análisis de riesgos con LLM |
+| **Modelo LLM** | llama3.2:1b | 1B params | Modelo ligero y rápido |
 | **Visualización** | Plotly | 5.18+ | Gráficos interactivos |
 | **Datos** | Pandas | 2.1+ | Manipulación de datos |
 
@@ -98,189 +106,136 @@ requests>=2.31.0     # Comunicación con Ollama
 
 | Servicio | URL | Propósito |
 |----------|-----|-----------|
-| Ollama | http://localhost:11434 | LLM local para análisis IA |
+| Ollama API | http://localhost:11434 | LLM local para análisis IA |
 
 ---
 
 ## 4. Arquitectura del Sistema
 
-### 4.1 Diagrama de Arquitectura
+### 4.1 Diagrama de Capas
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              STREAMLIT UI                                    │
-│                             (app_final.py)                                   │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────┐ │
-│  │Evaluación│ │ Activos  │ │Cuestion. │ │ MAGERIT  │ │Dashboard │ │Madurez│ │
-│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └───┬───┘ │
-└───────┼────────────┼────────────┼────────────┼────────────┼───────────┼─────┘
-        │            │            │            │            │           │
-┌───────┴────────────┴────────────┴────────────┴────────────┴───────────┴─────┐
-│                           CAPA DE SERVICIOS                                  │
-│                            (services/)                                       │
-│  ┌────────────────┐ ┌────────────────┐ ┌────────────────┐ ┌───────────────┐ │
-│  │evaluacion_svc  │ │  activo_svc    │ │cuestionario_svc│ │ maturity_svc  │ │
-│  └───────┬────────┘ └───────┬────────┘ └───────┬────────┘ └───────┬───────┘ │
-│          │                  │                  │                  │          │
-│  ┌───────┴──────────────────┴──────────────────┴──────────────────┴───────┐ │
-│  │                     database_service.py                                 │ │
-│  │                        (SQLite CRUD)                                    │ │
-│  └───────────────────────────┬─────────────────────────────────────────────┘ │
-│                              │                                               │
-│  ┌───────────────────────────┴─────────────────────────────────────────────┐ │
-│  │                      ollama_magerit_service.py                          │ │
-│  │                    (Comunicación con LLM + MAGERIT)                     │ │
-│  └─────────────────────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────────────────────┘
-        │                                          │
-        ▼                                          ▼
-┌───────────────┐                         ┌───────────────┐
-│ tita_database │                         │    Ollama     │
-│    (.db)      │                         │   (LLM API)   │
-└───────────────┘                         └───────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                     CAPA DE PRESENTACIÓN                        │
+│                     (app_final.py - Streamlit)                  │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │ 🏠 Evaluaciones │ 📦 Activos │ 📝 Cuestionarios │ 🤖 MAGERIT│ │
+│  │ 📈 Dashboard │ 🧮 Matriz │ 🎯 Madurez │ 🧠 IA Avanzada     │ │
+│  │ 🔄 Comparativas │ 🛡️ Validación IA                         │ │
+│  └────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     CAPA DE COMPONENTES UI                      │
+│                        (components/)                            │
+│  ┌──────────────────┐ ┌──────────────────┐ ┌─────────────────┐  │
+│  │dashboard_magerit │ │ia_advanced_ui    │ │ia_validation_ui │  │
+│  │• render_resumen  │ │• render_ia_ui    │ │• validar_result │  │
+│  │• render_ranking  │ │• chatbot         │ │                 │  │
+│  │• render_madurez  │ │• planes          │ │                 │  │
+│  └──────────────────┘ └──────────────────┘ └─────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     CAPA DE SERVICIOS                           │
+│                        (services/)                              │
+│  ┌──────────────────┐ ┌──────────────────┐ ┌─────────────────┐  │
+│  │magerit_engine    │ │ia_advanced_      │ │maturity_service │  │
+│  │• evaluar_activo  │ │service           │ │• calcular_      │  │
+│  │• calcular_riesgo │ │• generar_plan    │ │  madurez        │  │
+│  │• guardar_result  │ │• chatbot         │ │• get_controles  │  │
+│  └──────────────────┘ │• resumen         │ └─────────────────┘  │
+│  ┌──────────────────┐ │• prediccion      │ ┌─────────────────┐  │
+│  │ollama_magerit_   │ │• priorizacion    │ │database_service │  │
+│  │service           │ └──────────────────┘ │• read_table     │  │
+│  │• analisis IA     │                      │• insert_rows    │  │
+│  └──────────────────┘                      │• get_connection │  │
+│                                            └─────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     CAPA DE PERSISTENCIA                        │
+│                     (tita_database.db - SQLite)                 │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │ EVALUACIONES │ INVENTARIO_ACTIVOS │ CUESTIONARIOS          │ │
+│  │ RESPUESTAS │ IMPACTO_ACTIVOS │ RESULTADOS_MAGERIT          │ │
+│  │ RESULTADOS_MADUREZ │ IA_RESULTADOS_AVANZADOS               │ │
+│  │ CATALOGO_AMENAZAS_MAGERIT │ CATALOGO_CONTROLES_ISO27002    │ │
+│  │ BANCO_PREGUNTAS_FISICAS │ BANCO_PREGUNTAS_VIRTUALES        │ │
+│  └────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### 4.2 Estructura de Capas
+### 4.2 Flujo de Datos Principal
 
-| Capa | Directorio | Responsabilidad |
-|------|------------|-----------------|
-| **Presentación** | `app_final.py` | UI Streamlit, navegación, formularios |
-| **Servicios** | `services/` | Lógica de negocio, validaciones |
-| **Datos** | `services/database_service.py` | CRUD SQLite, transacciones |
-| **IA** | `services/ollama_service.py` | Comunicación con Ollama |
-| **Configuración** | `config/settings.py` | Constantes, headers, colores |
+```
+Usuario → Streamlit UI → Services → SQLite
+                ↓
+            Ollama (IA Local)
+                ↓
+         Resultados JSON
+                ↓
+         Almacenamiento SQLite
+                ↓
+         Visualización Dashboard
+```
 
 ---
 
 ## 5. Modelo de Datos
 
-### 5.1 Base de Datos SQLite
-
-**Archivo**: `tita_database.db`
-
-El sistema usa SQLite en lugar de Excel para garantizar:
-- ✅ Transacciones ACID (no se corrompe)
-- ✅ Concurrencia segura
-- ✅ Mejor rendimiento
-
-### 5.2 Tablas Principales
+### 5.1 Tablas Principales
 
 #### EVALUACIONES
 ```sql
 CREATE TABLE EVALUACIONES (
-    ID_Evaluacion TEXT PRIMARY KEY,  -- EVA-001, EVA-002...
+    ID_Evaluacion TEXT PRIMARY KEY,
     Nombre TEXT NOT NULL,
-    Descripcion TEXT,
-    Fecha_Creacion TEXT,
-    Responsable TEXT,
-    Estado TEXT DEFAULT 'En Progreso',  -- En Progreso, Cerrada
-    Origen_Re_Evaluacion TEXT  -- ID de evaluación padre si es re-evaluación
-);
+    Fecha TEXT,
+    Estado TEXT DEFAULT 'Activa',
+    Descripcion TEXT
+)
 ```
 
 #### INVENTARIO_ACTIVOS
 ```sql
 CREATE TABLE INVENTARIO_ACTIVOS (
-    ID_Activo TEXT PRIMARY KEY,      -- ACT-EVA-001-001
-    ID_Evaluacion TEXT,              -- FK a EVALUACIONES
+    ID_Activo TEXT PRIMARY KEY,
+    ID_Evaluacion TEXT,
     Nombre_Activo TEXT NOT NULL,
-    Tipo_Activo TEXT,                -- 'Servidor Físico' | 'Servidor Virtual'
+    Tipo_Activo TEXT,           -- 'Servidor Físico' | 'Servidor Virtual'
     Ubicacion TEXT,
     Propietario TEXT,
     Tipo_Servicio TEXT,
     App_Critica TEXT,
-    Estado TEXT DEFAULT 'Pendiente', -- Pendiente|Incompleto|Completo|Evaluado
-    Fecha_Creacion TEXT
-);
+    Estado TEXT DEFAULT 'Pendiente',
+    Fecha_Creacion TEXT,
+    FOREIGN KEY (ID_Evaluacion) REFERENCES EVALUACIONES(ID_Evaluacion)
+)
 ```
 
-#### BANCO_PREGUNTAS_FISICAS / BANCO_PREGUNTAS_VIRTUALES
+#### RESULTADOS_MAGERIT
 ```sql
-CREATE TABLE BANCO_PREGUNTAS_FISICAS (
-    ID_Pregunta TEXT PRIMARY KEY,    -- PF-A01, PF-B02...
-    Tipo_Activo TEXT,                -- 'Servidor Físico'
-    Bloque TEXT,                     -- A-Impacto, B-Continuidad, etc.
-    Dimension TEXT,                  -- D, I, C
-    Pregunta TEXT,
-    Opcion_1 TEXT,                   -- Valor 1 (menor riesgo)
-    Opcion_2 TEXT,                   -- Valor 2
-    Opcion_3 TEXT,                   -- Valor 3
-    Opcion_4 TEXT,                   -- Valor 4 (mayor riesgo)
-    Peso INTEGER                     -- 1-5 (importancia de la pregunta)
-);
-```
-
-#### CUESTIONARIOS
-```sql
-CREATE TABLE CUESTIONARIOS (
+CREATE TABLE RESULTADOS_MAGERIT (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     ID_Evaluacion TEXT,
     ID_Activo TEXT,
-    Fecha_Version TEXT,
-    ID_Pregunta TEXT,
-    Bloque TEXT,
-    Dimension TEXT,
-    Pregunta TEXT,
-    Opcion_1 TEXT,
-    Opcion_2 TEXT,
-    Opcion_3 TEXT,
-    Opcion_4 TEXT,
-    Peso INTEGER
-);
-```
-
-#### RESPUESTAS
-```sql
-CREATE TABLE RESPUESTAS (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    ID_Evaluacion TEXT,
-    ID_Activo TEXT,
-    Fecha_Cuestionario TEXT,
-    ID_Pregunta TEXT,
-    Bloque TEXT,
-    Pregunta TEXT,
-    Respuesta TEXT,              -- Texto de la opción seleccionada
-    Valor_Numerico INTEGER,      -- 1, 2, 3 o 4
-    Peso INTEGER,
-    Dimension TEXT,              -- D, I, C
-    Fecha TEXT
-);
-```
-
-#### IMPACTO_ACTIVOS
-```sql
-CREATE TABLE IMPACTO_ACTIVOS (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    ID_Evaluacion TEXT,
-    ID_Activo TEXT,
-    Fecha TEXT,
-    Impacto_D INTEGER,           -- 1-5
-    Impacto_I INTEGER,           -- 1-5
-    Impacto_C INTEGER,           -- 1-5
-    Justificacion_D TEXT,
-    Justificacion_I TEXT,
-    Justificacion_C TEXT,
-    UNIQUE(ID_Evaluacion, ID_Activo)
-);
-```
-
-#### ANALISIS_RIESGO
-```sql
-CREATE TABLE ANALISIS_RIESGO (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    ID_Evaluacion TEXT,
-    ID_Activo TEXT,
-    Fecha TEXT,
-    Tipo_Activo TEXT,
     Nombre_Activo TEXT,
-    Probabilidad REAL,           -- 0.0 - 1.0
-    Impacto REAL,                -- 1-5
-    Riesgo_Inherente REAL,       -- Probabilidad * Impacto
-    Nivel_Riesgo TEXT,           -- Bajo, Medio, Alto, Crítico
-    Recomendaciones TEXT,        -- JSON con recomendaciones IA
-    Estado TEXT,
-    Modelo_IA TEXT               -- llama3, mistral, etc.
-);
+    Impacto_D INTEGER,          -- 1-5
+    Impacto_I INTEGER,          -- 1-5
+    Impacto_C INTEGER,          -- 1-5
+    Riesgo_Inherente REAL,
+    Riesgo_Residual REAL,
+    Nivel_Riesgo TEXT,          -- CRÍTICO, ALTO, MEDIO, BAJO, MUY BAJO
+    Amenazas_JSON TEXT,         -- JSON array de amenazas
+    Controles_JSON TEXT,        -- JSON array de controles
+    Observaciones TEXT,
+    Modelo_IA TEXT,
+    Fecha_Evaluacion TEXT
+)
 ```
 
 #### RESULTADOS_MADUREZ
@@ -288,71 +243,83 @@ CREATE TABLE ANALISIS_RIESGO (
 CREATE TABLE RESULTADOS_MADUREZ (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     ID_Evaluacion TEXT UNIQUE,
-    Fecha TEXT,
-    Nivel_Madurez INTEGER,       -- 1-5 (CMMI)
-    Nombre_Nivel TEXT,           -- Inicial, Básico, Definido, Gestionado, Optimizado
-    Porcentaje_Madurez REAL,     -- 0-100%
+    Puntuacion_Total REAL,      -- 0-100
+    Nivel_Madurez INTEGER,      -- 1-5
+    Nombre_Nivel TEXT,          -- Inicial, Básico, Definido, Gestionado, Optimizado
+    Dominio_Organizacional REAL,
+    Dominio_Personas REAL,
+    Dominio_Fisico REAL,
+    Dominio_Tecnologico REAL,
+    Pct_Controles_Implementados REAL,
+    Pct_Controles_Medidos REAL,
+    Pct_Riesgos_Mitigados REAL,
+    Pct_Activos_Evaluados REAL,
     Controles_Implementados INTEGER,
     Controles_Parciales INTEGER,
     Controles_No_Implementados INTEGER,
-    Total_Controles_Evaluados INTEGER,
-    Dominios_Evaluados TEXT,     -- JSON con detalle por dominio ISO 27002
-    Activos_Evaluados INTEGER,
-    Total_Activos INTEGER,
-    Observaciones TEXT
-);
+    Fecha_Calculo TEXT
+)
 ```
 
-#### IA_RESULTADOS_AVANZADOS (NUEVO v2.5)
+#### IA_RESULTADOS_AVANZADOS
 ```sql
 CREATE TABLE IA_RESULTADOS_AVANZADOS (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     id_evaluacion TEXT NOT NULL,
-    tipo_resultado TEXT NOT NULL,    -- resumen_ejecutivo, prediccion_riesgo, 
-                                     -- priorizacion_controles, planes_tratamiento
-    datos_json TEXT NOT NULL,        -- Resultado serializado en JSON
+    tipo_resultado TEXT NOT NULL,  -- resumen, prediccion, priorizacion, planes
+    datos_json TEXT NOT NULL,
     fecha_generacion TEXT NOT NULL,
     modelo_ia TEXT,
     UNIQUE(id_evaluacion, tipo_resultado)
-);
+)
 ```
+
+### 5.2 Tablas de Catálogos
 
 #### CATALOGO_AMENAZAS_MAGERIT
 ```sql
 CREATE TABLE CATALOGO_AMENAZAS_MAGERIT (
-    Cod_MAGERIT TEXT PRIMARY KEY,    -- N.1, I.5, E.1, A.11...
-    Categoria TEXT,                   -- Desastres naturales, Industrial, Errores, Ataques
+    Cod_MAGERIT TEXT PRIMARY KEY,  -- N.1, I.5, E.2, A.24
+    Categoria TEXT,                 -- Natural, Industrial, Error, Ataque
     Amenaza TEXT,
     Descripcion TEXT,
     "Dimension(D/I/C)" TEXT,
     "Severidad_Base(1-5)" INTEGER
-);
+)
 ```
 
-#### CATALOGO_ISO27002_2022
+#### CATALOGO_CONTROLES_ISO27002
 ```sql
-CREATE TABLE CATALOGO_ISO27002_2022 (
-    Control TEXT PRIMARY KEY,         -- 5.1, 8.9, etc.
-    Nombre TEXT,
-    Dominio TEXT,                     -- Organizacional, Personas, Físico, Tecnológico
-    Descripcion TEXT
-);
+CREATE TABLE CATALOGO_CONTROLES_ISO27002 (
+    codigo TEXT PRIMARY KEY,        -- 5.1, 6.2, 7.3, 8.1
+    nombre TEXT,
+    dominio TEXT,                   -- organizacional, personas, fisico, tecnologico
+    descripcion TEXT,
+    objetivo TEXT
+)
 ```
 
-### 5.3 Diagrama Entidad-Relación
+### 5.3 Estructura JSON de Amenazas
 
-```
-┌─────────────────┐       ┌───────────────────┐
-│   EVALUACIONES  │──────<│ INVENTARIO_ACTIVOS│
-│   (1)           │       │ (N)               │
-└─────────────────┘       └─────────┬─────────┘
-                                    │
-                    ┌───────────────┼───────────────┐
-                    │               │               │
-              ┌─────┴─────┐   ┌─────┴─────┐   ┌─────┴─────┐
-              │CUESTIONARIO│   │RESPUESTAS │   │ANALISIS   │
-              │ (N)        │   │ (N)       │   │RIESGO (1) │
-              └───────────┘   └───────────┘   └───────────┘
+```json
+{
+    "codigo": "A.24",
+    "amenaza": "Denegación de servicio",
+    "tipo_amenaza": "Ataque deliberado",
+    "dimension": "D",
+    "probabilidad": 3,
+    "impacto": 4,
+    "riesgo_inherente": 12,
+    "nivel_riesgo": "MEDIO",
+    "riesgo_residual": 8.4,
+    "tratamiento": "mitigar",
+    "controles_existentes": ["8.6", "8.20"],
+    "efectividad_controles": 0.3,
+    "controles_recomendados": [
+        {"codigo": "8.22", "nombre": "Segregación de redes", "prioridad": "ALTA"}
+    ],
+    "justificacion": "Servidor expuesto a internet sin redundancia"
+}
 ```
 
 ---
@@ -362,1012 +329,691 @@ CREATE TABLE CATALOGO_ISO27002_2022 (
 ### 6.1 Flujo Principal de Evaluación
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   CREAR     │────▶│  REGISTRAR  │────▶│  COMPLETAR  │────▶│  EVALUAR    │
-│ EVALUACIÓN  │     │   ACTIVOS   │     │CUESTIONARIO │     │   CON IA    │
-└─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
-       │                   │                   │                   │
-       ▼                   ▼                   ▼                   ▼
-  EVA-001 creada      ACT-001 creado     21 respuestas      Nivel: Alto
-  Estado: Activa      Estado: Pendiente  Estado: Completo   Estado: Evaluado
+1. CREAR EVALUACIÓN
+   └── Usuario crea evaluación con nombre/descripción
+   
+2. AGREGAR ACTIVOS
+   └── Manual o carga masiva (Excel/JSON)
+   └── Tipo: Físico o Virtual
+   
+3. RESPONDER CUESTIONARIOS
+   └── 21 preguntas por activo
+   └── Sistema calcula impacto DIC automáticamente
+   
+4. EVALUACIÓN MAGERIT CON IA
+   └── Ollama analiza contexto del activo
+   └── Identifica amenazas aplicables
+   └── Calcula riesgos inherente y residual
+   └── Recomienda controles ISO 27002
+   └── Guarda en RESULTADOS_MAGERIT
+   
+5. VISUALIZAR RESULTADOS
+   └── Dashboard con gráficos
+   └── Matriz MAGERIT completa
+   └── Nivel de madurez
+   
+6. EXPORTAR
+   └── Excel con múltiples hojas
+   └── CSV para Power BI
 ```
 
-### 6.2 Máquina de Estados del Activo
+### 6.2 Flujo de Evaluación MAGERIT
 
 ```
-                          ┌─────────────────────────────────────┐
-                          │          ESTADOS DE ACTIVO          │
-                          └─────────────────────────────────────┘
-
-┌───────────┐  Generar    ┌─────────────┐  Completar  ┌──────────┐  Evaluar IA ┌──────────┐
-│ PENDIENTE │────────────▶│ INCOMPLETO  │────────────▶│ COMPLETO │────────────▶│ EVALUADO │
-└───────────┘ cuestionario└─────────────┘  respuestas └──────────┘             └──────────┘
-     │                          │                │                                   │
-     │                          │                │      Modificar respuestas         │
-     │                          │                │◀──────────────────────────────────┘
-     │                          │                │      (invalida análisis IA)
-     ▼                          ▼                ▼
-   Activo                   Cuestionario     Todas las 21
-   sin datos                parcialmente     preguntas
-                            respondido       contestadas
-```
-
-### 6.3 Flujo del Cuestionario
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│                    FLUJO DE CUESTIONARIO                     │
-└──────────────────────────────────────────────────────────────┘
-
-1. Usuario selecciona activo
-           │
-           ▼
-2. Sistema verifica tipo de activo
-   ├── Servidor Físico → BANCO_PREGUNTAS_FISICAS
-   └── Servidor Virtual → BANCO_PREGUNTAS_VIRTUALES
-           │
-           ▼
-3. Se cargan las 21 preguntas del banco correspondiente
-           │
-           ▼
-4. Usuario responde pregunta por pregunta
-   • Cada pregunta tiene 4 opciones (valor 1-4)
-   • El peso indica importancia (1-5)
-   • La dimensión indica qué afecta (D/I/C)
-           │
-           ▼
-5. Al completar todas → Estado = "Completo"
-           │
-           ▼
-6. Usuario puede solicitar evaluación IA
-```
-
-### 6.4 Flujo de Evaluación IA
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│                    FLUJO DE EVALUACIÓN IA                    │
-└──────────────────────────────────────────────────────────────┘
-
-1. Activo en estado "Completo"
-           │
-           ▼
-2. Sistema recopila:
-   • Datos del activo (nombre, tipo, ubicación)
-   • Respuestas del cuestionario (21)
-   • Catálogo de amenazas MAGERIT
-   • Controles ISO 27002
-           │
-           ▼
-3. Se construye prompt para Ollama:
-   "Analiza el siguiente activo... identifica riesgos..."
-           │
-           ▼
-4. Ollama procesa y devuelve:
-   • Probabilidad (0.0 - 1.0)
-   • Impacto (1-5)
-   • Nivel de riesgo (Bajo/Medio/Alto/Crítico)
-   • Amenazas identificadas
-   • Controles recomendados
-           │
-           ▼
-5. Resultado se guarda en ANALISIS_RIESGO
-           │
-           ▼
-6. Estado del activo → "Evaluado"
+┌─────────────────┐
+│ Activo + Context│
+│ (Cuestionario)  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Ollama AI       │
+│ (llama3.2:1b)   │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────┐
+│ RESPUESTA IA ESTRUCTURADA                       │
+│ ┌─────────────────────────────────────────────┐ │
+│ │ Impacto DIC + Justificación                 │ │
+│ ├─────────────────────────────────────────────┤ │
+│ │ 5-10 Amenazas MAGERIT identificadas         │ │
+│ │  - Código, Probabilidad, Impacto            │ │
+│ │  - Riesgo inherente = P × I                 │ │
+│ │  - Controles existentes detectados          │ │
+│ │  - Riesgo residual = RI × (1 - efectividad) │ │
+│ │  - Controles recomendados ISO 27002         │ │
+│ ├─────────────────────────────────────────────┤ │
+│ │ Tratamiento: mitigar/aceptar/transferir     │ │
+│ └─────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Guardar en      │
+│ RESULTADOS_     │
+│ MAGERIT         │
+└─────────────────┘
 ```
 
 ---
 
 ## 7. Módulos y Funcionalidades
 
-### 7.1 Módulo de Evaluaciones
-
-**Ubicación**: `services/evaluacion_service.py`
-
-| Función | Descripción |
-|---------|-------------|
-| `crear_evaluacion(nombre, descripcion, responsable)` | Crea nueva evaluación, retorna ID |
-| `get_evaluaciones()` | Lista todas las evaluaciones |
-| `actualizar_estado_evaluacion(eval_id, estado)` | Cambia estado |
-| `get_activos_por_evaluacion(eval_id)` | Lista activos de una evaluación |
-| `get_estadisticas_evaluacion(eval_id)` | Conteos y métricas |
-
-### 7.2 Módulo de Activos
-
-**Ubicación**: `services/activo_service.py`
-
-| Función | Descripción |
-|---------|-------------|
-| `crear_activo(eval_id, datos)` | Crea activo con validación de duplicados |
-| `editar_activo(eval_id, activo_id, datos)` | Actualiza activo |
-| `eliminar_activo(eval_id, activo_id)` | Elimina activo |
-| `get_activo(eval_id, activo_id)` | Obtiene un activo específico |
-| `validar_duplicado(eval_id, nombre, ubicacion, tipo)` | Previene duplicados |
-
-### 7.3 Módulo de Cuestionarios
-
-**Ubicación**: `services/cuestionario_service.py`
-
-| Función | Descripción |
-|---------|-------------|
-| `get_banco_preguntas(tipo_activo)` | Obtiene las 21 preguntas según tipo |
-| `generar_cuestionario(eval_id, activo)` | Asigna preguntas al activo |
-| `get_cuestionario(eval_id, activo_id)` | Obtiene cuestionario del activo |
-| `guardar_respuestas(eval_id, activo_id, respuestas)` | Guarda respuestas |
-| `verificar_cuestionario_completo(eval_id, activo_id)` | Verifica si está completo |
-| `invalidar_analisis_ia(eval_id, activo_id)` | Invalida IA si se modifican respuestas |
-
-### 7.4 Módulo de Base de Datos
-
-**Ubicación**: `services/database_service.py`
-
-| Función | Descripción |
-|---------|-------------|
-| `init_database()` | Crea todas las tablas |
-| `read_table(table_name)` | Lee tabla como DataFrame |
-| `insert_rows(table_name, rows)` | Inserta múltiples filas |
-| `update_row(table_name, updates, conditions)` | Actualiza con condiciones |
-| `delete_row(table_name, conditions)` | Elimina con condiciones |
-| `query_rows(table_name, conditions)` | Consulta con filtros |
-| `exportar_a_excel(output_path)` | Exporta toda la BD a Excel |
-
-### 7.5 Módulo de IA
-
-**Ubicación**: `services/ollama_service.py`
-
-| Función | Descripción |
-|---------|-------------|
-| `ollama_generate(prompt, model)` | Genera texto con Ollama |
-| `ollama_analyze_risk(activo, respuestas)` | Analiza riesgo completo |
-| `extract_json_array(text)` | Extrae JSON de respuesta |
-
-### 7.6 Motor de Evaluación MAGERIT v3
-
-**Ubicación**: `services/magerit_engine.py`
-
-Este módulo implementa el cálculo completo de riesgos según la metodología MAGERIT v3:
-
-| Función | Descripción |
-|---------|-------------|
-| `get_nivel_riesgo(valor)` | Clasifica valor 1-25 en nivel (MUY BAJO, BAJO, MEDIO, ALTO, CRÍTICO) |
-| `get_color_riesgo(nivel)` | Retorna color hex para el nivel |
-| `get_accion_riesgo(nivel)` | Retorna acción recomendada |
-| `calcular_impacto_desde_respuestas(respuestas)` | Calcula ImpactoDIC desde cuestionario |
-| `identificar_controles_existentes(respuestas)` | Extrae controles implementados, efectividad y detalle (3 valores) |
-| `evaluar_activo_magerit(eval_id, activo_id, amenazas_ia, probabilidad_ia)` | **Función principal** - Ejecuta evaluación completa |
-| `guardar_resultado_magerit(resultado)` | Persiste resultado en SQLite |
-| `get_resultado_magerit(eval_id, activo_id)` | Recupera resultado guardado |
-| `get_resumen_evaluacion(eval_id)` | Resumen de todos los activos |
-
-**Dataclasses**:
-- `ImpactoDIC`: Valoración de impacto en D/I/C con justificaciones
-- `AmenazaIdentificada`: Amenaza con probabilidad, impacto, riesgo inherente/residual
-- `ResultadoEvaluacionMagerit`: Resultado completo con todas las amenazas y controles
-
-**Algoritmo de Cálculo**:
-```
-Riesgo Inherente = Probabilidad × Impacto (1-25)
-Riesgo Residual = Riesgo Inherente × (1 - Cobertura × Efectividad × 0.8)
-```
-
-### 7.7 Servicio de Madurez de Ciberseguridad (NUEVO)
-
-**Ubicación**: `services/maturity_service.py`
-
-Módulo para calcular el nivel de madurez de ciberseguridad basado en modelo CMMI:
-
-| Función | Descripción |
-|---------|-------------|
-| `calcular_madurez_evaluacion(eval_id)` | Calcula nivel de madurez (1-5, 0-100%) |
-| `guardar_madurez(resultado)` | Persiste resultado en RESULTADOS_MADUREZ |
-| `get_madurez_evaluacion(eval_id)` | Recupera madurez guardada |
-| `comparar_madurez(eval_id_1, eval_id_2)` | Compara madurez entre dos evaluaciones |
-| `get_controles_existentes_detallados(eval_id, activo_id)` | Detalle de controles por dominio |
-| `analizar_controles_desde_respuestas(respuestas)` | Mapea respuestas a controles ISO 27002 |
-
-**Niveles de Madurez (CMMI)**:
-
-| Nivel | Nombre | Rango | Descripción |
-|-------|--------|-------|-------------|
-| 1 | Inicial | 0-20% | Procesos ad-hoc, no documentados |
-| 2 | Básico | 20-40% | Procesos reactivos, parcialmente documentados |
-| 3 | Definido | 40-60% | Procesos estandarizados y documentados |
-| 4 | Gestionado | 60-80% | Procesos medidos y controlados |
-| 5 | Optimizado | 80-100% | Mejora continua, procesos optimizados |
-
-**Fórmula de Cálculo**:
-```
-Madurez = (Controles_Impl × 0.30) + (Controles_Medidos × 0.25) + 
-          (Riesgos_Mitigados × 0.25) + (Activos_Evaluados × 0.20)
-```
-
-**Mapeo Preguntas → Controles ISO 27002**:
-- 21 preguntas del cuestionario mapean a 31+ controles ISO 27002
-- Clasificación: Implementado (valor ≤2), Parcial (valor=3), No Implementado (valor=4)
-
-### 7.9 Servicio de IA para MAGERIT
-
-**Ubicación**: `services/ollama_magerit_service.py`
-
-Este módulo integra Ollama con validación contra catálogos oficiales:
-
-| Función | Descripción |
-|---------|-------------|
-| `analizar_activo_con_ia(eval_id, activo_id, modelo)` | Analiza activo con IA y valida JSON |
-| `verificar_ollama_disponible()` | Verifica conexión y lista modelos |
-| `crear_evaluacion_manual(activo, amenazas, prob, obs)` | Crea evaluación sin IA |
-| `get_catalogo_amenazas()` | Carga catálogo de 52 amenazas |
-| `get_catalogo_controles()` | Carga catálogo de 93 controles |
-
-**Validación JSON**:
-- Solo acepta códigos de amenaza del catálogo MAGERIT (52)
-- Solo acepta códigos de control del catálogo ISO 27002 (93)
-- Valida dimensiones (D, I, C) y prioridades (Alta, Media, Baja)
-- Corrige automáticamente códigos inválidos
-
-### 7.10 Dashboard MAGERIT
-
-**Ubicación**: `components/dashboard_magerit.py`
-
-Componentes visuales Plotly para Streamlit:
-
-| Función | Descripción |
-|---------|-------------|
-| `render_mapa_calor_riesgos(amenazas)` | Matriz 5×5 de probabilidad vs impacto |
-| `render_ranking_activos(evaluaciones, por)` | Ranking por riesgo inherente/residual |
-| `render_comparativo_riesgos(evaluaciones)` | Barras inherente vs residual |
-| `render_distribucion_amenazas(amenazas)` | Pie chart por tipo y nivel |
-| `render_cobertura_controles(evaluaciones)` | Top controles implementados |
-| `render_resumen_ejecutivo(evaluaciones)` | Métricas globales |
-| `render_detalle_activo(resultado)` | Detalle de un activo específico |
-| `render_gauge_riesgo(valor)` | Gauge de nivel de riesgo |
-| `render_gauge_madurez(porcentaje, nivel, nombre)` | **NUEVO**: Gauge de nivel de madurez |
-| `render_radar_dominios(dominios)` | **NUEVO**: Radar chart de dominios ISO 27002 |
-| `render_madurez_completo(resultado)` | **NUEVO**: Vista completa de madurez |
-| `render_comparativa_madurez(comp)` | **NUEVO**: Comparación de madurez |
-| `render_controles_existentes(controles)` | **NUEVO**: Lista de controles por dominio |
-
-### 7.11 Servicio de Carga Masiva de Activos (NUEVO)
-
-**Ubicación**: `services/carga_masiva_service.py`
-
-Módulo para importar activos de forma masiva desde JSON o Excel:
-
-| Función | Descripción |
-|---------|-------------|
-| `procesar_json(contenido, eval_id)` | Procesa archivo JSON con activos |
-| `procesar_excel(archivo_bytes, eval_id)` | Procesa archivo Excel con activos |
-| `generar_plantilla_json()` | Genera plantilla JSON de ejemplo |
-| `generar_plantilla_excel()` | Genera DataFrame plantilla para Excel |
-| `get_campos_info()` | Retorna información de campos para UI |
-| `validar_activo(activo, fila)` | Valida un activo individual |
-| `validar_tipo_activo(valor)` | Valida y normaliza tipo de activo |
-
-**Dataclasses**:
-- `ErrorValidacion`: Representa un error de validación con fila, campo y mensaje
-- `ResultadoCarga`: Resultado completo con totales, insertados, duplicados y errores
-
-**Decisión Arquitectónica**:
-- **JSON (Principal)**: Validación estricta, sin macros, auditable, preparado para API
-- **Excel (Compatibilidad)**: Para usuarios que prefieren hojas de cálculo
-
-**Campos Requeridos**:
-| Campo | Descripción | Ejemplo |
-|-------|-------------|---------|
-| nombre_activo | Nombre único del activo | Servidor BD Académica |
-| tipo_activo | Servidor Físico o Virtual | Servidor Virtual |
-| ubicacion | Ubicación física/lógica | DataCenter Principal |
-| propietario | Área responsable | Departamento TI |
-| tipo_servicio | Función principal | Base de Datos |
-
-**Campos Opcionales**: app_critica, descripcion
-
-**Validaciones**:
-- Tipos de activo flexibles: "vm", "virtual", "fisico" → normalizados
-- Detección de duplicados (internos y contra BD)
-- Sanitización de caracteres peligrosos
-- Hash SHA-256 del archivo para auditoría
-
-### 7.12 UI Carga Masiva
-
-**Ubicación**: `components/carga_masiva_ui.py`
-
-| Función | Descripción |
-|---------|-------------|
-| `render_carga_masiva(eval_id, eval_nombre)` | Interfaz completa con tabs JSON/Excel/Ayuda |
-| `render_carga_masiva_modal(eval_id, eval_nombre)` | Versión simplificada para modal |
-
-### 7.13 Servicio de Riesgo por Concentración (NUEVO)
-
-**Ubicación**: `services/concentration_risk_service.py`
-
-Implementa el modelo híbrido de riesgo por dependencia entre hosts físicos y máquinas virtuales, basado en MAGERIT v3, Libro II, Capítulo 4 (Propagación de impacto).
-
-| Fase | Dirección | Descripción |
-|------|-----------|-------------|
-| **Blast Radius** | VM → Host | El host hereda criticidad de sus VMs dependientes |
-| **Herencia** | Host → VM | Las VMs heredan riesgo del host comprometido |
-
-**Fórmulas implementadas:**
-
-```
-Blast_Radius = Σ(Criticidad_VMi × Peso_Dependencia_VMi)
-Factor_Concentración = min(4, floor(Blast_Radius / 5))
-Impacto_D_Host_Ajustado = min(5, Impacto_D_Host + Factor_Concentración)
-Riesgo_VM_Final = max(Riesgo_VM_Propio, Riesgo_Host × 0.7)
-```
-
-**Dataclasses:**
-
-| Clase | Propósito |
-|-------|-----------|
-| `DependenciaVM` | Representa la relación VM-Host |
-| `ResultadoConcentracion` | Resultado del cálculo de blast radius |
-| `RiesgoHeredado` | Riesgo heredado por una VM desde su host |
-
-**Funciones principales:**
-
-| Función | Descripción |
-|---------|-------------|
-| `init_concentration_tables()` | Crea columnas ID_Host, Tipo_Dependencia y tablas |
-| `asignar_host_a_vm(eval_id, id_vm, id_host, tipo)` | Asigna dependencia VM→Host |
-| `calcular_blast_radius(eval_id, id_host)` | Calcula blast radius de un host |
-| `calcular_riesgo_heredado(eval_id, id_vm)` | Calcula riesgo heredado por VM |
-| `calcular_concentracion_evaluacion(eval_id)` | Fase 1: Blast radius para todos los hosts |
-| `calcular_herencia_evaluacion(eval_id)` | Fase 2: Herencia para todas las VMs |
-| `get_hosts_spof(eval_id)` | Obtiene hosts identificados como SPOF |
-| `get_ranking_hosts_blast_radius(eval_id)` | Ranking de hosts por blast radius |
-
-**Tipos de dependencia:**
-
-| Tipo | Peso | Descripción |
-|------|------|-------------|
-| `total` | 1.0 | VM depende completamente del host |
-| `parcial` | 0.5 | VM puede migrar a otro host |
-| `ninguna` | 0.0 | VM independiente (ej: multi-cloud) |
-
-### 7.14 UI Riesgo por Concentración (NUEVO)
-
-**Ubicación**: `components/concentration_risk_ui.py`
-
-| Función | Descripción |
-|---------|-------------|
-| `render_asignacion_dependencias(eval_id)` | Panel para asignar VMs a hosts |
-| `render_dashboard_concentracion(eval_id)` | Dashboard con métricas, alertas SPOF, gráficos |
-| `render_concentracion_tab(eval_id)` | Tab completo (combina asignación + dashboard) |
-| `render_concentracion_mini_card(eval_id)` | Tarjeta resumen para dashboard principal |
-
-**Tablas de BD creadas:**
-
-| Tabla | Propósito |
-|-------|-----------|
-| `RESULTADOS_CONCENTRACION` | Blast radius calculado por host |
-| `RIESGO_HEREDADO` | Riesgo heredado por cada VM |
+### 7.1 Servicios (services/)
+
+| Servicio | Archivo | Funciones Principales |
+|----------|---------|----------------------|
+| **Database** | `database_service.py` | `read_table()`, `insert_rows()`, `get_connection()` |
+| **MAGERIT Engine** | `magerit_engine.py` | `evaluar_activo_magerit()`, `guardar_resultado_magerit()` |
+| **Ollama MAGERIT** | `ollama_magerit_service.py` | `analizar_activo_ia()` |
+| **IA Avanzada** | `ia_advanced_service.py` | `generar_plan_tratamiento()`, `chatbot_magerit()`, `generar_resumen_ejecutivo()` |
+| **Madurez** | `maturity_service.py` | `calcular_madurez_evaluacion()`, `get_controles_existentes_detallados()` |
+| **Cuestionario** | `cuestionario_service.py` | `generar_cuestionario()`, `guardar_respuestas()` |
+| **Activos** | `activo_service.py` | `crear_activo()`, `listar_activos()` |
+| **Evaluación** | `evaluacion_service.py` | `crear_evaluacion()`, `get_evaluaciones()` |
+| **Excel/Export** | `excel_service.py`, `export_service.py` | Exportación a Excel y Power BI |
+| **Validación IA** | `ia_validation_service.py` | Validación de resultados IA |
+| **Carga Masiva** | `carga_masiva_service.py` | Importación Excel/JSON |
+
+### 7.2 Componentes UI (components/)
+
+| Componente | Archivo | Propósito |
+|------------|---------|-----------|
+| **Dashboard MAGERIT** | `dashboard_magerit.py` | Visualizaciones de riesgos |
+| **IA Avanzada UI** | `ia_advanced_ui.py` | Interfaz de funciones IA |
+| **Validación IA UI** | `ia_validation_ui.py` | Interfaz de validación |
+| **Carga Masiva UI** | `carga_masiva_ui.py` | Interfaz de importación |
 
 ---
 
-## 8. Banco de Preguntas
+## 8. Tabs de la Aplicación
 
-### 8.1 Estructura del Cuestionario
+### 8.1 Lista de Tabs (app_final.py)
 
-Cada tipo de activo tiene **21 preguntas** organizadas en **5 bloques**:
+| # | Tab | Icono | Descripción |
+|---|-----|-------|-------------|
+| 1 | Evaluaciones | 🏠 | Crear/seleccionar evaluaciones |
+| 2 | Activos | 📦 | Inventario de activos TI |
+| 3 | Cuestionarios | 📝 | Responder cuestionarios por activo |
+| 4 | Evaluación MAGERIT | 🤖 | Ejecutar análisis IA por activo |
+| 5 | Dashboard Riesgos | 📈 | Visualizaciones y métricas |
+| 6 | Matriz MAGERIT | 🧮 | Tabla técnica Activo-Amenaza |
+| 7 | Madurez | 🎯 | Nivel de madurez CMMI 1-5 |
+| 8 | IA Avanzada | 🧠 | 5 funcionalidades de IA |
+| 9 | Comparativas | 🔄 | Comparar evaluaciones |
+| 10 | Validación IA | 🛡️ | Validar/ajustar resultados |
 
-| Bloque | Código | Preguntas | Enfoque |
-|--------|--------|-----------|---------|
-| **A - Impacto** | A01-A05 | 5 | RTO, RPO, dependencias, criticidad |
-| **B - Continuidad** | B01-B04 | 4 | Backups, failover, redundancia |
-| **C - Controles** | C01-C05 | 5 | Acceso, parches, monitoreo, logs |
-| **D - Ciberseguridad** | D01-D04 | 4 | Antimalware, cifrado, vulnerabilidades |
-| **E - Exposición** | E01-E03 | 3 | Internet, acceso físico, dependencias |
+### 8.2 Detalle de Cada Tab
 
-### 8.2 Formato de Pregunta
+#### 🏠 Evaluaciones
+- Crear nueva evaluación con nombre y descripción
+- Listar evaluaciones existentes
+- Seleccionar evaluación activa (obligatorio para otros tabs)
+- Eliminar evaluaciones
 
-Cada pregunta tiene:
+#### 📦 Activos
+- Agregar activos manualmente
+- Carga masiva desde Excel/JSON
+- Ver inventario de activos
+- Editar/eliminar activos
 
-```
-ID_Pregunta: PF-A01 (Físico) o PV-A01 (Virtual)
-Bloque: A-Impacto
-Dimension: D, I o C
-Pregunta: "¿Cuál es el tiempo máximo tolerable de interrupción (RTO)?"
-Opcion_1: "Más de 72 horas" (Valor: 1 - menor riesgo)
-Opcion_2: "24-72 horas" (Valor: 2)
-Opcion_3: "4-24 horas" (Valor: 3)
-Opcion_4: "Menos de 4 horas" (Valor: 4 - mayor riesgo)
-Peso: 5 (importancia 1-5)
-```
+#### 📝 Cuestionarios
+- Seleccionar activo
+- Responder 21 preguntas
+- Ver respuestas guardadas
+- Recalcular impacto DIC
 
-### 8.3 Ejemplo de Preguntas por Bloque
+#### 🤖 Evaluación MAGERIT
+- Evaluar activo individual con IA
+- Evaluar todos los activos pendientes
+- Ver estado de evaluación por activo
+- Forzar re-evaluación
 
-#### Bloque A - Impacto (Servidores Físicos)
-| ID | Pregunta | Dimensión |
-|----|----------|-----------|
-| PF-A01 | ¿Cuál es el tiempo máximo tolerable de interrupción (RTO)? | D |
-| PF-A02 | ¿Cuántos usuarios o procesos críticos dependen del servidor? | D |
-| PF-A03 | ¿Qué nivel de pérdida de datos es tolerable (RPO)? | I |
-| PF-A04 | ¿Qué tipo de información procesa este servidor? | C |
-| PF-A05 | ¿Cuál sería el impacto financiero por hora de inactividad? | D |
+#### 📈 Dashboard Riesgos
+- Resumen ejecutivo con KPIs
+- Gráfico comparativo inherente vs residual
+- Ranking de activos por riesgo
+- Mapa de calor de riesgos
+- Distribución por tipo de amenaza
 
-#### Bloque B - Continuidad
-| ID | Pregunta | Dimensión |
-|----|----------|-----------|
-| PF-B01 | ¿Existe un servidor de respaldo o failover configurado? | D |
-| PF-B02 | ¿Con qué frecuencia se realizan copias de seguridad? | D |
-| PF-B03 | ¿Se prueban regularmente las restauraciones de backup? | D |
-| PF-B04 | ¿El servidor tiene fuente de alimentación redundante (UPS)? | D |
+#### 🧮 Matriz MAGERIT
+- Tabla técnica: cada fila = Activo-Amenaza
+- Columnas: Evaluación, Activo, Tipo, Código Amenaza, Amenaza, Tipo Amenaza, D, I, C, Impacto, Probabilidad, Riesgo Inherente, Riesgo Residual, Nivel, Tratamiento, Controles
+- Filtros por activo, nivel de riesgo
+- Ordenar por riesgo
+- Colores por activo para diferenciación visual
+- Exportar a Excel/CSV
+- Información metodológica MAGERIT v3
+
+#### 🎯 Madurez
+- Calcular nivel de madurez (1-5)
+- Gauge visual de puntuación
+- Radar de dominios ISO 27002
+- Controles implementados vs parciales
+- Métricas detalladas
+
+#### 🧠 IA Avanzada
+5 funcionalidades:
+1. **Planes de Tratamiento**: Genera plan detallado por amenaza
+2. **Chatbot MAGERIT**: Consultor interactivo
+3. **Resumen Ejecutivo**: Informe para gerencia
+4. **Predicción de Riesgo**: Proyección a futuro
+5. **Priorización de Controles**: Ranking de implementación
+
+#### 🔄 Comparativas
+- Comparar dos evaluaciones
+- Delta de riesgos
+- Evolución de madurez
+- Nuevos activos/amenazas
+
+#### 🛡️ Validación IA
+- Revisar resultados generados por IA
+- Ajustar valores manualmente
+- Aprobar/rechazar análisis
 
 ---
 
-## 9. Integración con IA
+## 9. Banco de Preguntas
 
-### 9.1 Modelo de IA
+### 9.1 Estructura de Cuestionarios
 
-- **Motor**: Ollama (LLM local)
-- **Modelos soportados**: llama3, mistral, qwen, gemma
-- **Puerto**: 11434 (por defecto)
+| Bloque | Dimensión | # Preguntas | Peso |
+|--------|-----------|-------------|------|
+| BLQ-D | Disponibilidad | 7 | 1-3 |
+| BLQ-I | Integridad | 7 | 1-3 |
+| BLQ-C | Confidencialidad | 7 | 1-3 |
+| **Total** | - | **21** | - |
 
-### 9.2 Prompt de Análisis
-
-El sistema construye un prompt estructurado:
-
-```
-Eres un experto en análisis de riesgos de TI siguiendo MAGERIT e ISO 27002.
-
-ACTIVO A EVALUAR:
-- Nombre: {nombre}
-- Tipo: {tipo_activo}
-- Ubicación: {ubicacion}
-- Servicio: {tipo_servicio}
-
-RESPUESTAS DEL CUESTIONARIO:
-{respuestas_formateadas}
-
-CATÁLOGO DE AMENAZAS MAGERIT:
-{amenazas}
-
-CONTROLES ISO 27002:
-{controles}
-
-TAREA:
-1. Identifica las 3 principales amenazas para este activo
-2. Calcula probabilidad (0.0-1.0) e impacto (1-5)
-3. Determina nivel de riesgo (Bajo/Medio/Alto/Crítico)
-4. Recomienda controles ISO 27002 específicos
-
-Responde en formato JSON.
-```
-
-### 9.3 Respuesta Esperada
+### 9.2 Formato de Pregunta
 
 ```json
 {
-  "probabilidad": 0.65,
-  "impacto": 4.2,
-  "nivel_riesgo": "Alto",
-  "amenazas_identificadas": [
-    {"codigo": "A.11", "amenaza": "Acceso no autorizado", "justificacion": "..."},
-    {"codigo": "E.8", "amenaza": "Malware", "justificacion": "..."}
-  ],
-  "controles_recomendados": [
-    {"control": "5.15", "nombre": "Control de acceso", "prioridad": "Alta"},
-    {"control": "8.12", "nombre": "Prevención de malware", "prioridad": "Alta"}
-  ],
-  "recomendaciones": [
-    "Implementar MFA para acceso al servidor",
-    "Actualizar parches de seguridad mensualmente"
-  ]
+    "ID_Pregunta": "D-001",
+    "Tipo_Activo": "Servidor Físico",
+    "Bloque": "BLQ-D",
+    "Dimension": "Disponibilidad",
+    "Pregunta": "¿Qué tan crítico es el uptime del servidor?",
+    "Opcion_1": "No crítico (puede estar caído días)",
+    "Opcion_2": "Bajo (puede tolerar horas de caída)",
+    "Opcion_3": "Medio (máximo 4 horas de caída)",
+    "Opcion_4": "Alto (debe tener 99.9% uptime)",
+    "Peso": 3
 }
 ```
 
----
-
-## 10. IA Avanzada
-
-### 10.1 Descripción General
-
-El módulo de **IA Avanzada** extiende las capacidades de análisis del sistema con funcionalidades inteligentes que aprovechan modelos de lenguaje (LLM) a través de Ollama.
-
-**Ubicación de archivos**:
-- **Servicios**: `services/ia_advanced_service.py` (~1270 líneas)
-- **UI**: `components/ia_advanced_ui.py` (~950 líneas)
-- **Exportación**: `services/export_service.py` (~500 líneas)
-
-### 10.2 Funcionalidades (5 Features)
-
-| # | Funcionalidad | Descripción | Persistencia |
-|---|---------------|-------------|--------------|
-| 1 | 📝 Planes de Tratamiento | Genera planes de acción detallados para mitigar amenazas | ✅ BD |
-| 2 | 💬 Chatbot MAGERIT | Consultor interactivo sobre la evaluación | ❌ No aplica |
-| 3 | 📋 Resumen Ejecutivo | Informe profesional para alta gerencia | ✅ BD |
-| 4 | 🔮 Predicción de Riesgo | Proyección de evolución del riesgo a futuro | ✅ BD |
-| 5 | 🎯 Priorización de Controles | Ordena controles por ROI de seguridad | ✅ BD |
-
-### 10.3 Dataclasses Principales
+### 9.3 Cálculo de Impacto DIC
 
 ```python
-@dataclass
-class PlanTratamiento:
-    id_evaluacion: str
-    id_activo: str
-    codigo_amenaza: str
-    nombre_amenaza: str
-    nivel_riesgo: str
-    acciones_corto_plazo: List[Dict]   # [{"accion", "responsable", "plazo", "costo"}]
-    acciones_mediano_plazo: List[Dict]
-    acciones_largo_plazo: List[Dict]
-    responsable_general: str
-    presupuesto_total: str
-    kpis: List[str]
-    modelo_ia: str
+# Por cada dimensión (D, I, C):
+suma_ponderada = Σ (valor_respuesta × peso_pregunta)
+max_posible = Σ (4 × peso_pregunta)  # 4 = máximo valor
+porcentaje = suma_ponderada / max_posible
 
-@dataclass
-class ResumenEjecutivo:
-    id_evaluacion: str
-    fecha_generacion: str
-    total_activos: int
-    total_amenazas: int
-    distribucion_riesgo: Dict[str, int]  # {"CRÍTICO": 2, "ALTO": 5, ...}
-    hallazgos_principales: List[str]
-    activos_criticos: List[Dict]
-    recomendaciones_prioritarias: List[str]
-    inversion_estimada: str              # "$10,000 - $30,000 USD"
-    reduccion_riesgo_esperada: str       # "40-60%"
-    conclusion: str
-    modelo_ia: str
-
-@dataclass
-class PrediccionRiesgo:
-    id_evaluacion: str
-    riesgo_actual: float
-    riesgo_residual: float
-    tendencia: str                       # "INCREMENTO", "ESTABLE", "DECREMENTO"
-    proyecciones: Dict[str, float]       # {"mes_1": 10.5, "mes_3": 11.2, ...}
-    factores_incremento: List[str]
-    factores_mitigacion: List[str]
-    recomendacion: str
-    fecha_generacion: str
-    modelo_ia: str
-
-@dataclass
-class ControlPriorizado:
-    codigo: str
-    nombre: str
-    categoria: str
-    riesgos_que_mitiga: int
-    activos_afectados: List[str]
-    costo_estimado: str                  # "BAJO", "MEDIO", "ALTO"
-    tiempo_implementacion: str
-    roi_seguridad: int                   # 1-5 (5 = mayor retorno)
-    justificacion: str
-    orden_prioridad: int
+# Mapeo a escala 1-5:
+if porcentaje >= 0.80: impacto = 5  # Muy Alto
+elif porcentaje >= 0.60: impacto = 4  # Alto
+elif porcentaje >= 0.40: impacto = 3  # Medio
+elif porcentaje >= 0.20: impacto = 2  # Bajo
+else: impacto = 1  # Muy Bajo
 ```
 
-### 10.4 Persistencia de Resultados IA
+---
 
-Los resultados generados por IA se guardan en la tabla `IA_RESULTADOS_AVANZADOS` para evitar regeneraciones innecesarias.
+## 10. Integración con IA
 
-```sql
-CREATE TABLE IA_RESULTADOS_AVANZADOS (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    id_evaluacion TEXT NOT NULL,
-    tipo_resultado TEXT NOT NULL,    -- resumen_ejecutivo, prediccion_riesgo, etc.
-    datos_json TEXT NOT NULL,        -- Resultado serializado
-    fecha_generacion TEXT NOT NULL,
-    modelo_ia TEXT,
-    UNIQUE(id_evaluacion, tipo_resultado)
-);
+### 10.1 Ollama Configuration
+
+```python
+OLLAMA_URL = "http://localhost:11434/api/generate"
+MODELO_DEFAULT = "llama3.2:1b"
+TIMEOUT = 60
 ```
 
-**Funciones de persistencia**:
+### 10.2 Prompt de Evaluación MAGERIT
 
-| Función | Descripción |
-|---------|-------------|
-| `guardar_resultado_ia(eval_id, tipo, datos, modelo)` | Guarda/actualiza resultado |
-| `cargar_resultado_ia(eval_id, tipo)` | Recupera resultado guardado |
-| `eliminar_resultado_ia(eval_id, tipo)` | Elimina resultado |
+El prompt incluye:
+- Contexto del activo (nombre, tipo, ubicación)
+- Respuestas del cuestionario
+- Catálogo de amenazas MAGERIT
+- Catálogo de controles ISO 27002
+- Instrucciones de formato JSON
 
-**Comportamiento UI**:
-- Si existe resultado guardado → Muestra "🔄 Regenerar" + fecha de generación
-- Si no existe → Muestra "Generar" como botón primario
-- Al generar → Guarda automáticamente y hace `st.rerun()`
+### 10.3 Estructura de Respuesta IA
 
-### 10.5 Funciones de Extracción de Datos
-
-Las amenazas y controles se almacenan en formato JSON dentro de `RESULTADOS_MAGERIT`:
-
-| Función | Descripción |
-|---------|-------------|
-| `obtener_amenazas_evaluacion(eval_id)` | Extrae amenazas de `Amenazas_JSON` |
-| `obtener_controles_evaluacion(eval_id)` | Extrae controles de `amenaza.controles_recomendados` |
-
-**Estructura del JSON de amenazas**:
 ```json
 {
-  "codigo": "A.11",
-  "amenaza": "Acceso no autorizado",
-  "tipo_amenaza": "Ataques deliberados",
-  "dimension": "C",
-  "probabilidad": 4,
-  "impacto": 4,
-  "riesgo_inherente": 16,
-  "nivel_riesgo": "CRÍTICO",
-  "controles_recomendados": [
-    {"control": "5.15", "nombre": "Control de acceso", "prioridad": "Alta"}
-  ]
+    "impacto": {
+        "disponibilidad": 4,
+        "integridad": 3,
+        "confidencialidad": 5,
+        "justificacion_d": "...",
+        "justificacion_i": "...",
+        "justificacion_c": "..."
+    },
+    "amenazas": [
+        {
+            "codigo": "A.24",
+            "amenaza": "Denegación de servicio",
+            "tipo_amenaza": "Ataque deliberado",
+            "dimension_afectada": "D",
+            "probabilidad": 3,
+            "impacto": 4,
+            "riesgo_inherente": 12,
+            "nivel_riesgo": "MEDIO",
+            "justificacion": "...",
+            "controles_existentes": ["8.6"],
+            "efectividad_controles": 0.3,
+            "riesgo_residual": 8.4,
+            "controles_recomendados": [
+                {"codigo": "8.22", "nombre": "...", "prioridad": "ALTA", "motivo": "..."}
+            ],
+            "tratamiento": "mitigar"
+        }
+    ],
+    "observaciones": "..."
 }
 ```
 
-### 10.6 Exportación para Ejecutivos
+---
 
-El servicio `export_service.py` genera documentos profesionales:
+## 11. IA Avanzada
 
-**Formatos soportados**:
+### 11.1 Funcionalidades
 
-| Formato | Función | Descripción |
-|---------|---------|-------------|
-| HTML | `generar_documento_ejecutivo(resumen, "html")` | Documento estilizado con CSS profesional |
-| Markdown | `generar_documento_ejecutivo(resumen, "markdown")` | Para edición posterior |
-| JSON | `resumen.to_dict()` | Datos estructurados |
+| # | Función | Descripción | Persistencia |
+|---|---------|-------------|--------------|
+| 1 | **Planes de Tratamiento** | Plan detallado por amenaza con pasos, responsables, plazos | ✅ Sí |
+| 2 | **Chatbot MAGERIT** | Consultor interactivo para dudas | ❌ Sesión |
+| 3 | **Resumen Ejecutivo** | Informe para gerencia con inversión estimada | ✅ Sí |
+| 4 | **Predicción de Riesgo** | Proyección a 6-12 meses con escenarios | ✅ Sí |
+| 5 | **Priorización de Controles** | Ranking por ROI y facilidad | ✅ Sí |
 
-**Ejemplo HTML generado**:
-- Header con logo y fecha
-- Sección de métricas clave (activos, amenazas, distribución)
-- Tabla de activos críticos
-- Lista de hallazgos y recomendaciones
-- Estimaciones de inversión y reducción de riesgo
-- Footer con disclaimer
+### 11.2 Persistencia de Resultados IA
 
-### 10.7 Integración con Power BI
-
-Se generan datasets optimizados para dashboards en Power BI:
-
-| Dataset | Descripción |
-|---------|-------------|
-| `Activos` | Inventario completo con estados |
-| `Resultados_MAGERIT` | Análisis de riesgo por activo |
-| `Amenazas` | Detalle de amenazas identificadas |
-| `Controles_Recomendados` | Controles sugeridos por amenaza |
-| `Distribucion_Riesgos` | Conteo por nivel de riesgo |
-| `Impacto_Dimensiones` | Promedio DIC por activo |
-| `Tipos_Amenaza` | Clasificación de amenazas |
-| `Metadata` | Información de la evaluación |
-
-**Funciones de exportación**:
-
-| Función | Descripción |
-|---------|-------------|
-| `generar_datos_powerbi(eval_id)` | Genera dict de DataFrames |
-| `exportar_powerbi_excel(eval_id, ruta)` | Exporta a Excel multi-hoja |
-
-### 10.8 Chatbot Consultor MAGERIT
-
-Chatbot interactivo que responde preguntas sobre la evaluación:
-
-**Configuración**:
-- Modelo: `llama3.2:1b` (configurable)
-- Temperatura: `0.3` (respuestas más coherentes)
-- Contexto: Incluye métricas de la evaluación actual
-
-**Preguntas sugeridas**:
-- "¿Cuáles son los principales riesgos identificados?"
-- "¿Qué controles debo implementar primero?"
-- "¿Cómo se calcula el riesgo inherente?"
-- "Resume el estado de la evaluación"
-
-**Historial de conversación**:
-- Se mantiene en `st.session_state["ia_chat_history"]`
-- Botón para limpiar historial
+Los resultados se guardan en tabla `IA_RESULTADOS_AVANZADOS`:
+- **tipo_resultado**: "resumen", "prediccion", "priorizacion", "planes"
+- **datos_json**: Resultado completo serializado
+- Se puede regenerar o usar el guardado
 
 ---
 
-## 11. Catálogos y Estándares
+## 12. Matriz MAGERIT
 
-### 10.1 Criterios MAGERIT (Valoración DIC)
+### 12.1 Estructura de Columnas
 
-Escala 1-5 para Disponibilidad, Integridad y Confidencialidad:
+| Columna | Descripción |
+|---------|-------------|
+| Evaluación | Nombre de la evaluación |
+| ID Activo | Identificador único |
+| Activo | Nombre del activo |
+| Tipo Activo | Físico / Virtual |
+| Código Amenaza | Código MAGERIT (A.24, E.2, etc.) |
+| Amenaza | Descripción de la amenaza |
+| Tipo Amenaza | Categoría (Ataque, Error, etc.) |
+| Dimensión | D, I, C afectada |
+| D, I, C | Valores de impacto (1-5) |
+| Impacto | Valor de impacto de la amenaza |
+| Probabilidad | Frecuencia (1-5) |
+| Riesgo Inherente | P × I |
+| Riesgo Residual | RI × (1 - efectividad) |
+| Nivel Riesgo | CRÍTICO/ALTO/MEDIO/BAJO |
+| Tratamiento | Estrategia sugerida |
+| Controles Existentes | Salvaguardas implementadas |
+| Salvaguardas (Recomendadas) | Controles ISO 27002 sugeridos |
+| Efectividad Controles | % de efectividad |
+| Justificación | Razón de la amenaza |
 
-| Nivel | Disponibilidad | Integridad | Confidencialidad |
-|-------|----------------|------------|------------------|
-| 1 | Interrupción < 1h | Errores menores | Info pública |
-| 2 | Interrupción 1-4h | Errores corregibles | Info interna |
-| 3 | Interrupción 4-24h | Impacto operativo | Info sensible |
-| 4 | Interrupción 1-7 días | Datos críticos | Datos personales |
-| 5 | Interrupción > 7 días | Pérdida total | Secretos comerciales |
+### 12.2 Filtros Disponibles
 
-### 10.2 Amenazas MAGERIT v3 (52 amenazas)
+- Por activo
+- Por nivel de riesgo
+- Ordenar por riesgo inherente/residual
 
-✅ **IMPLEMENTADO** en `CATALOGO_AMENAZAS_MAGERIT`
+### 12.3 Visualización
 
-| Categoría | Código | Cantidad | Ejemplos |
-|-----------|--------|----------|----------|
-| Desastres Naturales | N.* | 3 | N.1 Fuego, N.2 Daños por agua, N.* Desastres naturales |
-| Origen Industrial | I.* | 11 | I.5 Avería de origen físico/lógico, I.6 Corte de suministro eléctrico |
-| Errores no Intencionados | E.* | 17 | E.1 Errores de usuarios, E.20 Vulnerabilidades software |
-| Ataques Intencionados | A.* | 21 | A.5 Suplantación de identidad, A.24 Denegación de servicio |
+- Colores de fondo alternados por activo (10 colores pastel)
+- Leyenda visual de activos
+- Columna Nivel Riesgo coloreada por severidad
 
-**Seed Script**: `python seed_catalogos_magerit.py`
+### 12.4 Exportación
 
-### 10.3 Controles ISO 27002:2022 (93 controles)
-
-✅ **IMPLEMENTADO** en `CATALOGO_CONTROLES_ISO27002`
-
-| Categoría | Rango | Cantidad | Ejemplos |
-|-----------|-------|----------|----------|
-| Organizacional | 5.1-5.37 | 37 | 5.1 Políticas de seguridad, 5.29 Continuidad |
-| Personas | 6.1-6.8 | 8 | 6.3 Concientización, 6.8 Reporte de eventos |
-| Físico | 7.1-7.14 | 14 | 7.1 Perímetros, 7.11 Servicios de apoyo |
-| Tecnológico | 8.1-8.34 | 34 | 8.5 Autenticación, 8.7 Malware, 8.13 Backups |
-
-**Seed Script**: `python seed_catalogos_magerit.py`
-
-### 10.4 Niveles de Riesgo (Matriz 5×5)
-
-| Valor | Nivel | Color | Acción |
-|-------|-------|-------|--------|
-| 1-2 | MUY BAJO | 🟢 Verde oscuro | Aceptar |
-| 3-5 | BAJO | 🟢 Verde claro | Monitorear |
-| 6-11 | MEDIO | 🟡 Naranja | Planificar mitigación |
-| 12-19 | ALTO | 🟠 Rojo claro | Acción prioritaria |
-| 20-25 | CRÍTICO | 🔴 Rojo oscuro | Acción inmediata obligatoria |
+- Excel con múltiples hojas (Matriz, Resumen, Amenazas)
+- CSV para Power BI
 
 ---
 
-## 12. Estructura de Archivos
+## 13. Catálogos y Estándares
+
+### 13.1 Amenazas MAGERIT
+
+| Código | Categoría | Ejemplo |
+|--------|-----------|---------|
+| N.x | Naturales | N.1 Fuego, N.2 Inundación |
+| I.x | Industriales | I.5 Fallo eléctrico, I.6 Climatización |
+| E.x | Errores | E.1 Errores de usuarios, E.2 Errores de administrador |
+| A.x | Ataques | A.7 Malware, A.24 DoS, A.11 Acceso no autorizado |
+
+### 13.2 Controles ISO 27002:2022
+
+| Dominio | Rango | Ejemplos |
+|---------|-------|----------|
+| Organizacional | 5.1 - 5.37 | Políticas, roles, gestión de activos |
+| Personas | 6.1 - 6.8 | Selección, formación, disciplina |
+| Físico | 7.1 - 7.14 | Perímetro, áreas seguras, equipos |
+| Tecnológico | 8.1 - 8.34 | Endpoint, red, cifrado, desarrollo |
+
+### 13.3 Criterios de Valoración
+
+**Impacto (1-5):**
+| Valor | Nivel | Descripción |
+|-------|-------|-------------|
+| 5 | Muy Alto | Daño muy grave, pérdida irreparable |
+| 4 | Alto | Daño grave, recuperación costosa |
+| 3 | Medio | Daño importante, recuperación posible |
+| 2 | Bajo | Daño menor, recuperación sencilla |
+| 1 | Muy Bajo | Daño insignificante |
+
+**Probabilidad (1-5):**
+| Valor | Frecuencia | Descripción |
+|-------|------------|-------------|
+| 5 | Muy frecuente | Diariamente o casi |
+| 4 | Frecuente | Semanalmente |
+| 3 | Normal | Mensualmente |
+| 2 | Poco frecuente | Anualmente |
+| 1 | Muy raro | Cada varios años |
+
+**Niveles de Riesgo:**
+| Nivel | Rango | Tratamiento |
+|-------|-------|-------------|
+| CRÍTICO | ≥20 | Acción inmediata |
+| ALTO | 15-19 | Plan prioritario (<30 días) |
+| MEDIO | 10-14 | Seguimiento y controles |
+| BAJO | 5-9 | Controles básicos |
+| MUY BAJO | <5 | Monitoreo rutinario |
+
+---
+
+## 14. Estructura de Archivos
 
 ```
-capston_riesgos/
-├── app_final.py              # Aplicación principal Streamlit (9 tabs)
-├── init_sqlite.py            # Script de inicialización de BD
-├── seed_catalogos_magerit.py # Seed de 52 amenazas + 93 controles
-├── tita_database.db          # Base de datos SQLite (NO EDITAR MANUALMENTE)
-├── CONTEXTO_PROYECTO_TITA.md # Este documento
+c:\capston_riesgos\
+├── app_final.py              # 🎯 Aplicación principal (2173 líneas)
+├── tita_database.db          # Base de datos SQLite
 ├── requirements.txt          # Dependencias Python
+├── CONTEXTO_PROYECTO_TITA.md # Este archivo
 │
-├── services/
-│   ├── __init__.py           # Exports de servicios
-│   ├── database_service.py   # CRUD SQLite (capa de persistencia)
-│   ├── evaluacion_service.py # Gestión de evaluaciones y re-evaluaciones
-│   ├── activo_service.py     # Gestión de activos
-│   ├── cuestionario_service.py # Cuestionarios y respuestas
-│   ├── ollama_service.py     # Integración con IA (legacy)
-│   ├── ollama_magerit_service.py # IA con validación MAGERIT
-│   ├── magerit_engine.py     # Motor de cálculo MAGERIT v3
-│   ├── maturity_service.py   # Cálculo de nivel de madurez CMMI
-│   ├── carga_masiva_service.py # Carga masiva JSON/Excel con campos concentración
-│   ├── concentration_risk_service.py # ✨ NUEVO: Riesgo por concentración Host-VM
-│   ├── ia_validation_service.py  # Validación IA local
-│   └── knowledge_base_service.py # Knowledge Base MAGERIT
+├── services/                 # Capa de servicios
+│   ├── __init__.py
+│   ├── database_service.py   # Acceso a SQLite
+│   ├── magerit_engine.py     # Motor de evaluación MAGERIT
+│   ├── ollama_magerit_service.py  # Integración Ollama
+│   ├── ia_advanced_service.py     # IA Avanzada (5 funciones)
+│   ├── maturity_service.py   # Cálculo de madurez
+│   ├── cuestionario_service.py
+│   ├── activo_service.py
+│   ├── evaluacion_service.py
+│   ├── excel_service.py
+│   ├── export_service.py
+│   ├── ia_validation_service.py
+│   ├── carga_masiva_service.py
+│   └── knowledge_base_service.py
 │
-├── components/
-│   ├── __init__.py           # Exports de componentes
-│   ├── dashboard_magerit.py  # Dashboards visuales
-│   ├── ia_validation_ui.py   # UI validación IA
-│   ├── carga_masiva_ui.py    # UI carga masiva de activos
-│   └── concentration_risk_ui.py # ✨ NUEVO: UI riesgo por concentración
+├── components/               # Componentes UI
+│   ├── __init__.py
+│   ├── dashboard_magerit.py  # Visualizaciones dashboard
+│   ├── ia_advanced_ui.py     # UI de IA Avanzada
+│   ├── ia_validation_ui.py
+│   ├── carga_masiva_ui.py
+│   └── concentration_risk_ui.py
 │
-├── knowledge_base/           # Archivos de conocimiento
-│   ├── MAGERIT_CRITERIOS.md  # Documentación metodología MAGERIT
-│   ├── amenazas_magerit.json # Catálogo 52 amenazas en JSON
-│   ├── controles_iso27002.json # Catálogo 93 controles en JSON
-│   └── system_prompt.md      # System prompt para IA
+├── config/                   # Configuración
+│   ├── settings.py           # Variables globales
+│   └── auth_config.py
 │
-├── docs/
-│   └── ADR_RIESGO_CONCENTRACION.md # ✨ Arquitectura Decision Record
+├── utils/                    # Utilidades
+│   └── auth_helpers.py
 │
-├── config/
-│   └── settings.py           # Configuraciones, constantes
+├── docs/                     # Documentación adicional
+│   └── FLUJO_IA_ARQUITECTURA.md
 │
-└── .venv/                    # Entorno virtual Python
+└── knowledge_base/           # Base de conocimiento
 ```
 
 ---
 
-## 11.1 Sistema de Validación de IA Local (NUEVO)
+## 15. API de Servicios
 
-### Propósito
-Sistema completo para validar que la IA funciona 100% local con Ollama, sin conexiones a Internet, con evidencia técnica auditable para defensa académica.
+### 15.1 database_service.py
 
-### Componentes
+```python
+# Lectura
+read_table(table_name: str) -> pd.DataFrame
+query_rows(table_name: str, conditions: Dict) -> pd.DataFrame
 
-| Archivo | Propósito |
-|---------|-----------|
-| `ia_validation_service.py` | Servicio de validación completa |
-| `knowledge_base_service.py` | Gestión de Knowledge Base |
-| `ia_validation_ui.py` | Interfaz Streamlit para validación |
+# Escritura
+insert_row(table_name: str, data: Dict)
+insert_rows(table_name: str, rows: List[Dict])
+update_row(table_name: str, updates: Dict, conditions: Dict)
+delete_row(table_name: str, conditions: Dict)
 
-### Validaciones Realizadas
-
-1. **Verificación Local**: Confirma que Ollama corre en localhost:11434
-2. **Canary Token**: Inyecta nonce único que IA debe devolver (anti-falsificación)
-3. **Variabilidad**: Prueba respuestas con diferentes temperaturas
-4. **Dependencia de Input**: Verifica respuestas diferentes para inputs opuestos
-5. **Catálogos**: Confirma 52 amenazas + 93 controles cargados
-
-### Evidencia Técnica
-
-Cada ejecución de IA genera:
-- Hash SHA-256 del prompt
-- Hash SHA-256 de la respuesta
-- Timestamp preciso
-- Latencia en ms
-- Validación de códigos contra catálogos
-
-### Tablas de BD Creadas
-
-```sql
--- Evidencia de ejecuciones IA
-IA_EXECUTION_EVIDENCE (
-    id, id_evaluacion, id_activo, timestamp,
-    modelo, endpoint, prompt_hash, response_hash,
-    latency_ms, json_valid, canary_verified
-)
-
--- Log de validaciones
-IA_VALIDATION_LOG (
-    id, timestamp, validation_type, result,
-    details, evidence_hash
-)
-
--- Estado de IA
-IA_STATUS (
-    id, ia_ready, last_validation, canary_nonce
-)
+# Conexión
+get_connection() -> sqlite3.Connection  # Context manager
 ```
 
-### Bloqueo de Seguridad
+### 15.2 magerit_engine.py
 
-El botón "Evaluar Activo" está **bloqueado** hasta que:
-1. Se ejecute validación completa de IA
-2. Canary token pase exitosamente
-3. Catálogos estén cargados
+```python
+# Evaluación
+evaluar_activo_magerit(eval_id: str, activo_id: str) -> ResultadoEvaluacionMagerit
+
+# Persistencia
+guardar_resultado_magerit(resultado: ResultadoEvaluacionMagerit) -> bool
+get_resultado_magerit(eval_id: str, activo_id: str) -> Optional[Dict]
+get_resumen_evaluacion(eval_id: str) -> pd.DataFrame
+get_amenazas_activo(eval_id: str, activo_id: str) -> pd.DataFrame
+
+# Cálculos
+calcular_nivel_riesgo(valor: float) -> str
+calcular_riesgo_residual(ri: float, efectividad: float) -> float
+```
+
+### 15.3 ia_advanced_service.py
+
+```python
+# Generación
+generar_plan_tratamiento(eval_id: str, amenaza_codigo: str) -> Dict
+chatbot_magerit(eval_id: str, pregunta: str) -> str
+generar_resumen_ejecutivo(eval_id: str) -> Dict
+predecir_riesgo_futuro(eval_id: str) -> Dict
+priorizar_controles(eval_id: str) -> List[Dict]
+
+# Persistencia
+guardar_resultado_ia(eval_id: str, tipo: str, datos: dict, modelo: str)
+cargar_resultado_ia(eval_id: str, tipo: str) -> Optional[dict]
+eliminar_resultado_ia(eval_id: str, tipo: str)
+```
+
+### 15.4 maturity_service.py
+
+```python
+# Cálculo
+calcular_madurez_evaluacion(eval_id: str) -> Optional[ResultadoMadurez]
+get_madurez_evaluacion(eval_id: str) -> Optional[Dict]
+guardar_madurez(resultado: ResultadoMadurez) -> bool
+
+# Controles
+get_controles_existentes_detallados(eval_id: str) -> Dict
+analizar_controles_desde_respuestas(respuestas_df: pd.DataFrame) -> Dict
+```
 
 ---
 
-## 13. Guía de Desarrollo
+## 16. Guía de Desarrollo
 
-### 12.1 Instalación
+### 16.1 Ejecutar la Aplicación
 
 ```bash
-# Clonar/abrir proyecto
-cd capston_riesgos
+# Activar entorno virtual
+cd c:\capston_riesgos
+.venv\Scripts\activate
 
-# Crear entorno virtual
-python -m venv .venv
+# Ejecutar Streamlit
+streamlit run app_final.py --server.port 8510
 
-# Activar (Windows PowerShell)
-.\.venv\Scripts\Activate.ps1
+# Acceder en navegador
+http://localhost:8510
+```
 
-# Instalar dependencias
-pip install -r requirements.txt
+### 16.2 Requisitos Previos
 
-# Inicializar base de datos
-python init_sqlite.py
+1. **Ollama instalado y corriendo**:
+   ```bash
+   ollama serve
+   ollama pull llama3.2:1b
+   ```
 
-# Cargar catálogos MAGERIT + ISO 27002
+2. **Python 3.14** con virtualenv
+
+3. **Dependencias instaladas**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+### 16.3 Inicializar Base de Datos
+
+```python
+from services.database_service import init_database
+init_database()
+```
+
+### 16.4 Seedear Catálogos
+
+```bash
 python seed_catalogos_magerit.py
-
-# Ejecutar aplicación
-streamlit run app_final.py --server.port 8506
 ```
 
-### 12.2 Inicializar/Reiniciar Base de Datos
+---
 
-```bash
-# Elimina BD existente y crea una nueva con datos de prueba
-python init_sqlite.py
+## 17. Reglas de Negocio Críticas
 
-# Cargar catálogos oficiales (52 amenazas + 93 controles)
-python seed_catalogos_magerit.py
+### 17.1 Jerarquía de Datos
+
+```
+EVALUACIÓN (contenedor principal)
+    └── ACTIVOS (pertenecen a una evaluación)
+        └── CUESTIONARIOS (preguntas para cada activo)
+            └── RESPUESTAS (respuestas del usuario)
+                └── IMPACTO_DIC (calculado de respuestas)
+                    └── RESULTADOS_MAGERIT (evaluación IA)
 ```
 
-### 12.3 Exportar a Excel
+### 17.2 Estados de Activos
+
+| Estado | Descripción |
+|--------|-------------|
+| Pendiente | Sin cuestionario ni evaluación |
+| Cuestionario Completo | Cuestionario respondido, sin MAGERIT |
+| Evaluado | Evaluación MAGERIT completada |
+
+### 17.3 Fórmulas de Cálculo
 
 ```python
-from services import exportar_a_excel
-exportar_a_excel("reporte_completo.xlsx")
+# Riesgo Inherente
+riesgo_inherente = probabilidad × impacto
+
+# Efectividad de Controles (0.0 - 1.0)
+efectividad = controles_implementados / controles_necesarios
+
+# Riesgo Residual
+riesgo_residual = riesgo_inherente × (1 - efectividad)
+
+# Nivel de Madurez
+puntuacion = (
+    pct_controles_implementados × 0.30 +
+    pct_controles_medidos × 0.25 +
+    pct_riesgos_mitigados × 0.25 +
+    pct_activos_evaluados × 0.20
+)
 ```
 
-### 12.4 Verificar Ollama
+### 17.4 Validaciones
 
-```bash
-# Verificar que Ollama está corriendo
-curl http://localhost:11434/api/tags
-
-# Listar modelos disponibles
-ollama list
-
-# Descargar modelo recomendado
-ollama pull llama3
-```
+1. **Evaluación obligatoria**: No se puede hacer nada sin seleccionar evaluación
+2. **Cuestionario previo**: Se recomienda completar cuestionario antes de MAGERIT
+3. **Ollama requerido**: Sin Ollama, no funciona la evaluación IA
+4. **IDs únicos**: Evaluaciones, activos, respuestas tienen IDs únicos
 
 ---
 
-## 14. Reglas de Negocio Críticas
+## 18. Funcionalidad: Controles Implementados en Reevaluación
 
-### 13.1 Evaluación como Contenedor
+### 18.1 Ubicación
+Tab **🔄 Comparativas** - Sección "Controles Implementados (Justificación de Mejora)"
 
-> ⚠️ **REGLA FUNDAMENTAL**: Una evaluación es el contenedor obligatorio.
-> Los activos NO pueden existir sin una evaluación asociada.
+### 18.2 Funcionalidad
+Cuando se comparan dos evaluaciones (anterior vs actual), el sistema:
 
-### 13.2 Estados Automáticos
+1. **Extrae controles recomendados** de la evaluación anterior (Eval1)
+2. **Detecta controles implementados** en la evaluación actual (Eval2)
+3. **Muestra tabla comparativa** con estado de implementación
+4. **Calcula métricas** de cumplimiento (% implementados)
+5. **Genera justificación automática** de reducción de riesgo
 
-> ⚠️ **REGLA**: Los estados de activos se CALCULAN, no se setean manualmente.
-
+### 18.3 Lógica de Detección
 ```python
-def calcular_estado_activo(eval_id, activo_id):
-    if tiene_analisis_ia():
-        return "Evaluado"
-    elif cuestionario_completo():
-        return "Completo"
-    elif tiene_respuestas():
-        return "Incompleto"
-    else:
-        return "Pendiente"
+# Controles recomendados en Eval1
+for amenaza in amenazas_eval1:
+    controles_recomendados = amenaza["controles_recomendados"]
+    
+# Controles existentes en Eval2 (detectados por IA)
+for amenaza in amenazas_eval2:
+    controles_existentes = amenaza["controles_existentes"]
+
+# Si un control recomendado en Eval1 aparece como existente en Eval2 → IMPLEMENTADO
 ```
 
-### 13.3 Invalidación de Análisis IA
+### 18.4 Métricas Mostradas
+- **Total Controles Recomendados**: Cantidad de controles sugeridos en Eval1
+- **Implementados**: Controles que aparecen en Eval2
+- **% Cumplimiento**: Porcentaje de implementación
 
-> ⚠️ **REGLA**: Si se modifican respuestas después de evaluar con IA,
-> el análisis queda OBSOLETO y debe regenerarse.
-
-```python
-# Si usuario modifica respuestas de un activo "Evaluado":
-invalidar_analisis_ia(eval_id, activo_id)
-# Estado vuelve a "Completo"
-```
-
-### 13.4 Validación de Duplicados
-
-> ⚠️ **REGLA**: No pueden existir dos activos con:
-> - Mismo nombre
-> - Misma ubicación  
-> - Mismo tipo de servicio
-> Dentro de la misma evaluación.
-
-### 13.5 Cuestionarios Inmutables
-
-> ⚠️ **REGLA**: Una vez generado el cuestionario para un activo,
-> las preguntas no cambian (se preserva la versión del banco usada).
-
-### 13.6 Dimensiones DIC
-
-> ⚠️ **REGLA**: Cada pregunta afecta una dimensión específica:
-> - **D** = Disponibilidad
-> - **I** = Integridad
-> - **C** = Confidencialidad
-
-El impacto final se calcula agregando respuestas por dimensión.
+### 18.5 Justificación Automática
+Si hay controles implementados y el riesgo residual bajó:
+> "Se implementaron X de Y controles recomendados (Z%), 
+> lo cual contribuyó a reducir el riesgo residual promedio en N puntos."
 
 ---
 
-## Pendientes por Implementar
+## Changelog
 
-| # | Funcionalidad | Prioridad | Estado |
-|---|---------------|-----------|--------|
-| 1 | Catálogo completo de amenazas MAGERIT | Alta | ✅ Implementado (52 amenazas) |
-| 2 | 93 controles ISO 27002:2022 | Alta | ✅ Implementado |
-| 3 | Criterios MAGERIT correctos | Alta | ✅ Implementado |
-| 4 | Re-evaluaciones comparativas | Media | ✅ Implementado |
-| 5 | Cálculo de nivel de madurez | Alta | ✅ Implementado |
-| 6 | Comparativa de madurez entre evaluaciones | Media | ✅ Implementado |
-| 7 | Carga masiva de activos (JSON/Excel) | Alta | ✅ Implementado |
-| 8 | Exportación de reportes PDF | Baja | ❌ No iniciado |
-| 9 | Autenticación de usuarios | Baja | ❌ No iniciado |
+### v3.0 (25 Enero 2026)
+- ✅ Tab "🧮 Matriz MAGERIT" completo con vista técnica Activo-Amenaza
+- ✅ Colores diferenciados por activo en matriz
+- ✅ Columnas adicionales: Controles Existentes, Salvaguardas, Efectividad, Justificación
+- ✅ Información metodológica MAGERIT v3 expandida
+- ✅ Exportación Excel/CSV mejorada
+- ✅ Fix: render_detalle_activo con nombres de campos correctos
+- ✅ Fix: render_madurez_completo con soporte mayúsculas/minúsculas
+- ✅ Reorganización de tabs (Validación IA al final)
+- ✅ Eliminación de tab Concentración
+- ✅ **NUEVO**: Sección "Controles Implementados" en tab Comparativas
+- ✅ **NUEVO**: Justificación automática de reducción de riesgo en reevaluaciones
+
+### v2.5 (25 Enero 2026)
+- ✅ IA Avanzada con persistencia de resultados
+- ✅ Fix de Resumen Ejecutivo (valores concretos en lugar de templates)
+
+### v2.0 (Enero 2026)
+- ✅ Motor MAGERIT completo con IA
+- ✅ Dashboard de riesgos
+- ✅ Nivel de madurez CMMI
+
+### v1.0 (Diciembre 2025)
+- ✅ Estructura base
+- ✅ Gestión de evaluaciones y activos
+- ✅ Cuestionarios
 
 ---
 
-## Historial de Cambios
-
-| Fecha | Versión | Cambios |
-|-------|---------|---------|\n| 25 Enero 2026 | 2.5 | **NUEVO**: Módulo IA Avanzada completo (5 funcionalidades), persistencia de resultados IA en BD, exportación HTML/MD/JSON para ejecutivos, datasets para Power BI (8 tablas), chatbot mejorado (temperatura 0.3), botón "Regenerar" en lugar de regenerar siempre |
-| 25 Enero 2026 | 2.4 | **NUEVO**: Riesgo por concentración (Host-VM) con modelo Blast Radius + Herencia, tab dedicado con dashboard, integración en carga masiva (campos id_host, tipo_dependencia), botón eliminar evaluación con confirmación |
-| 25 Enero 2026 | 2.2 | **NUEVO**: Carga masiva de activos (JSON/Excel) con validación, plantillas descargables |
-| 24 Enero 2026 | 2.1 | Sistema de madurez CMMI, comparativas funcionales, fix re-evaluaciones |
-| Enero 2026 | 2.0 | Migración de Excel a SQLite, documentación completa |
-| Enero 2026 | 1.5 | Cuestionarios de 21 preguntas, 5 bloques |
-| Enero 2026 | 1.0 | Versión inicial con Excel |
-
----
-
-*Documento generado para facilitar el contexto a asistentes de IA y desarrolladores.*
-*Última actualización: 25 Enero 2026 - Versión 2.5*
+*Documento generado automáticamente - Proyecto TITA v3.0*

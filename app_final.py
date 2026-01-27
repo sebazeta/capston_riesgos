@@ -53,11 +53,19 @@ try:
         render_cobertura_controles, render_resumen_ejecutivo,
         render_detalle_activo, render_gauge_riesgo, COLORES_RIESGO,
         render_madurez_completo, render_comparativa_madurez,
-        render_controles_existentes
+        render_controles_existentes,
+        render_ranking_activos_criticos,
+        render_activos_urgente_tratamiento,
+        render_dashboard_amenazas,
+        render_dashboard_amenazas_mejorado,
+        render_dashboard_controles_salvaguardas,
+        render_dashboard_evaluacion_completo,
+        render_matriz_5x5_activos
     )
     DASHBOARD_DISPONIBLE = True
-except ImportError:
+except ImportError as e:
     DASHBOARD_DISPONIBLE = False
+    print(f"Warning: Dashboard not available: {e}")
 
 # Componentes de Validación IA
 try:
@@ -92,6 +100,7 @@ except ImportError as e:
 # Componentes de IA Avanzada
 try:
     from components.ia_advanced_ui import render_ia_avanzada_ui
+    from services.ia_advanced_service import obtener_amenazas_evaluacion
     IA_AVANZADA_DISPONIBLE = True
 except ImportError as e:
     IA_AVANZADA_DISPONIBLE = False
@@ -220,6 +229,49 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# CSS personalizado para cambiar el spinner de carga a rueda simple
+st.markdown("""
+<style>
+/* Ocultar el spinner de personas y mostrar rueda simple */
+[data-testid="stStatusWidget"] {
+    visibility: visible !important;
+}
+
+/* Reemplazar animación de personas por spinner circular */
+[data-testid="stStatusWidget"] > div > div > div > svg {
+    display: none !important;
+}
+
+[data-testid="stStatusWidget"]::after {
+    content: "";
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #ff4b4b;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 8px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Ocultar la animación de personas completamente */
+[data-testid="stStatusWidget"] img,
+[data-testid="stStatusWidget"] svg[data-testid="stLottie"] {
+    display: none !important;
+}
+
+/* Estilo del indicador de running más limpio */
+.stSpinner > div {
+    border-color: #ff4b4b transparent transparent transparent !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # Inicializar session_state
 if "eval_actual" not in st.session_state:
     st.session_state["eval_actual"] = None
@@ -270,17 +322,17 @@ with st.sidebar:
 
 # ==================== TABS ====================
 
-tab0, tab_ia, tab1, tab2, tab3, tab4, tab5, tab_conc, tab_ia_adv, tab6 = st.tabs([
-    "🏠 Evaluaciones",
-    "🛡️ Validación IA",
-    "📦 Activos",
-    "📝 Cuestionarios",
-    "🤖 Evaluación MAGERIT",
-    "📈 Dashboard Riesgos",
-    "🎯 Madurez",
-    "🔗 Concentración",
-    "🧠 IA Avanzada",
-    "🔄 Comparativas"
+tab0, tab1, tab2, tab3, tab4, tab5, tab_matriz, tab_ia_adv, tab6, tab_ia = st.tabs([
+    "Evaluaciones",
+    "Activos",
+    "Cuestionarios",
+    "Evaluacion con IA",
+    "Dashboard",
+    "Madurez",
+    "Matriz MAGERIT",
+    "IA Avanzada",
+    "Comparativas",
+    "Validacion IA"
 ])
 
 # ==================== TAB 0: EVALUACIONES (CAPA 1 - OBLIGATORIA) ====================
@@ -441,76 +493,6 @@ with tab0:
                 st.session_state["eval_nombre"] = nombre
                 st.balloons()
                 st.rerun()
-
-
-# ==================== TAB IA: VALIDACIÓN DE IA LOCAL ====================
-with tab_ia:
-    st.header("🛡️ Validación y Preparación de IA Local")
-    
-    try:
-        # Importar directamente las funciones necesarias
-        from services.ia_validation_service import obtener_estado_ia, verificar_ollama_local
-        from services.knowledge_base_service import obtener_resumen_catalogos
-        
-        st.markdown("""
-        Este módulo valida que la IA funciona **100% local** con Ollama y sin conexión a Internet.
-        """)
-        
-        # Dividir en columnas
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("🔍 Estado Actual")
-            ia_ready, last_validation, canary_nonce = obtener_estado_ia()
-            
-            if ia_ready:
-                st.success("✅ IA Validada y Lista")
-                st.info(f"Última validación: {last_validation}")
-            else:
-                st.warning("⚠️ IA No Validada - Ejecute validación")
-            
-            # Verificar Ollama
-            st.subheader("🖥️ Ollama Local")
-            is_local, endpoint, modelos, error = verificar_ollama_local()
-            
-            if is_local:
-                st.success(f"✅ Conectado: {endpoint}")
-                st.caption(f"Modelos: {', '.join(modelos[:5])}")
-            else:
-                st.error(f"❌ No conectado: {error}")
-        
-        with col2:
-            st.subheader("📚 Knowledge Base")
-            resumen = obtener_resumen_catalogos()
-            
-            st.metric("Amenazas MAGERIT", resumen["total_amenazas"])
-            st.metric("Controles ISO 27002", resumen["total_controles"])
-            
-            if resumen["total_amenazas"] >= 50 and resumen["total_controles"] >= 90:
-                st.success("✅ Catálogos cargados correctamente")
-            else:
-                st.warning("⚠️ Catálogos incompletos")
-        
-        st.divider()
-        
-        # Botón de validación
-        if VALIDACION_IA_DISPONIBLE:
-            from services.ia_validation_service import ejecutar_validacion_completa
-            if st.button("🔄 Ejecutar Validación Completa", type="primary", key="btn_validar_ia"):
-                with st.spinner("Ejecutando validación..."):
-                    resultado = ejecutar_validacion_completa()
-                    if resultado.ia_ready:
-                        st.success("✅ IA VALIDADA Y LISTA")
-                    else:
-                        st.error("❌ Validación fallida")
-                        for err in resultado.errors:
-                            st.write(f"- {err}")
-                    st.rerun()
-        
-    except Exception as e:
-        st.error(f"❌ Error: {e}")
-        import traceback
-        st.code(traceback.format_exc())
 
 
 # ==================== TAB 1: ACTIVOS (REQUIERE EVALUACIÓN) ====================
@@ -943,13 +925,27 @@ with tab2:
                                     
                                     # Mostrar radio buttons con las 4 opciones
                                     if len(opciones) >= 4:
-                                        # Determinar índice inicial
+                                        # Determinar índice inicial - POR DEFECTO EL MÁS CRÍTICO PARA PRUEBAS
                                         idx_inicial = 0
                                         if valor_inicial:
                                             try:
                                                 idx_inicial = opciones.index(valor_inicial)
                                             except ValueError:
                                                 idx_inicial = 0
+                                        else:
+                                            # Sin respuesta previa: seleccionar opción más crítica por defecto
+                                            # Preguntas de IMPACTO DIRECTO: opción 4 (índice 3) = más crítico
+                                            # Preguntas de CONTROL: opción 1 (índice 0) = sin control = más crítico
+                                            preguntas_impacto_directo = {
+                                                "PF-A-001", "PF-A-002", "PF-A-003", "PF-A-004", "PF-A-005",
+                                                "PV-A-001", "PV-A-002", "PV-A-003", "PV-A-004", "PV-A-005",
+                                                "PF-B-001", "PF-B-002", "PV-B-001", "PV-B-002",
+                                                "PF-E-001", "PV-E-001", "PF-E-002", "PV-E-002", "PF-E-003", "PV-E-003",
+                                            }
+                                            if id_pregunta in preguntas_impacto_directo:
+                                                idx_inicial = 3  # Opción 4 = más crítico
+                                            else:
+                                                idx_inicial = 0  # Opción 1 = sin control = más crítico
                                         
                                         # Radio buttons con formato visual (1-4 = niveles de madurez)
                                         opciones_formateadas = [f"{i+1}. {op}" for i, op in enumerate(opciones)]
@@ -1042,9 +1038,9 @@ with tab2:
                                 st.warning("⚠️ Ya existen respuestas guardadas para este activo. No se permiten duplicados.")
 
 
-# ==================== TAB 3: EVALUACIÓN MAGERIT COMPLETA ====================
+# ==================== TAB 3: EVALUACIÓN CON IA ====================
 with tab3:
-    st.header("🤖 Evaluación MAGERIT con IA")
+    st.header("🤖 Evaluación con IA")
     
     if not st.session_state.get("eval_actual"):
         st.error("🚫 **EVALUACIÓN REQUERIDA**")
@@ -1053,10 +1049,11 @@ with tab3:
         st.success(f"📋 Evaluación: **{st.session_state['eval_nombre']}**")
         
         st.markdown("""
-        **Este módulo ejecutará una Evaluación MAGERIT v3 usando IA:**
+        **Este módulo ejecutará una Evaluación de Riesgos usando IA:**
         - 🔄 Impacto DIC será calculado desde las respuestas del cuestionario
-        - 🔄 La IA identificará amenazas del catálogo oficial (52 amenazas MAGERIT)
+        - 🔄 La IA identificará amenazas del catálogo oficial (52 amenazas)
         - 🔄 Se recomendarán controles ISO 27002:2022 (93 controles oficiales)
+        - 🔄 Se sugerirán salvaguardas para reducir el riesgo
         - 🔄 Se calcularán Riesgo Inherente y Residual
         
         ⚠️ **Antes de evaluar:** Asegúrate de haber completado el cuestionario de cada activo.
@@ -1154,7 +1151,7 @@ with tab3:
                 if activos_listos and ollama_ok and ia_validada_para_evaluar:
                     st.markdown(f"### 🚀 Evaluar con IA ({len(activos_listos)} activos listos)")
                     
-                    if st.button("🤖 Evaluar Todos con MAGERIT", type="primary", use_container_width=True):
+                    if st.button("🤖 Evaluar Todos con IA", type="primary", use_container_width=True):
                         progress_bar = st.progress(0)
                         status_text = st.empty()
                         resultados_log = []
@@ -1363,24 +1360,27 @@ with tab3:
 
 # ==================== TAB 4: DASHBOARD RIESGOS MAGERIT ====================
 with tab4:
-    st.header("📈 Dashboard de Riesgos MAGERIT")
+    st.header("Dashboard de Evaluacion")
     
     if not st.session_state.get("eval_actual"):
-        st.error("🚫 **EVALUACIÓN REQUERIDA**")
-        st.warning("👉 Ve a la pestaña **🏠 Evaluaciones** y selecciona una evaluación primero.")
+        st.error("EVALUACION REQUERIDA")
+        st.warning("Ve a la pestana Evaluaciones y selecciona una evaluacion primero.")
     else:
-        st.success(f"📋 Evaluación: **{st.session_state['eval_nombre']}**")
+        st.success(f"Evaluacion: **{st.session_state['eval_nombre']}**")
         
         # Obtener resumen de evaluación MAGERIT
         resumen_magerit = get_resumen_evaluacion(st.session_state["eval_actual"])
         activos = get_activos_por_evaluacion(st.session_state["eval_actual"])
         
+        # Obtener datos de madurez
+        madurez_data = get_madurez_evaluacion(st.session_state["eval_actual"])
+        
         if resumen_magerit.empty:
-            st.info("ℹ️ No hay evaluaciones MAGERIT completadas. Ve al tab 🤖 Evaluación MAGERIT para evaluar activos.")
+            st.info("No hay evaluaciones completadas. Ve al tab Evaluacion con IA para evaluar activos.")
             
             # Mostrar estadísticas básicas de activos
             if not activos.empty:
-                st.markdown("### 📊 Estado de Activos")
+                st.markdown("### Estado de Activos")
                 col1, col2, col3 = st.columns(3)
                 col1.metric("Total Activos", len(activos))
                 col2.metric("Pendientes", len(activos[activos["Estado"] == "Pendiente"]))
@@ -1388,60 +1388,48 @@ with tab4:
         else:
             # Usar componentes de dashboard si están disponibles
             if DASHBOARD_DISPONIBLE:
-                # Resumen ejecutivo
-                render_resumen_ejecutivo(resumen_magerit)
+                # Crear tabs internos para organizar dashboards (sin Vista Clasica)
+                dash_tab1, dash_tab2, dash_tab3, dash_tab4 = st.tabs([
+                    "🎯 Activos Criticos",
+                    "⚠️ Tratamiento Urgente", 
+                    "🔥 Amenazas MAGERIT",
+                    "🛡️ Controles y Salvaguardas"
+                ])
                 
-                st.divider()
+                with dash_tab1:
+                    render_ranking_activos_criticos(resumen_magerit)
+                    st.divider()
+                    render_resumen_ejecutivo(resumen_magerit)
+                    st.divider()
+                    # Matriz 5x5 MAGERIT
+                    render_matriz_5x5_activos(resumen_magerit, key_suffix="activos_criticos")
                 
-                # Comparativo Inherente vs Residual
-                render_comparativo_riesgos(resumen_magerit)
+                with dash_tab2:
+                    render_activos_urgente_tratamiento(resumen_magerit)
                 
-                st.divider()
+                with dash_tab3:
+                    # Dashboard de amenazas MAGERIT con catalogo y matriz 5x5
+                    render_dashboard_amenazas_mejorado(resumen_magerit, st.session_state["eval_actual"])
                 
-                # Ranking de activos
-                col1, col2 = st.columns(2)
-                with col1:
-                    render_ranking_activos(resumen_magerit, por="inherente")
-                with col2:
-                    render_ranking_activos(resumen_magerit, por="residual")
-                
-                st.divider()
-                
-                # Mapa de calor y distribución de amenazas
-                amenazas_df = pd.DataFrame()
-                for _, row in resumen_magerit.iterrows():
-                    amenazas_activo = get_amenazas_activo(st.session_state["eval_actual"], row["id_activo"])
-                    if not amenazas_activo.empty:
-                        amenazas_df = pd.concat([amenazas_df, amenazas_activo])
-                
-                if not amenazas_df.empty:
-                    col1, col2 = st.columns([1, 1])
-                    with col1:
-                        render_mapa_calor_riesgos(amenazas_df)
-                    with col2:
-                        render_distribucion_amenazas(amenazas_df)
-                
-                st.divider()
-                
-                # Cobertura de controles
-                render_cobertura_controles(resumen_magerit)
+                with dash_tab4:
+                    render_dashboard_controles_salvaguardas(resumen_magerit, madurez_data)
             
             else:
                 # Dashboard básico sin componentes
-                st.markdown("### 📊 Resumen de Evaluación MAGERIT")
+                st.markdown("### Resumen de Evaluacion")
                 
                 col1, col2, col3, col4 = st.columns(4)
                 col1.metric("Activos Evaluados", len(resumen_magerit))
                 
                 if not resumen_magerit.empty:
-                    col2.metric("Riesgo Máximo", f"{resumen_magerit['riesgo_inherente_global'].max():.1f}")
-                    criticos = (resumen_magerit["nivel_riesgo_inherente"] == "CRÍTICO").sum()
+                    col2.metric("Riesgo Maximo", f"{resumen_magerit['riesgo_inherente_global'].max():.1f}")
+                    criticos = (resumen_magerit["nivel_riesgo_inherente"] == "CRITICO").sum()
                     altos = (resumen_magerit["nivel_riesgo_inherente"] == "ALTO").sum()
-                    col3.metric("Críticos + Altos", criticos + altos)
+                    col3.metric("Criticos + Altos", criticos + altos)
                     col4.metric("Riesgo Residual Prom.", f"{resumen_magerit['riesgo_residual_global'].mean():.1f}")
                 
                 # Tabla de resultados
-                st.markdown("### 📋 Tabla de Riesgos por Activo")
+                st.markdown("### Tabla de Riesgos por Activo")
                 st.dataframe(resumen_magerit[[
                     "nombre_activo", "tipo_activo", "impacto_global",
                     "riesgo_inherente_global", "nivel_riesgo_inherente",
@@ -1468,7 +1456,7 @@ with tab4:
             
             # Selector de detalle de activo
             st.divider()
-            st.markdown("### 🔍 Ver Detalle de Activo")
+            st.markdown("### Ver Detalle de Activo")
             
             activo_detalle = st.selectbox(
                 "Seleccionar activo",
@@ -1486,7 +1474,7 @@ with tab4:
                         st.json(resultado)
     
     # Botón de refresco
-    if st.button("🔄 Actualizar Dashboard", key="t4_refresh"):
+    if st.button("Actualizar Dashboard", key="t4_refresh"):
         st.rerun()
 
 
@@ -1578,20 +1566,398 @@ with tab5:
             st.info("No hay controles identificados. Complete los cuestionarios primero.")
 
 
-# ==================== TAB CONCENTRACIÓN: RIESGO POR DEPENDENCIAS ====================
-with tab_conc:
-    st.header("🔗 Riesgo por Concentración (Host-VM)")
+# ==================== TAB MATRIZ MAGERIT: VISTA CONSOLIDADA ====================
+with tab_matriz:
+    st.header("Matriz MAGERIT - Vista Tecnica")
     
-    if not CONCENTRACION_DISPONIBLE:
-        st.error("❌ El módulo de concentración no está disponible.")
-    elif not st.session_state.get("eval_actual"):
-        st.info("⚠️ Selecciona una evaluación en el tab 'Evaluaciones' para analizar concentración.")
+    if not st.session_state.get("eval_actual"):
+        st.error("EVALUACION REQUERIDA")
+        st.warning("Ve a la pestana Evaluaciones y selecciona una evaluacion primero.")
     else:
-        # Inicializar tablas si es necesario
-        init_concentration_tables()
+        st.success(f"Evaluacion: **{st.session_state['eval_nombre']}**")
         
-        # Renderizar el tab completo de concentración
-        render_concentracion_tab(st.session_state["eval_actual"])
+        # Obtener todos los resultados MAGERIT
+        resumen_magerit = get_resumen_evaluacion(st.session_state["eval_actual"])
+        
+        if resumen_magerit.empty:
+            st.info("No hay evaluaciones completadas. Ve al tab Evaluacion con IA para evaluar activos.")
+        else:
+            # ========== MATRIZ 5x5 VISUAL (NUEVO) ==========
+            if DASHBOARD_DISPONIBLE:
+                st.markdown("### Matriz 5x5 - Probabilidad x Impacto")
+                st.markdown("""
+                Esta matriz visual muestra la posicion de cada activo segun su nivel de riesgo.
+                Los colores siguen la escala oficial MAGERIT v3.
+                """)
+                render_matriz_5x5_activos(resumen_magerit, key_suffix="tab_matriz")
+                st.divider()
+            
+            st.markdown("""
+            **Matriz MAGERIT v3** - Cada fila representa una relacion **ACTIVO - AMENAZA** con todos los 
+            valores calculados por el sistema. Esta matriz sirve como evidencia tecnica y respaldo metodologico.
+            """)
+            
+            # ========== FUNCIÓN AUXILIAR PARA EXTRAER CONTROLES ==========
+            def extraer_controles_str(controles_list):
+                """Extrae códigos de controles de lista de dicts o strings"""
+                if not controles_list:
+                    return ""
+                resultado = []
+                for ctrl in controles_list[:3]:  # Max 3 controles
+                    if isinstance(ctrl, dict):
+                        # Es un diccionario: extraer código o nombre
+                        codigo = ctrl.get("codigo", ctrl.get("control", ctrl.get("nombre", "")))
+                        if codigo:
+                            resultado.append(str(codigo))
+                    elif isinstance(ctrl, str):
+                        resultado.append(ctrl)
+                return ", ".join(resultado)
+            
+            # ========== CONSTRUIR MATRIZ MAGERIT COMPLETA ==========
+            # Cada fila = relación ACTIVO-AMENAZA
+            
+            matriz_rows = []
+            for _, row in resumen_magerit.iterrows():
+                resultado = get_resultado_magerit(st.session_state["eval_actual"], row["id_activo"])
+                if resultado and resultado.get("amenazas"):
+                    for amenaza in resultado["amenazas"]:
+                        # Extraer controles existentes y recomendados
+                        ctrl_existentes = amenaza.get("controles_existentes", [])
+                        ctrl_recomendados = amenaza.get("controles_recomendados", [])
+                        
+                        # Construir fila con todas las columnas requeridas
+                        matriz_row = {
+                            "Evaluación": st.session_state['eval_nombre'],
+                            "ID Activo": row["id_activo"],
+                            "Activo": row.get("nombre_activo", resultado.get("nombre_activo", "")),
+                            "Tipo Activo": row.get("tipo_activo", "N/A"),
+                            "Código Amenaza": amenaza.get("codigo", ""),
+                            "Amenaza": amenaza.get("amenaza", ""),
+                            "Tipo Amenaza": amenaza.get("tipo_amenaza", ""),
+                            "Dimensión": amenaza.get("dimension", ""),
+                            "D": resultado.get("impacto_d", row.get("impacto_d", 0)),
+                            "I": resultado.get("impacto_i", row.get("impacto_i", 0)),
+                            "C": resultado.get("impacto_c", row.get("impacto_c", 0)),
+                            "Impacto": amenaza.get("impacto", 0),
+                            "Probabilidad": amenaza.get("probabilidad", 0),
+                            "Riesgo Inherente": amenaza.get("riesgo_inherente", 0),
+                            "Riesgo Residual": amenaza.get("riesgo_residual", 0),
+                            "Nivel Riesgo": amenaza.get("nivel_riesgo", ""),
+                            "Tratamiento": amenaza.get("tratamiento", ""),
+                            "Controles Existentes": extraer_controles_str(ctrl_existentes) if isinstance(ctrl_existentes, list) else str(ctrl_existentes),
+                            "Salvaguardas (Recomendadas)": extraer_controles_str(ctrl_recomendados),
+                            "Efectividad Controles": f"{amenaza.get('efectividad_controles', 0) * 100:.0f}%" if amenaza.get('efectividad_controles') else "0%",
+                            "Justificación": amenaza.get("justificacion", "")[:100] if amenaza.get("justificacion") else ""
+                        }
+                        matriz_rows.append(matriz_row)
+                elif resultado:
+                    # Activo sin amenazas identificadas
+                    matriz_row = {
+                        "Evaluación": st.session_state['eval_nombre'],
+                        "ID Activo": row["id_activo"],
+                        "Activo": row.get("nombre_activo", resultado.get("nombre_activo", "")),
+                        "Tipo Activo": row.get("tipo_activo", "N/A"),
+                        "Código Amenaza": "-",
+                        "Amenaza": "Sin amenazas identificadas",
+                        "Tipo Amenaza": "-",
+                        "Dimensión": "-",
+                        "D": resultado.get("impacto_d", 0),
+                        "I": resultado.get("impacto_i", 0),
+                        "C": resultado.get("impacto_c", 0),
+                        "Impacto": round((resultado.get("impacto_d", 0) + resultado.get("impacto_i", 0) + resultado.get("impacto_c", 0)) / 3, 1),
+                        "Probabilidad": 0,
+                        "Riesgo Inherente": resultado.get("riesgo_inherente", 0),
+                        "Riesgo Residual": resultado.get("riesgo_residual", 0),
+                        "Nivel Riesgo": resultado.get("nivel_riesgo", "N/A"),
+                        "Tratamiento": "-",
+                        "Controles Existentes": "",
+                        "Salvaguardas (Recomendadas)": "",
+                        "Efectividad Controles": "0%",
+                        "Justificación": ""
+                    }
+                    matriz_rows.append(matriz_row)
+            
+            if matriz_rows:
+                matriz_df = pd.DataFrame(matriz_rows)
+                
+                # ========== FILTROS ==========
+                st.markdown("### 🔍 Filtros")
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    # Filtrar por activo
+                    activos_unicos = ["Todos"] + matriz_df["Activo"].unique().tolist()
+                    filtro_activo = st.selectbox("Filtrar por Activo:", activos_unicos, key="magerit_filtro_activo")
+                
+                with col2:
+                    # Filtrar por nivel de riesgo
+                    niveles_riesgo = ["Todos", "CRÍTICO", "ALTO", "MEDIO", "BAJO", "MUY BAJO"]
+                    filtro_nivel = st.selectbox("Filtrar por Nivel de Riesgo:", niveles_riesgo, key="magerit_filtro_nivel")
+                
+                with col3:
+                    # Ordenar por
+                    ordenar_por = st.selectbox(
+                        "Ordenar por:", 
+                        ["Riesgo Inherente (Mayor)", "Riesgo Inherente (Menor)", "Riesgo Residual (Mayor)", "Riesgo Residual (Menor)", "Activo"],
+                        key="magerit_ordenar"
+                    )
+                
+                # Aplicar filtros
+                df_filtrado = matriz_df.copy()
+                
+                if filtro_activo != "Todos":
+                    df_filtrado = df_filtrado[df_filtrado["Activo"] == filtro_activo]
+                
+                if filtro_nivel != "Todos":
+                    df_filtrado = df_filtrado[df_filtrado["Nivel Riesgo"].str.upper() == filtro_nivel]
+                
+                # Ordenar
+                if ordenar_por == "Riesgo Inherente (Mayor)":
+                    df_filtrado = df_filtrado.sort_values("Riesgo Inherente", ascending=False)
+                elif ordenar_por == "Riesgo Inherente (Menor)":
+                    df_filtrado = df_filtrado.sort_values("Riesgo Inherente", ascending=True)
+                elif ordenar_por == "Riesgo Residual (Mayor)":
+                    df_filtrado = df_filtrado.sort_values("Riesgo Residual", ascending=False)
+                elif ordenar_por == "Riesgo Residual (Menor)":
+                    df_filtrado = df_filtrado.sort_values("Riesgo Residual", ascending=True)
+                elif ordenar_por == "Activo":
+                    df_filtrado = df_filtrado.sort_values("Activo")
+                
+                # ========== MÉTRICAS RESUMEN ==========
+                st.markdown("### 📊 Resumen de la Matriz")
+                col1, col2, col3, col4, col5 = st.columns(5)
+                
+                col1.metric("Total Registros", len(df_filtrado))
+                col2.metric("Activos Únicos", df_filtrado["ID Activo"].nunique())
+                col3.metric("Amenazas Únicas", len(df_filtrado[df_filtrado["Código Amenaza"] != "-"]))
+                
+                # Contar críticos y altos
+                criticos = (df_filtrado["Nivel Riesgo"].str.upper().isin(["CRÍTICO", "CRITICO"])).sum()
+                altos = (df_filtrado["Nivel Riesgo"].str.upper() == "ALTO").sum()
+                col4.metric("🔴 Críticos", criticos)
+                col5.metric("🟠 Altos", altos)
+                
+                st.divider()
+                
+                # ========== MATRIZ MAGERIT PRINCIPAL ==========
+                st.markdown("### 📋 Matriz MAGERIT v3 - Relación Activo-Amenaza")
+                
+                # Crear mapeo de colores por activo para diferenciarlos visualmente
+                activos_unicos_lista = df_filtrado["ID Activo"].unique().tolist()
+                colores_activos = {}
+                paleta_colores = [
+                    "#E3F2FD",  # Azul muy claro
+                    "#FFF3E0",  # Naranja muy claro
+                    "#E8F5E9",  # Verde muy claro
+                    "#F3E5F5",  # Púrpura muy claro
+                    "#FFFDE7",  # Amarillo muy claro
+                    "#E0F7FA",  # Cyan muy claro
+                    "#FCE4EC",  # Rosa muy claro
+                    "#EFEBE9",  # Marrón muy claro
+                    "#F5F5F5",  # Gris muy claro
+                    "#E8EAF6",  # Índigo muy claro
+                ]
+                for i, activo in enumerate(activos_unicos_lista):
+                    colores_activos[activo] = paleta_colores[i % len(paleta_colores)]
+                
+                # Función para colorear nivel de riesgo
+                def colorear_nivel_riesgo(val):
+                    if pd.isna(val):
+                        return ''
+                    val_str = str(val).upper()
+                    if val_str in ["CRÍTICO", "CRITICO"]:
+                        return 'background-color: #FF4444; color: white; font-weight: bold'
+                    elif val_str == "ALTO":
+                        return 'background-color: #FF8C00; color: white; font-weight: bold'
+                    elif val_str == "MEDIO":
+                        return 'background-color: #FFD700; color: black'
+                    elif val_str == "BAJO":
+                        return 'background-color: #90EE90; color: black'
+                    elif val_str == "MUY BAJO":
+                        return 'background-color: #32CD32; color: white'
+                    return ''
+                
+                # Función para colorear filas alternadas por activo
+                def colorear_por_activo(row):
+                    activo_id = row["ID Activo"]
+                    color_fondo = colores_activos.get(activo_id, "#FFFFFF")
+                    return [f'background-color: {color_fondo}' for _ in row]
+                
+                # Aplicar estilos: primero por activo, luego nivel de riesgo
+                styled_matriz = df_filtrado.style.apply(
+                    colorear_por_activo, axis=1
+                ).applymap(
+                    colorear_nivel_riesgo,
+                    subset=["Nivel Riesgo"]
+                )
+                
+                # Leyenda de colores por activo
+                st.markdown("**🎨 Leyenda de Activos:**")
+                num_cols = min(5, len(activos_unicos_lista))
+                if num_cols > 0:
+                    cols_leyenda = st.columns(num_cols)
+                    for i, activo in enumerate(activos_unicos_lista[:10]):  # Mostrar máx 10
+                        nombre_activo = df_filtrado[df_filtrado["ID Activo"] == activo]["Activo"].values[0]
+                        nombre_corto = nombre_activo[:25] + "..." if len(nombre_activo) > 25 else nombre_activo
+                        with cols_leyenda[i % num_cols]:
+                            st.markdown(
+                                f"<div style='background-color:{colores_activos[activo]}; padding:8px; border-radius:5px; margin:2px; font-size:11px; border-left: 4px solid #333;'>"
+                                f"<b>{activo}</b><br/>{nombre_corto}</div>",
+                                unsafe_allow_html=True
+                            )
+                
+                st.write("")  # Espaciado
+                
+                # Mostrar matriz completa
+                st.dataframe(
+                    styled_matriz, 
+                    use_container_width=True, 
+                    hide_index=True, 
+                    height=500
+                )
+                
+                st.divider()
+                
+                # ========== EXPORTAR ==========
+                st.markdown("### 📥 Exportar Matriz")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # Exportar a Excel
+                    if st.button("📊 Generar Excel Completo", key="magerit_exportar_excel"):
+                        import io
+                        
+                        buffer = io.BytesIO()
+                        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                            # Hoja principal - Matriz MAGERIT
+                            df_filtrado.to_excel(writer, sheet_name='Matriz_MAGERIT', index=False)
+                            
+                            # Hoja resumen por activo
+                            resumen_activos = df_filtrado.groupby(["ID Activo", "Activo"]).agg({
+                                "Riesgo Inherente": "max",
+                                "Riesgo Residual": "max",
+                                "D": "first",
+                                "I": "first",
+                                "C": "first"
+                            }).reset_index()
+                            resumen_activos.to_excel(writer, sheet_name='Resumen_Activos', index=False)
+                            
+                            # Hoja de amenazas agrupadas
+                            if len(df_filtrado[df_filtrado["Código Amenaza"] != "-"]) > 0:
+                                amenazas_group = df_filtrado[df_filtrado["Código Amenaza"] != "-"].groupby(
+                                    ["Código Amenaza", "Amenaza", "Tipo Amenaza"]
+                                ).size().reset_index(name="Frecuencia")
+                                amenazas_group = amenazas_group.sort_values("Frecuencia", ascending=False)
+                                amenazas_group.to_excel(writer, sheet_name='Amenazas_Frecuencia', index=False)
+                        
+                        st.download_button(
+                            "⬇️ Descargar Matriz MAGERIT (.xlsx)",
+                            data=buffer.getvalue(),
+                            file_name=f"Matriz_MAGERIT_{st.session_state['eval_actual']}_{pd.Timestamp.now().strftime('%Y%m%d')}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            key="download_magerit_excel"
+                        )
+                
+                with col2:
+                    # Exportar a CSV
+                    csv_data = df_filtrado.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        "📄 Descargar CSV",
+                        data=csv_data,
+                        file_name=f"Matriz_MAGERIT_{st.session_state['eval_actual']}.csv",
+                        mime="text/csv",
+                        key="download_magerit_csv"
+                    )
+                
+                # ========== INFORMACIÓN METODOLÓGICA MAGERIT ==========
+                with st.expander("ℹ️ Información Metodológica MAGERIT v3"):
+                    st.markdown("""
+                    **Esta matriz sigue la metodología MAGERIT v3 del CCN-CERT (Ministerio de Hacienda, España)**
+                    
+                    ---
+                    
+                    ### 📋 Columnas de la Matriz
+                    
+                    | Columna | Descripción |
+                    |---------|-------------|
+                    | **D, I, C** | Impacto en Disponibilidad, Integridad y Confidencialidad (escala 1-5) |
+                    | **Impacto** | Valor de impacto de la amenaza sobre el activo |
+                    | **Probabilidad** | Frecuencia estimada de materialización (1-5) |
+                    | **Riesgo Inherente** | Probabilidad × Impacto (sin considerar controles) |
+                    | **Riesgo Residual** | Riesgo después de aplicar salvaguardas existentes |
+                    | **Nivel Riesgo** | Clasificación: CRÍTICO, ALTO, MEDIO, BAJO, MUY BAJO |
+                    | **Controles Existentes** | Salvaguardas ISO 27002 ya implementadas |
+                    | **Salvaguardas** | Controles recomendados para mitigar el riesgo |
+                    | **Efectividad** | Porcentaje de efectividad de controles actuales |
+                    
+                    ---
+                    
+                    ### 🎯 Criterios de Valoración MAGERIT
+                    
+                    **Escala de Impacto (D, I, C):**
+                    | Valor | Nivel | Descripción |
+                    |-------|-------|-------------|
+                    | 5 | Muy Alto | Daño muy grave, pérdida irreparable |
+                    | 4 | Alto | Daño grave, recuperación costosa |
+                    | 3 | Medio | Daño importante, recuperación posible |
+                    | 2 | Bajo | Daño menor, recuperación sencilla |
+                    | 1 | Muy Bajo | Daño insignificante |
+                    
+                    **Escala de Probabilidad:**
+                    | Valor | Frecuencia | Descripción |
+                    |-------|------------|-------------|
+                    | 5 | Muy frecuente | Diariamente o casi |
+                    | 4 | Frecuente | Semanalmente |
+                    | 3 | Normal | Mensualmente |
+                    | 2 | Poco frecuente | Anualmente |
+                    | 1 | Muy raro | Cada varios años |
+                    
+                    ---
+                    
+                    ### ⚠️ Clasificación de Amenazas MAGERIT
+                    
+                    | Código | Tipo | Descripción |
+                    |--------|------|-------------|
+                    | **[N]** | Naturales | Desastres naturales (fuego, inundación, terremotos) |
+                    | **[I]** | Industriales | Fallos de origen industrial (eléctricos, climatización) |
+                    | **[E]** | Errores | Errores humanos no intencionales |
+                    | **[A]** | Ataques | Acciones deliberadas (malware, intrusión, robo) |
+                    
+                    ---
+                    
+                    ### 🛡️ Salvaguardas (Controles ISO 27002:2022)
+                    
+                    | Dominio | Código | Descripción |
+                    |---------|--------|-------------|
+                    | Organizacional | 5.x | Políticas, roles, gestión de activos |
+                    | Personas | 6.x | Concienciación, formación, disciplina |
+                    | Físico | 7.x | Perímetro, áreas seguras, equipos |
+                    | Tecnológico | 8.x | Endpoint, red, cifrado, desarrollo |
+                    
+                    ---
+                    
+                    ### 📊 Niveles de Riesgo y Tratamiento
+                    
+                    | Nivel | Rango | Color | Tratamiento Sugerido |
+                    |-------|-------|-------|---------------------|
+                    | 🔴 **CRÍTICO** | ≥20 | Rojo | Acción inmediata, escalamiento a dirección |
+                    | 🟠 **ALTO** | 15-19 | Naranja | Plan de tratamiento prioritario (<30 días) |
+                    | 🟡 **MEDIO** | 10-14 | Amarillo | Seguimiento y controles adicionales |
+                    | 🟢 **BAJO** | 5-9 | Verde claro | Aceptable con controles básicos |
+                    | 🟢 **MUY BAJO** | <5 | Verde | Riesgo aceptable, monitoreo rutinario |
+                    
+                    ---
+                    
+                    ### 📖 Opciones de Tratamiento del Riesgo
+                    
+                    - **Mitigar**: Implementar salvaguardas para reducir probabilidad o impacto
+                    - **Transferir**: Trasladar el riesgo a terceros (seguros, outsourcing)
+                    - **Aceptar**: Asumir el riesgo conscientemente (documentado)
+                    - **Evitar**: Eliminar la actividad que genera el riesgo
+                    """)
+            else:
+                st.warning("No se pudieron generar datos para la matriz. Verifique que los activos tengan evaluación MAGERIT completada.")
 
 
 # ==================== TAB IA AVANZADA: FUNCIONALIDADES INTELIGENTES ====================
@@ -1756,6 +2122,119 @@ with tab6:
                     st.dataframe(df_evolucion, use_container_width=True, hide_index=True)
                 else:
                     st.info("No hay activos en común entre las evaluaciones")
+                
+                # ====== SECCIÓN: CONTROLES IMPLEMENTADOS EN REEVALUACIÓN ======
+                st.divider()
+                st.markdown("#### 🛡️ Controles Implementados (Justificación de Mejora)")
+                
+                st.info("""
+                📋 **Esta sección muestra los controles que fueron RECOMENDADOS en la evaluación anterior**
+                y permite identificar cuáles se implementaron para justificar la reducción del riesgo.
+                """)
+                
+                # Obtener amenazas con controles recomendados de Eval1
+                if IA_AVANZADA_DISPONIBLE:
+                    try:
+                        amenazas_eval1 = obtener_amenazas_evaluacion(eval_1)
+                        amenazas_eval2 = obtener_amenazas_evaluacion(eval_2)
+                        
+                        if not amenazas_eval1.empty:
+                            # Extraer controles recomendados únicos de Eval1
+                            controles_recomendados_eval1 = []
+                            for _, row in amenazas_eval1.iterrows():
+                                ctrls = row.get("controles_recomendados", [])
+                                if isinstance(ctrls, str):
+                                    try:
+                                        ctrls = json.loads(ctrls)
+                                    except:
+                                        ctrls = []
+                                for ctrl in ctrls:
+                                    if isinstance(ctrl, dict):
+                                        ctrl_info = {
+                                            "codigo": ctrl.get("codigo", ""),
+                                            "nombre": ctrl.get("nombre", ""),
+                                            "prioridad": ctrl.get("prioridad", "MEDIA"),
+                                            "amenaza": row.get("amenaza", ""),
+                                            "activo": row.get("nombre_activo", "")
+                                        }
+                                        # Evitar duplicados
+                                        if ctrl_info["codigo"] and ctrl_info not in controles_recomendados_eval1:
+                                            controles_recomendados_eval1.append(ctrl_info)
+                            
+                            if controles_recomendados_eval1:
+                                st.markdown(f"**📌 Controles recomendados en {eval_1} (evaluación anterior):**")
+                                
+                                # Extraer controles existentes de Eval2 (los que SÍ se implementaron)
+                                controles_existentes_eval2 = set()
+                                for _, row in amenazas_eval2.iterrows():
+                                    ctrls_exist = row.get("controles_existentes", [])
+                                    if isinstance(ctrls_exist, str):
+                                        ctrls_exist = [c.strip() for c in ctrls_exist.split(",") if c.strip()]
+                                    elif isinstance(ctrls_exist, list):
+                                        pass
+                                    for c in ctrls_exist:
+                                        if isinstance(c, str):
+                                            controles_existentes_eval2.add(c)
+                                        elif isinstance(c, dict):
+                                            controles_existentes_eval2.add(c.get("codigo", ""))
+                                
+                                # Mostrar tabla de controles con estado de implementación
+                                tabla_controles = []
+                                for ctrl in controles_recomendados_eval1:
+                                    implementado = ctrl["codigo"] in controles_existentes_eval2
+                                    tabla_controles.append({
+                                        "Código": ctrl["codigo"],
+                                        "Control": ctrl["nombre"],
+                                        "Prioridad": ctrl["prioridad"],
+                                        "Amenaza": ctrl["amenaza"],
+                                        "Activo": ctrl["activo"],
+                                        "Estado": "✅ IMPLEMENTADO" if implementado else "⏳ Pendiente"
+                                    })
+                                
+                                df_controles = pd.DataFrame(tabla_controles)
+                                
+                                # Resumen
+                                total_recomendados = len(tabla_controles)
+                                implementados = len([c for c in tabla_controles if "IMPLEMENTADO" in c["Estado"]])
+                                pct_implementados = (implementados / total_recomendados * 100) if total_recomendados > 0 else 0
+                                
+                                col1, col2, col3 = st.columns(3)
+                                col1.metric("Controles Recomendados", total_recomendados)
+                                col2.metric("Implementados", implementados)
+                                col3.metric("% Cumplimiento", f"{pct_implementados:.0f}%")
+                                
+                                # Mostrar dataframe con colores
+                                st.dataframe(
+                                    df_controles.style.apply(
+                                        lambda row: [
+                                            'background-color: #c8e6c9' if 'IMPLEMENTADO' in str(row['Estado']) else 'background-color: #fff9c4'
+                                            for _ in row
+                                        ], axis=1
+                                    ),
+                                    use_container_width=True,
+                                    hide_index=True
+                                )
+                                
+                                # Justificación de la reducción de riesgo
+                                if implementados > 0 and delta_res < 0:
+                                    st.success(f"""
+                                    ✅ **Justificación de mejora:**  
+                                    Se implementaron **{implementados}** de {total_recomendados} controles recomendados ({pct_implementados:.0f}%),  
+                                    lo cual contribuyó a reducir el riesgo residual promedio en **{abs(delta_res):.1f}** puntos.
+                                    """)
+                                elif implementados == 0:
+                                    st.warning("""
+                                    ⚠️ **Nota:** No se detectaron controles implementados de los recomendados.  
+                                    La reducción de riesgo puede deberse a otros factores o ajustes en la valoración.
+                                    """)
+                            else:
+                                st.info(f"No se encontraron controles recomendados en {eval_1}")
+                        else:
+                            st.info(f"No hay datos de amenazas para {eval_1}")
+                    except Exception as e:
+                        st.warning(f"No se pudo cargar información de controles: {e}")
+                else:
+                    st.info("Módulo IA Avanzada no disponible para análisis de controles")
             
             else:
                 st.info("Una o ambas evaluaciones no tienen resultados MAGERIT")
@@ -1800,6 +2279,76 @@ with tab6:
                             st.write(f"• {rec}")
             else:
                 st.info("No hay datos de madurez para comparar. Calcule la madurez en el tab 🎯 Madurez primero.")
+
+
+# ==================== TAB IA: VALIDACIÓN DE IA LOCAL (AL FINAL) ====================
+with tab_ia:
+    st.header("🛡️ Validación y Preparación de IA Local")
+    
+    try:
+        # Importar directamente las funciones necesarias
+        from services.ia_validation_service import obtener_estado_ia, verificar_ollama_local
+        from services.knowledge_base_service import obtener_resumen_catalogos
+        
+        st.markdown("""
+        Este módulo valida que la IA funciona **100% local** con Ollama y sin conexión a Internet.
+        """)
+        
+        # Dividir en columnas
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("🔍 Estado Actual")
+            ia_ready, last_validation, canary_nonce = obtener_estado_ia()
+            
+            if ia_ready:
+                st.success("✅ IA Validada y Lista")
+                st.info(f"Última validación: {last_validation}")
+            else:
+                st.warning("⚠️ IA No Validada - Ejecute validación")
+            
+            # Verificar Ollama
+            st.subheader("🖥️ Ollama Local")
+            is_local, endpoint, modelos, error = verificar_ollama_local()
+            
+            if is_local:
+                st.success(f"✅ Conectado: {endpoint}")
+                st.caption(f"Modelos: {', '.join(modelos[:5])}")
+            else:
+                st.error(f"❌ No conectado: {error}")
+        
+        with col2:
+            st.subheader("📚 Knowledge Base")
+            resumen = obtener_resumen_catalogos()
+            
+            st.metric("Amenazas MAGERIT", resumen["total_amenazas"])
+            st.metric("Controles ISO 27002", resumen["total_controles"])
+            
+            if resumen["total_amenazas"] >= 50 and resumen["total_controles"] >= 90:
+                st.success("✅ Catálogos cargados correctamente")
+            else:
+                st.warning("⚠️ Catálogos incompletos")
+        
+        st.divider()
+        
+        # Botón de validación
+        if VALIDACION_IA_DISPONIBLE:
+            from services.ia_validation_service import ejecutar_validacion_completa
+            if st.button("🔄 Ejecutar Validación Completa", type="primary", key="btn_validar_ia"):
+                with st.spinner("Ejecutando validación..."):
+                    resultado = ejecutar_validacion_completa()
+                    if resultado.ia_ready:
+                        st.success("✅ IA VALIDADA Y LISTA")
+                    else:
+                        st.error("❌ Validación fallida")
+                        for err in resultado.errors:
+                            st.write(f"- {err}")
+                    st.rerun()
+        
+    except Exception as e:
+        st.error(f"❌ Error: {e}")
+        import traceback
+        st.code(traceback.format_exc())
 
 
 # Footer

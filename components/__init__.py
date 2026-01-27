@@ -16,6 +16,13 @@ from .dashboard_magerit import (
     render_madurez_completo,
     render_comparativa_madurez,
     render_controles_existentes,
+    render_ranking_activos_criticos,
+    render_activos_urgente_tratamiento,
+    render_dashboard_amenazas,
+    render_dashboard_amenazas_mejorado,
+    render_dashboard_controles_salvaguardas,
+    render_dashboard_evaluacion_completo,
+    render_matriz_5x5_activos,
     COLORES_RIESGO,
     COLORES_MADUREZ,
     NOMBRES_MADUREZ

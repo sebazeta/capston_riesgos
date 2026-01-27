@@ -165,18 +165,69 @@ def get_tratamiento_sugerido(nivel: str, efectividad_controles: float) -> str:
 
 # ==================== CÁLCULO DE IMPACTO DIC ====================
 
+# Preguntas que miden IMPACTO DIRECTO (valor alto = impacto alto)
+# Estas son preguntas donde la opción más alta indica MAYOR IMPACTO
+PREGUNTAS_IMPACTO_DIRECTO = {
+    # Bloque A - Criticidad e Impacto (Crítico = 4 = impacto alto)
+    # Físicos (PF-*)
+    "PF-A01", "PF-A02", "PF-A03", "PF-A04", "PF-A05",
+    # Virtuales (PV-*)
+    "PV-A01", "PV-A02", "PV-A03", "PV-A04",
+    # NOTA: PV-A05 (cluster) es CONTROL - valor alto = menor riesgo
+}
+
+# Preguntas que miden CONTROLES (valor bajo = sin control = impacto alto)
+# Se INVIERTE la escala: 1 (sin control) → 4 (impacto alto), 4 (buen control) → 1 (impacto bajo)
+PREGUNTAS_CONTROL_INVERTIDO = {
+    # Bloque A - PV-A05 es control (cluster = protección)
+    "PV-A05",
+    # Bloque B - Continuidad y recuperación
+    "PF-B01", "PF-B02", "PF-B03", "PF-B04",
+    "PV-B01", "PV-B02", "PV-B03", "PV-B04",
+    # Bloque C - Controles operativos
+    "PF-C01", "PF-C02", "PF-C03", "PF-C04", "PF-C05",
+    "PV-C01", "PV-C02", "PV-C03", "PV-C04", "PV-C05",
+    # Bloque D - Ciberseguridad
+    "PF-D01", "PF-D02", "PF-D03", "PF-D04",
+    "PV-D01", "PV-D02", "PV-D03", "PV-D04",
+    # Bloque E - Exposición (valor alto = menos exposición = menor riesgo)
+    "PF-E01", "PF-E02", "PF-E03",
+    "PV-E01", "PV-E02", "PV-E03",
+}
+
+# ==================== ESCALA INTERNA MAGERIT v3 (CALIBRADA) ====================
+# Conversión de escala lineal (1-4) a escala MAGERIT calibrada
+# CALIBRACIÓN v6: Escala con mejor distribución para 5 niveles
+ESCALA_MAGERIT = {
+    1: 1,  # Opción 1 → Impacto 1 (Muy Bajo)
+    2: 2,  # Opción 2 → Impacto 2 (Bajo)
+    3: 3,  # Opción 3 → Impacto 3 (Medio)
+    4: 5,  # Opción 4 → Impacto 5 (Crítico)
+}
+
+def aplicar_escala_magerit(valor_original: int) -> int:
+    """
+    Convierte valor de escala lineal (1-4) a escala MAGERIT calibrada.
+    CALIBRACIÓN: Escala más gradual (1,2,3,5) en lugar de (1,2,4,5)
+    """
+    return ESCALA_MAGERIT.get(valor_original, valor_original)
+
+
 def calcular_impacto_desde_respuestas(respuestas: pd.DataFrame) -> ImpactoDIC:
     """
     Calcula el impacto DIC a partir de las respuestas del cuestionario.
     
+    MAGERIT v3 - CALIBRADO para distribución equilibrada:
+    1. Escala calibrada: 1→1, 2→2, 3→3, 4→5
+    2. Fórmula HÍBRIDA: (MAX × 0.6) + (Promedio × 0.4)
+    3. SOLO preguntas del BLOQUE A afectan el impacto
+    4. Bloques B, C, D, E son controles y afectan solo PROBABILIDAD
+    
     Las respuestas tienen:
     - Dimension: D, I o C
-    - Valor_Numerico: 1-4 (convertimos a 1-5)
+    - Valor_Numerico: 1-4
     - Peso: 1-5
-    
-    Algoritmo:
-    - Para cada dimensión, calculamos promedio ponderado
-    - Escalamos de 1-4 a 1-5
+    - ID_Pregunta: para identificar tipo de pregunta
     """
     if respuestas.empty:
         return ImpactoDIC(3, 3, 3, "Sin respuestas", "Sin respuestas", "Sin respuestas")
@@ -191,7 +242,6 @@ def calcular_impacto_desde_respuestas(respuestas: pd.DataFrame) -> ImpactoDIC:
         if isinstance(val, (int, float)):
             return int(val)
         if isinstance(val, bytes):
-            # Manejar bytes corruptos
             return default
         try:
             return int(val)
@@ -200,31 +250,77 @@ def calcular_impacto_desde_respuestas(respuestas: pd.DataFrame) -> ImpactoDIC:
     
     for _, resp in respuestas.iterrows():
         dim = str(resp.get("Dimension", "")).upper()
-        if dim in impactos:
-            valor = safe_int(resp.get("Valor_Numerico", 2), 2)
-            peso = safe_int(resp.get("Peso", 3), 3)
-            impactos[dim].append(valor)
-            pesos[dim].append(peso)
+        if dim not in impactos:
+            continue
+            
+        id_pregunta = str(resp.get("ID_Pregunta", "")).upper()
+        valor_original = safe_int(resp.get("Valor_Numerico", 2), 2)
+        peso = safe_int(resp.get("Peso", 3), 3)
+        
+        # SOLO las preguntas del BLOQUE A (impacto directo) afectan el impacto
+        # EXCEPCIÓN: PV-A05 (cluster) es un CONTROL, no afecta impacto
+        # Las preguntas de los bloques B, C, D, E son CONTROLES y afectan PROBABILIDAD, no impacto
+        es_bloque_a = any(x in id_pregunta for x in ["-A0", "-A-0"])
+        es_control_a05 = "A05" in id_pregunta and "PV" in id_pregunta  # PV-A05 es control
+        
+        if not es_bloque_a or es_control_a05:
+            # Ignorar bloques B, C, D, E y PV-A05 para el cálculo de impacto
+            continue
+        
+        # Para Bloque A: valor alto = impacto alto
+        valor_base = valor_original
+        
+        # Aplicar escala MAGERIT calibrada (1,2,3,5)
+        valor_magerit = aplicar_escala_magerit(valor_base)
+        
+        impactos[dim].append(valor_magerit)
+        pesos[dim].append(peso)
     
-    def calcular_promedio_ponderado(valores: List, pesos_list: List) -> Tuple[int, str]:
+    def calcular_impacto_dimension(valores: List, pesos_list: List) -> Tuple[int, str]:
+        """
+        Calcula impacto por dimensión usando FÓRMULA HÍBRIDA.
+        CALIBRACIÓN: (MAX × 0.6) + (Promedio ponderado × 0.4)
+        Esto evita que un solo valor extremo eleve todo a CRÍTICO.
+        """
         if not valores:
             return 3, "Sin datos suficientes"
         
-        total_peso = sum(pesos_list)
-        if total_peso == 0:
-            return 3, "Sin pesos válidos"
+        # Calcular MAX
+        max_valor = max(valores)
         
-        promedio = sum(v * p for v, p in zip(valores, pesos_list)) / total_peso
-        # Escalar de 1-4 a 1-5
-        escalado = round((promedio - 1) * (4/3) + 1)
-        escalado = max(1, min(5, escalado))
+        # Calcular promedio ponderado
+        total_peso = sum(pesos_list) if pesos_list else 1
+        if total_peso > 0:
+            promedio_ponderado = sum(v * p for v, p in zip(valores, pesos_list)) / total_peso
+        else:
+            promedio_ponderado = sum(valores) / len(valores)
         
-        justificacion = f"Promedio ponderado: {promedio:.2f}, {len(valores)} respuestas"
-        return escalado, justificacion
+        # FÓRMULA HÍBRIDA CALIBRADA
+        # MAX tiene peso 60%, Promedio tiene peso 40%
+        impacto_hibrido = (max_valor * 0.6) + (promedio_ponderado * 0.4)
+        
+        # Solo si hay MUCHOS valores críticos (>=4 de 5), asegurar impacto máximo
+        valores_criticos = sum(1 for v in valores if v >= 5)
+        proporcion_criticos = valores_criticos / len(valores) if valores else 0
+        
+        if proporcion_criticos >= 0.7 and max_valor >= 5:
+            # Más del 70% de respuestas críticas → impacto 5
+            impacto_final = 5
+        elif proporcion_criticos >= 0.5 and max_valor >= 5:
+            # Más del 50% críticas → al menos 4
+            impacto_final = max(round(impacto_hibrido), 4)
+        else:
+            # Caso normal: usar fórmula híbrida redondeada
+            impacto_final = round(impacto_hibrido)
+        
+        impacto_final = max(1, min(5, impacto_final))
+        
+        justificacion = f"MAX={max_valor}, Prom={promedio_ponderado:.1f}, Híbrido={impacto_hibrido:.1f}, {len(valores)} resp"
+        return impacto_final, justificacion
     
-    d_valor, d_just = calcular_promedio_ponderado(impactos["D"], pesos["D"])
-    i_valor, i_just = calcular_promedio_ponderado(impactos["I"], pesos["I"])
-    c_valor, c_just = calcular_promedio_ponderado(impactos["C"], pesos["C"])
+    d_valor, d_just = calcular_impacto_dimension(impactos["D"], pesos["D"])
+    i_valor, i_just = calcular_impacto_dimension(impactos["I"], pesos["I"])
+    c_valor, c_just = calcular_impacto_dimension(impactos["C"], pesos["C"])
     
     return ImpactoDIC(
         disponibilidad=d_valor,
@@ -782,19 +878,22 @@ def get_resumen_evaluacion(eval_id: str) -> pd.DataFrame:
         with get_connection() as conn:
             return pd.read_sql_query(
                 '''SELECT 
-                    ID_Activo as id_activo, 
-                    Nombre_Activo as nombre_activo, 
-                    Impacto_D as impacto_d, 
-                    Impacto_I as impacto_i, 
-                    Impacto_C as impacto_c,
-                    Riesgo_Inherente as riesgo_inherente_global, 
-                    Nivel_Riesgo as nivel_riesgo_inherente,
-                    Riesgo_Residual as riesgo_residual_global,
-                    Nivel_Riesgo as nivel_riesgo_residual,
-                    Fecha_Evaluacion as fecha_evaluacion
-                FROM RESULTADOS_MAGERIT 
-                WHERE ID_Evaluacion = ?
-                ORDER BY Riesgo_Inherente DESC''',
+                    rm.ID_Activo as id_activo, 
+                    rm.Nombre_Activo as nombre_activo,
+                    COALESCE(ia.tipo_activo, 'Otro') as tipo_activo,
+                    rm.Impacto_D as impacto_d, 
+                    rm.Impacto_I as impacto_i, 
+                    rm.Impacto_C as impacto_c,
+                    ROUND((rm.Impacto_D + rm.Impacto_I + rm.Impacto_C) / 3.0, 1) as impacto_global,
+                    rm.Riesgo_Inherente as riesgo_inherente_global, 
+                    rm.Nivel_Riesgo as nivel_riesgo_inherente,
+                    rm.Riesgo_Residual as riesgo_residual_global,
+                    rm.Nivel_Riesgo as nivel_riesgo_residual,
+                    rm.Fecha_Evaluacion as fecha_evaluacion
+                FROM RESULTADOS_MAGERIT rm
+                LEFT JOIN INVENTARIO_ACTIVOS ia ON rm.ID_Activo = ia.ID_Activo AND rm.ID_Evaluacion = ia.ID_Evaluacion
+                WHERE rm.ID_Evaluacion = ?
+                ORDER BY rm.Riesgo_Inherente DESC''',
                 conn,
                 params=[eval_id]
             )
