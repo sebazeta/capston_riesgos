@@ -229,45 +229,51 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS personalizado para cambiar el spinner de carga a rueda simple
+# CSS personalizado para ocultar spinner de personas
 st.markdown("""
 <style>
-/* Ocultar el spinner de personas y mostrar rueda simple */
-[data-testid="stStatusWidget"] {
-    visibility: visible !important;
-}
-
-/* Reemplazar animación de personas por spinner circular */
-[data-testid="stStatusWidget"] > div > div > div > svg {
-    display: none !important;
-}
-
-[data-testid="stStatusWidget"]::after {
-    content: "";
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    border: 3px solid #f3f3f3;
-    border-top: 3px solid #ff4b4b;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-left: 8px;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* Ocultar la animación de personas completamente */
+/* OCULTAR COMPLETAMENTE la animacion de personas Lottie */
+[data-testid="stStatusWidget"] svg,
 [data-testid="stStatusWidget"] img,
-[data-testid="stStatusWidget"] svg[data-testid="stLottie"] {
+[data-testid="stStatusWidget"] canvas,
+[data-testid="stStatusWidget"] lottie-player,
+[data-testid="stStatusWidget"] > div > div,
+div[data-testid="stSpinner"] > div > div > svg,
+div.stSpinner svg,
+.element-container svg[class*="running"],
+div[class*="StatusWidget"] svg {
     display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
 }
 
-/* Estilo del indicador de running más limpio */
-.stSpinner > div {
-    border-color: #ff4b4b transparent transparent transparent !important;
+/* Spinner simple centrado */
+div[data-testid="stSpinner"] > div {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+}
+
+div[data-testid="stSpinner"] > div::before {
+    content: "" !important;
+    display: block !important;
+    width: 24px !important;
+    height: 24px !important;
+    border: 3px solid #e0e0e0 !important;
+    border-top-color: #ff4b4b !important;
+    border-radius: 50% !important;
+    animation: spinner-rotate 0.8s linear infinite !important;
+}
+
+@keyframes spinner-rotate {
+    to { transform: rotate(360deg); }
+}
+
+/* Ocultar el status widget de la esquina superior derecha */
+[data-testid="stStatusWidget"] {
+    display: none !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -925,27 +931,39 @@ with tab2:
                                     
                                     # Mostrar radio buttons con las 4 opciones
                                     if len(opciones) >= 4:
-                                        # Determinar índice inicial - POR DEFECTO EL MÁS CRÍTICO PARA PRUEBAS
-                                        idx_inicial = 0
+                                        # Determinar índice inicial - POR DEFECTO: ACTIVO CRÍTICO
+                                        idx_inicial = 3  # Por defecto opción 4 (más crítico para impacto)
                                         if valor_inicial:
                                             try:
                                                 idx_inicial = opciones.index(valor_inicial)
                                             except ValueError:
-                                                idx_inicial = 0
+                                                idx_inicial = 3
                                         else:
-                                            # Sin respuesta previa: seleccionar opción más crítica por defecto
-                                            # Preguntas de IMPACTO DIRECTO: opción 4 (índice 3) = más crítico
-                                            # Preguntas de CONTROL: opción 1 (índice 0) = sin control = más crítico
-                                            preguntas_impacto_directo = {
-                                                "PF-A-001", "PF-A-002", "PF-A-003", "PF-A-004", "PF-A-005",
-                                                "PV-A-001", "PV-A-002", "PV-A-003", "PV-A-004", "PV-A-005",
-                                                "PF-B-001", "PF-B-002", "PV-B-001", "PV-B-002",
-                                                "PF-E-001", "PV-E-001", "PF-E-002", "PV-E-002", "PF-E-003", "PV-E-003",
-                                            }
-                                            if id_pregunta in preguntas_impacto_directo:
-                                                idx_inicial = 3  # Opción 4 = más crítico
+                                            # Sin respuesta previa: seleccionar valores de ACTIVO CRÍTICO
+                                            # Lógica basada en el bloque de la pregunta:
+                                            bloque_upper = str(bloque).upper()
+                                            
+                                            if "IMPACTO" in bloque_upper or bloque_upper.startswith("A"):
+                                                # Bloque A-Impacto: Opción 4 = mayor criticidad
+                                                # (RTO menor, más usuarios, más dependencia, etc.)
+                                                idx_inicial = 3
+                                            elif "CONTINUIDAD" in bloque_upper or bloque_upper.startswith("B"):
+                                                # Bloque B-Continuidad: Opción 1 = SIN controles = más crítico
+                                                # (sin respaldo, sin failover, sin redundancia)
+                                                idx_inicial = 0
+                                            elif "CONTROL" in bloque_upper or bloque_upper.startswith("C"):
+                                                # Bloque C-Controles: Opción 1 = SIN control = más crítico
+                                                # (sin MFA, sin parches, sin monitoreo)
+                                                idx_inicial = 0
+                                            elif "EXPOSICION" in bloque_upper or "AMENAZA" in bloque_upper or bloque_upper.startswith("D"):
+                                                # Bloque D-Exposición: Opción 4 = mayor exposición = más crítico
+                                                idx_inicial = 3
+                                            elif "CAPACIDAD" in bloque_upper or bloque_upper.startswith("E"):
+                                                # Bloque E-Capacidad/Respuesta: Opción 1 = sin capacidad = más crítico
+                                                idx_inicial = 0
                                             else:
-                                                idx_inicial = 0  # Opción 1 = sin control = más crítico
+                                                # Por defecto: Opción 4 para asumir mayor impacto
+                                                idx_inicial = 3
                                         
                                         # Radio buttons con formato visual (1-4 = niveles de madurez)
                                         opciones_formateadas = [f"{i+1}. {op}" for i, op in enumerate(opciones)]
@@ -1461,12 +1479,14 @@ with tab4:
             activo_detalle = st.selectbox(
                 "Seleccionar activo",
                 resumen_magerit["id_activo"].tolist(),
-                format_func=lambda x: f"{x} - {resumen_magerit[resumen_magerit['id_activo']==x]['nombre_activo'].values[0]}"
+                format_func=lambda x: f"{x} - {resumen_magerit[resumen_magerit['id_activo']==x]['nombre_activo'].values[0]}",
+                key=f"t4_detalle_activo_{st.session_state['eval_actual']}"
             )
             
             if activo_detalle:
                 resultado = get_resultado_magerit(st.session_state["eval_actual"], activo_detalle)
                 if resultado:
+                    st.caption(f"ID: {resultado.get('id_activo')} | Impacto DIC: {resultado.get('impacto_d')}/{resultado.get('impacto_i')}/{resultado.get('impacto_c')}")
                     if DASHBOARD_DISPONIBLE:
                         render_detalle_activo(resultado)
                     else:
@@ -1488,21 +1508,28 @@ with tab5:
     else:
         st.success(f"📋 Evaluación: **{st.session_state['eval_nombre']}**")
         
-        # Calcular madurez
-        if st.button("🔄 Calcular/Actualizar Nivel de Madurez", type="primary", key="t5_calc_madurez"):
-            with st.spinner("Calculando nivel de madurez..."):
-                resultado_madurez = calcular_madurez_evaluacion(st.session_state["eval_actual"])
-                if resultado_madurez:
-                    guardar_madurez(resultado_madurez)
-                    st.success("✅ Nivel de madurez calculado y guardado")
+        # Obtener madurez guardada primero
+        madurez_data = get_madurez_evaluacion(st.session_state["eval_actual"])
+        
+        # Solo mostrar botón de calcular si NO hay datos o el usuario quiere recalcular
+        col_btn1, col_btn2 = st.columns([1, 3])
+        with col_btn1:
+            if not madurez_data:
+                if st.button("🔄 Calcular Nivel de Madurez", type="primary", key="t5_calc_madurez"):
+                    with st.spinner("Calculando nivel de madurez..."):
+                        resultado_madurez = calcular_madurez_evaluacion(st.session_state["eval_actual"])
+                        if resultado_madurez:
+                            guardar_madurez(resultado_madurez)
+                            st.success("✅ Nivel de madurez calculado y guardado")
+                            st.rerun()
+                        else:
+                            st.error("❌ No se pudo calcular la madurez. Verifique que hay activos y respuestas.")
+            else:
+                # Si ya hay datos, mostrar botón de refrescar (solo lee, no recalcula)
+                if st.button("🔃 Refrescar Vista", key="t5_refresh_madurez"):
                     st.rerun()
-                else:
-                    st.error("❌ No se pudo calcular la madurez. Verifique que hay activos y respuestas.")
         
         st.divider()
-        
-        # Obtener madurez guardada o calcular
-        madurez_data = get_madurez_evaluacion(st.session_state["eval_actual"])
         
         if madurez_data:
             if DASHBOARD_DISPONIBLE:

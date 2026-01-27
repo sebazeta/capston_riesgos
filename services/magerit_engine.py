@@ -110,7 +110,7 @@ class ResultadoEvaluacionMagerit:
 def get_nivel_riesgo(valor: float) -> str:
     """Determina el nivel de riesgo según el valor (1-25)"""
     if valor >= 20:
-        return "CRÍTICO"
+        return "CRITICO"  # Sin tilde para consistencia
     elif valor >= 12:
         return "ALTO"
     elif valor >= 6:
@@ -124,7 +124,8 @@ def get_nivel_riesgo(valor: float) -> str:
 def get_color_riesgo(nivel: str) -> str:
     """Retorna el color asociado al nivel de riesgo"""
     colores = {
-        "CRÍTICO": "#8B0000",  # Dark Red
+        "CRITICO": "#8B0000",  # Dark Red
+        "CRÍTICO": "#8B0000",  # Dark Red (con tilde por compatibilidad)
         "ALTO": "#FF4500",     # Orange Red
         "MEDIO": "#FFA500",    # Orange
         "BAJO": "#32CD32",     # Lime Green
@@ -136,6 +137,7 @@ def get_color_riesgo(nivel: str) -> str:
 def get_accion_riesgo(nivel: str) -> str:
     """Retorna la acción recomendada según nivel de riesgo"""
     acciones = {
+        "CRITICO": "Acción inmediata obligatoria",
         "CRÍTICO": "Acción inmediata obligatoria",
         "ALTO": "Acción prioritaria en corto plazo",
         "MEDIO": "Planificar mitigación",
@@ -147,7 +149,7 @@ def get_accion_riesgo(nivel: str) -> str:
 
 def get_tratamiento_sugerido(nivel: str, efectividad_controles: float) -> str:
     """Sugiere tratamiento basado en nivel y controles existentes"""
-    if nivel in ["CRÍTICO", "ALTO"]:
+    if nivel in ["CRITICO", "CRÍTICO", "ALTO"]:
         if efectividad_controles < 0.5:
             return "mitigar"
         else:
@@ -876,7 +878,7 @@ def get_resumen_evaluacion(eval_id: str) -> pd.DataFrame:
     """Obtiene resumen de evaluación MAGERIT para todos los activos de una evaluación"""
     try:
         with get_connection() as conn:
-            return pd.read_sql_query(
+            df = pd.read_sql_query(
                 '''SELECT 
                     rm.ID_Activo as id_activo, 
                     rm.Nombre_Activo as nombre_activo,
@@ -888,7 +890,13 @@ def get_resumen_evaluacion(eval_id: str) -> pd.DataFrame:
                     rm.Riesgo_Inherente as riesgo_inherente_global, 
                     rm.Nivel_Riesgo as nivel_riesgo_inherente,
                     rm.Riesgo_Residual as riesgo_residual_global,
-                    rm.Nivel_Riesgo as nivel_riesgo_residual,
+                    CASE 
+                        WHEN rm.Riesgo_Residual >= 20 THEN 'CRITICO'
+                        WHEN rm.Riesgo_Residual >= 12 THEN 'ALTO'
+                        WHEN rm.Riesgo_Residual >= 6 THEN 'MEDIO'
+                        WHEN rm.Riesgo_Residual >= 3 THEN 'BAJO'
+                        ELSE 'MUY BAJO'
+                    END as nivel_riesgo_residual,
                     rm.Fecha_Evaluacion as fecha_evaluacion
                 FROM RESULTADOS_MAGERIT rm
                 LEFT JOIN INVENTARIO_ACTIVOS ia ON rm.ID_Activo = ia.ID_Activo AND rm.ID_Evaluacion = ia.ID_Evaluacion
@@ -897,6 +905,7 @@ def get_resumen_evaluacion(eval_id: str) -> pd.DataFrame:
                 conn,
                 params=[eval_id]
             )
+            return df
     except Exception as e:
         print(f"Error obteniendo resumen evaluación: {e}")
         return pd.DataFrame()

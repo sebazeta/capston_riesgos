@@ -405,7 +405,7 @@ def calcular_madurez_evaluacion(eval_id: str) -> Optional[ResultadoMadurez]:
             riesgo_inherente = float(row.get("Riesgo_Inherente", 0))
             riesgo_residual = float(row.get("Riesgo_Residual", 0))
             
-            if nivel_inherente in ["CRÍTICO", "ALTO"]:
+            if nivel_inherente in ["CRÍTICO", "CRITICO", "ALTO"]:
                 total_riesgos_criticos += 1
                 # Consideramos mitigado si el riesgo residual es menor
                 if riesgo_residual < riesgo_inherente:

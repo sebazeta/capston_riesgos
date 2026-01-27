@@ -20,7 +20,8 @@ import json
 # ==================== COLORES ====================
 
 COLORES_RIESGO = {
-    "CRÍTICO": "#DC143C",    # Crimson
+    "CRITICO": "#DC143C",    # Crimson (sin tilde)
+    "CRÍTICO": "#DC143C",    # Crimson (con tilde)
     "ALTO": "#FF6347",       # Tomato
     "MEDIO": "#FFA500",      # Orange
     "BAJO": "#90EE90",       # Light Green
@@ -383,7 +384,7 @@ def render_resumen_ejecutivo(evaluaciones: pd.DataFrame, amenazas: pd.DataFrame 
         st.metric("Riesgo Máximo", f"{riesgo_max:.1f}")
     
     with col3:
-        criticos = (evaluaciones["nivel_riesgo_inherente"] == "CRÍTICO").sum()
+        criticos = evaluaciones["nivel_riesgo_inherente"].isin(["CRITICO", "CRÍTICO"]).sum()
         altos = (evaluaciones["nivel_riesgo_inherente"] == "ALTO").sum()
         st.metric("Críticos + Altos", f"{criticos + altos}")
     
@@ -394,7 +395,7 @@ def render_resumen_ejecutivo(evaluaciones: pd.DataFrame, amenazas: pd.DataFrame 
     # Tabla resumen por nivel
     st.write("**Distribución por Nivel de Riesgo Inherente:**")
     conteo = evaluaciones["nivel_riesgo_inherente"].value_counts()
-    for nivel in ["CRÍTICO", "ALTO", "MEDIO", "BAJO", "MUY BAJO"]:
+    for nivel in ["CRITICO", "CRÍTICO", "ALTO", "MEDIO", "BAJO", "MUY BAJO"]:
         cantidad = conteo.get(nivel, 0)
         color = COLORES_RIESGO.get(nivel, "#808080")
         pct = (cantidad / total_activos) * 100 if total_activos > 0 else 0
@@ -1151,12 +1152,13 @@ def render_activos_urgente_tratamiento(evaluaciones: pd.DataFrame, amenazas_df: 
     df[col_riesgo] = pd.to_numeric(df[col_riesgo], errors='coerce').fillna(0)
     df[col_residual] = pd.to_numeric(df[col_residual], errors='coerce').fillna(0)
     
-    # Filtrar activos urgentes (CRITICO o ALTO con riesgo residual similar al inherente)
+    # Filtrar activos urgentes (CRITICO o ALTO sin importar el gap de reduccion)
     df["Gap_Reduccion"] = df[col_riesgo] - df[col_residual]
     
-    # Activos urgentes: alto riesgo con poca reduccion (controles inefectivos)
+    # Activos urgentes: CRITICO siempre requiere atencion, ALTO con alta puntuacion
     urgentes = df[
-        ((df[col_nivel].isin(["CRITICO", "CRÍTICO", "ALTO"])) & (df["Gap_Reduccion"] <= 2))
+        (df[col_nivel].isin(["CRITICO", "CRÍTICO"])) |  # Todos los CRITICOS
+        ((df[col_nivel] == "ALTO") & (df[col_riesgo] >= 10))  # ALTO con riesgo >= 10
     ].sort_values(col_riesgo, ascending=False).head(15)
     
     if urgentes.empty:

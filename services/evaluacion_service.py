@@ -3,7 +3,7 @@ Servicio de gestión de evaluaciones - Versión SQLite
 """
 import datetime as dt
 import pandas as pd
-from services.database_service import read_table, insert_rows, update_row
+from services.database_service import read_table, insert_rows, update_row, get_connection
 
 
 def crear_evaluacion(nombre: str, descripcion: str, responsable: str, 
@@ -139,15 +139,32 @@ def get_estadisticas_evaluacion(eval_id: str) -> dict:
             "progreso": 0
         }
     
+    total = len(activos)
+    
+    # Contar activos que tienen resultado MAGERIT (realmente evaluados)
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT COUNT(DISTINCT ID_Activo) FROM RESULTADOS_MAGERIT WHERE ID_Evaluacion = ?",
+                [eval_id]
+            )
+            evaluados = cursor.fetchone()[0] or 0
+    except:
+        evaluados = 0
+    
+    # Contar por estado de cuestionario
     estados = activos["Estado"].value_counts().to_dict() if "Estado" in activos.columns else {}
     
-    total = len(activos)
-    evaluados = estados.get("Evaluado", 0)
-    progreso = round((evaluados / total * 100), 2) if total > 0 else 0
+    # Pendientes = sin cuestionario completo
+    pendientes = estados.get("Pendiente", 0) + estados.get("Incompleto", 0)
+    
+    # Progreso basado en activos evaluados (con resultado MAGERIT)
+    progreso = round((evaluados / total * 100), 1) if total > 0 else 0
     
     return {
         "total_activos": total,
-        "pendientes": estados.get("Pendiente", 0),
+        "pendientes": pendientes,
         "incompletos": estados.get("Incompleto", 0),
         "completos": estados.get("Completo", 0),
         "evaluados": evaluados,
