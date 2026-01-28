@@ -9,6 +9,9 @@ Integración con Ollama para:
 
 El prompt fuerza respuestas JSON estructuradas.
 La validación garantiza que solo se usen códigos del catálogo.
+
+IMPORTANTE: Este servicio usa ia_context_magerit.py para entrenar
+a la IA con los catálogos exactos de MAGERIT v3 e ISO 27002:2022
 """
 import json
 import re
@@ -16,6 +19,17 @@ import requests
 from typing import Dict, List, Optional, Tuple
 import pandas as pd
 from services.database_service import read_table
+
+# Importar contexto de entrenamiento MAGERIT
+from services.ia_context_magerit import (
+    get_contexto_completo_ia,
+    get_amenazas_para_tipo_activo,
+    get_controles_para_amenaza,
+    construir_prompt_experto,
+    MAPEO_AMENAZA_CONTROL,
+    AMENAZAS_POR_TIPO_ACTIVO,
+    DEGRADACION_TIPICA
+)
 
 
 # ==================== CONFIGURACIÓN ====================
@@ -719,3 +733,630 @@ def crear_evaluacion_manual(
         "observaciones": observaciones,
         "modelo_ia": "manual"
     }
+
+
+# ==================== ANÁLISIS DE AMENAZAS POR CRITICIDAD (IA) ====================
+
+def construir_prompt_amenazas_criticidad(
+    activo_info: Dict,
+    valoracion: Dict,
+    catalogo_amenazas: Dict[str, Dict]
+) -> str:
+    """
+    Construye el prompt para identificar amenazas/vulnerabilidades basándose en la criticidad.
+    MEJORADO: Usa el contexto de entrenamiento MAGERIT completo.
+    """
+    tipo_activo = str(activo_info.get("Tipo_Activo", "")).lower()
+    
+    # Obtener amenazas típicas para este tipo de activo del contexto de entrenamiento
+    amenazas_tipicas = get_amenazas_para_tipo_activo(tipo_activo)
+    amenazas_tipicas_texto = "\n".join([f"  - {a}" for a in amenazas_tipicas])
+    
+    # Obtener contexto completo de MAGERIT
+    contexto_magerit = get_contexto_completo_ia()
+    
+    # Preparar lista de amenazas por tipo del catálogo
+    amenazas_por_tipo = {}
+    for codigo, info in catalogo_amenazas.items():
+        tipo = info.get("tipo_amenaza", "Otros")
+        if tipo not in amenazas_por_tipo:
+            amenazas_por_tipo[tipo] = []
+        amenazas_por_tipo[tipo].append(f"{codigo}: {info['amenaza']}")
+    
+    amenazas_texto = ""
+    for tipo, lista in amenazas_por_tipo.items():
+        amenazas_texto += f"\n**{tipo}:**\n"
+        for a in lista:
+            amenazas_texto += f"  - {a}\n"
+    
+    # Obtener degradaciones típicas por categoría
+    degradacion_info = ""
+    for categoria, rangos in DEGRADACION_TIPICA.items():
+        degradacion_info += f"  - {categoria}: D={rangos['D']}%, I={rangos['I']}%, C={rangos['C']}%\n"
+    
+    prompt = f"""Eres un experto certificado en seguridad de la información y gestión de riesgos bajo la metodología MAGERIT v3 del CCN (Centro Criptológico Nacional de España).
+
+## CONTEXTO METODOLÓGICO MAGERIT v3
+{contexto_magerit}
+
+## ACTIVO A ANALIZAR
+- **ID**: {activo_info.get('ID_Activo', '')}
+- **Nombre**: {activo_info.get('Nombre_Activo', '')}
+- **Tipo**: {activo_info.get('Tipo_Activo', '')}
+- **Descripción**: {activo_info.get('Descripcion', 'N/A')}
+- **Ubicación**: {activo_info.get('Ubicacion', 'N/A')}
+
+## VALORACIÓN D/I/C DEL ACTIVO
+- **Disponibilidad (D)**: {valoracion.get('Valor_D', 0)} - Nivel: {valoracion.get('D', 'N')}
+- **Integridad (I)**: {valoracion.get('Valor_I', 0)} - Nivel: {valoracion.get('I', 'N')}
+- **Confidencialidad (C)**: {valoracion.get('Valor_C', 0)} - Nivel: {valoracion.get('C', 'N')}
+- **CRITICIDAD**: {valoracion.get('Criticidad', 0)} - Nivel: {valoracion.get('Criticidad_Nivel', 'Sin valorar')}
+
+## AMENAZAS TÍPICAS PARA ACTIVOS TIPO "{activo_info.get('Tipo_Activo', 'General').upper()}"
+{amenazas_tipicas_texto}
+
+## CATÁLOGO COMPLETO DE AMENAZAS MAGERIT v3 (USAR SOLO ESTOS CÓDIGOS)
+{amenazas_texto}
+
+## DEGRADACIÓN TÍPICA POR CATEGORÍA DE AMENAZA
+{degradacion_info}
+
+## TU TAREA
+Basándote en la CRITICIDAD del activo, su tipo y la metodología MAGERIT v3, identifica las amenazas más relevantes.
+Para cada amenaza, debes:
+1. Indicar la VULNERABILIDAD específica que permite que la amenaza se materialice
+2. Estimar la DEGRADACIÓN (0-100%) para D, I, C según la criticidad del activo y la categoría de amenaza
+
+**Reglas para DEGRADACIÓN según CRITICIDAD:**
+- Criticidad ALTA (>=3): Degradaciones altas (60-100%)
+- Criticidad MEDIA (2): Degradaciones medias (30-60%)
+- Criticidad BAJA (1): Degradaciones bajas (10-30%)
+- Sin valorar (0): Degradación mínima (5-15%)
+
+## FORMATO DE RESPUESTA OBLIGATORIO
+Responde ÚNICAMENTE con un JSON válido:
+
+```json
+{{
+  "amenazas_identificadas": [
+    {{
+      "codigo_amenaza": "A.24",
+      "nombre_amenaza": "Denegación de servicio",
+      "vulnerabilidad": "Descripción específica de la vulnerabilidad",
+      "degradacion_d": 80,
+      "degradacion_i": 20,
+      "degradacion_c": 10,
+      "justificacion": "Justificación técnica basada en MAGERIT"
+    }}
+  ],
+  "resumen_analisis": "Resumen del análisis según metodología MAGERIT v3"
+}}
+```
+
+## REGLAS CRÍTICAS OBLIGATORIAS
+1. **SOLO usa códigos de amenaza del catálogo MAGERIT proporcionado (N.*, I.*, E.*, A.*)**
+2. **Prioriza las amenazas típicas para el tipo de activo indicado**
+3. **Identifica entre 3 y 7 amenazas relevantes** según el tipo y criticidad
+4. **Las degradaciones deben ser números entre 0 y 100**
+5. **Las vulnerabilidades deben ser específicas y técnicas**
+6. **Aplica las fórmulas MAGERIT: Impacto = MAX(D×DegD, I×DegI, C×DegC)**
+
+Responde SOLO con el JSON, sin explicaciones adicionales:"""
+    
+    return prompt
+
+
+def analizar_amenazas_por_criticidad(
+    activo_info: Dict,
+    valoracion: Dict,
+    modelo: str = None
+) -> Tuple[bool, List[Dict], str]:
+    """
+    Usa la IA local para identificar amenazas y vulnerabilidades
+    basándose en la criticidad del activo.
+    
+    Args:
+        activo_info: Diccionario con información del activo
+        valoracion: Diccionario con valoración D/I/C
+        modelo: Modelo de Ollama a usar
+    
+    Returns:
+        (éxito: bool, amenazas: List[Dict], mensaje: str)
+    """
+    modelo_usar = modelo or MODELO_DEFAULT
+    
+    # Cargar catálogo de amenazas
+    catalogo_amenazas = get_catalogo_amenazas()
+    if not catalogo_amenazas:
+        return False, [], "Error: Catálogo de amenazas no disponible"
+    
+    # Construir prompt
+    prompt = construir_prompt_amenazas_criticidad(activo_info, valoracion, catalogo_amenazas)
+    
+    # Llamar a Ollama
+    exito, respuesta_texto = llamar_ollama(prompt, modelo_usar)
+    
+    if not exito:
+        # Usar fallback heurístico
+        amenazas = generar_amenazas_heuristicas(activo_info, valoracion, catalogo_amenazas)
+        return True, amenazas, "Análisis heurístico (Ollama no disponible)"
+    
+    # Extraer JSON
+    json_texto = extraer_json_de_respuesta(respuesta_texto)
+    if not json_texto:
+        amenazas = generar_amenazas_heuristicas(activo_info, valoracion, catalogo_amenazas)
+        return True, amenazas, "Análisis heurístico (respuesta IA inválida)"
+    
+    try:
+        respuesta_json = json.loads(json_texto)
+        amenazas_raw = respuesta_json.get("amenazas_identificadas", [])
+        
+        # Validar y limpiar amenazas
+        amenazas_validas = []
+        for am in amenazas_raw:
+            codigo = am.get("codigo_amenaza", "")
+            if codigo in catalogo_amenazas:
+                # Asegurar que degradaciones están en rango
+                deg_d = max(0, min(100, int(am.get("degradacion_d", 0))))
+                deg_i = max(0, min(100, int(am.get("degradacion_i", 0))))
+                deg_c = max(0, min(100, int(am.get("degradacion_c", 0))))
+                
+                amenazas_validas.append({
+                    "codigo_amenaza": codigo,
+                    "nombre_amenaza": am.get("nombre_amenaza", catalogo_amenazas[codigo]["amenaza"]),
+                    "vulnerabilidad": am.get("vulnerabilidad", "Vulnerabilidad no especificada"),
+                    "degradacion_d": deg_d,
+                    "degradacion_i": deg_i,
+                    "degradacion_c": deg_c,
+                    "justificacion": am.get("justificacion", ""),
+                    "tipo_amenaza": catalogo_amenazas[codigo].get("tipo_amenaza", "")
+                })
+        
+        if amenazas_validas:
+            resumen = respuesta_json.get("resumen_analisis", "")
+            return True, amenazas_validas, f"IA identificó {len(amenazas_validas)} amenazas. {resumen}"
+        else:
+            amenazas = generar_amenazas_heuristicas(activo_info, valoracion, catalogo_amenazas)
+            return True, amenazas, "Análisis heurístico (ninguna amenaza válida de IA)"
+    
+    except json.JSONDecodeError:
+        amenazas = generar_amenazas_heuristicas(activo_info, valoracion, catalogo_amenazas)
+        return True, amenazas, "Análisis heurístico (JSON inválido)"
+
+
+def generar_amenazas_heuristicas(
+    activo_info: Dict,
+    valoracion: Dict,
+    catalogo_amenazas: Dict[str, Dict]
+) -> List[Dict]:
+    """
+    Genera amenazas de forma heurística cuando la IA no está disponible.
+    Basado en el tipo de activo y la criticidad.
+    MEJORADO: Usa el contexto de entrenamiento MAGERIT del módulo ia_context_magerit.py
+    """
+    tipo_activo = str(activo_info.get("Tipo_Activo", "")).lower()
+    criticidad = valoracion.get("Criticidad", 0)
+    criticidad_nivel = valoracion.get("Criticidad_Nivel", "Sin valorar")
+    
+    # Usar mapeo de amenazas del contexto de entrenamiento
+    amenazas_tipicas = get_amenazas_para_tipo_activo(tipo_activo)
+    
+    # Vulnerabilidades típicas por amenaza (mejorado con contexto experto)
+    VULNERABILIDADES = {
+        "N.1": "Falta de protección contra desastres naturales, ubicación en zona de riesgo sísmico/inundable, sin plan de contingencia ante catástrofes",
+        "N.2": "Ausencia de sistemas de detección y extinción de incendios, materiales inflamables cercanos, sin procedimientos de evacuación",
+        "N.*": "Instalaciones sin medidas de protección ambiental, ausencia de estudios de riesgo natural",
+        "I.1": "Ausencia de protección contra tormentas eléctricas, sin pararrayos ni supresores de sobretensión",
+        "I.2": "Equipos sin protección térmica adecuada, falta de climatización redundante",
+        "I.5": "Falta de sistemas de respaldo de energía (UPS), sin generador de emergencia, tiempo de autonomía insuficiente",
+        "I.6": "Deficiencias en climatización del CPD, sin monitoreo 24/7 de temperatura y humedad",
+        "I.7": "Instalación eléctrica sin certificar, cableado sin protección contra EMI",
+        "I.8": "Falla en equipos de comunicaciones, sin redundancia en enlaces, SLA inadecuados",
+        "I.9": "Dependencia de un único proveedor cloud sin SLA adecuado, sin plan de migración alternativo",
+        "I.*": "Infraestructura sin mantenimiento preventivo, ausencia de contratos de soporte",
+        "E.1": "Personal sin capacitación en seguridad, falta de concienciación, procedimientos de actuación no documentados",
+        "E.2": "Procedimientos de configuración inadecuados, documentación desactualizada, falta de control de cambios",
+        "E.3": "Monitorización insuficiente, logs no revisados, alertas no configuradas",
+        "E.4": "Control de versiones deficiente, sin trazabilidad de cambios, software no versionado",
+        "E.7": "Datos de producción en entornos de desarrollo, sin anonimización de datos de prueba",
+        "E.8": "Falta de validación en cambios de routing, sin pruebas de conectividad",
+        "E.9": "Fallos en enrutamiento, errores de configuración de red, tablas de routing no verificadas",
+        "E.10": "Red sin segmentación, broadcast no controlado, VLANs mal configuradas",
+        "E.14": "Fuga de información por metadatos, sin limpieza de documentos, logs expuestos",
+        "E.15": "Software obsoleto con vulnerabilidades conocidas, parches no aplicados, EOL no gestionado",
+        "E.18": "Falta de procedimientos de destrucción segura, medios reutilizados sin borrado",
+        "E.19": "Disclosure de información por error, emails a destinatarios incorrectos",
+        "E.20": "Vulnerabilidades de software no parcheadas, CVEs conocidos sin remediar",
+        "E.21": "Errores en mantenimiento de software, sin pruebas de regresión, cambios no documentados",
+        "E.23": "Falta de mantenimiento preventivo, equipos obsoletos, contratos de soporte vencidos",
+        "E.24": "Pérdida de equipos portátiles, dispositivos sin cifrado, sin MDM",
+        "E.25": "Robo interno de equipos, control de inventario deficiente, sin etiquetado de activos",
+        "A.3": "Interceptación de información por keyloggers, sniffers no detectados, monitoreo no autorizado",
+        "A.4": "Modificación maliciosa de información, acceso con privilegios elevados no justificado",
+        "A.5": "Falta de autenticación robusta, credenciales débiles, sin MFA, passwords por defecto",
+        "A.6": "Configuraciones de acceso inadecuadas, privilegios excesivos, sin revisión periódica de permisos",
+        "A.7": "Acceso no autorizado a locales, tarjetas clonadas, accesos compartidos",
+        "A.8": "Software malicioso instalado, parches de seguridad no aplicados, antivirus desactualizado",
+        "A.9": "Tráfico de red sin cifrar, ausencia de segmentación, puertos innecesarios abiertos",
+        "A.10": "Saturación deliberada de recursos, ataques de amplificación, falta de rate limiting",
+        "A.11": "Falta de controles de acceso físico, sin registro de visitantes, sin CCTV",
+        "A.12": "Análisis de tráfico no detectado, sin cifrado de metadata, patrones de uso expuestos",
+        "A.13": "Repudio de transacciones, sin firma digital, logs no protegidos",
+        "A.14": "Interceptación de comunicaciones, MitM posible, certificados no validados",
+        "A.15": "Ausencia de cifrado en almacenamiento, datos sensibles en texto plano, claves expuestas",
+        "A.18": "Destrucción maliciosa de información, sin backups offline, ransomware",
+        "A.19": "Falta de procedimientos de borrado seguro, medios no destruidos, datos recuperables",
+        "A.22": "Inyección de código, XSS, CSRF, falta de validación de entrada, WAF no configurado",
+        "A.23": "Manipulación de logs, sin protección de integridad, syslog no asegurado",
+        "A.24": "Sin protección DDoS, falta de redundancia geográfica, sin CDN, sin plan de contingencia",
+        "A.25": "Robo de equipos, acceso físico no controlado, sin cables de seguridad, sin tracking",
+        "A.26": "Ingeniería social exitosa, phishing no detectado, pretexting, vishing",
+        "A.28": "Falta de protección contra fuerza bruta, sin bloqueo de cuentas, sin CAPTCHA",
+        "A.29": "Extorsión/chantaje, sin protocolo de gestión de crisis, datos sensibles expuestos",
+        "A.30": "Ataque interno malicioso, segregación de funciones inadecuada, sin DLP",
+    }
+    
+    # Extraer códigos de amenazas de las típicas
+    amenazas_codigos = []
+    for amenaza_texto in amenazas_tipicas[:6]:
+        # Extraer el código (ej: "N.1: Fuego" -> "N.1")
+        if ": " in amenaza_texto:
+            codigo = amenaza_texto.split(":")[0].strip()
+            if codigo in catalogo_amenazas:
+                amenazas_codigos.append(codigo)
+    
+    if not amenazas_codigos:
+        # Default para cualquier activo
+        amenazas_codigos = ["A.24", "A.11", "A.5", "A.8", "E.1", "E.2"]
+    
+    # Calcular degradaciones según criticidad
+    if criticidad >= 3:
+        deg_base = 70
+    elif criticidad == 2:
+        deg_base = 45
+    elif criticidad == 1:
+        deg_base = 20
+    else:
+        deg_base = 10
+    
+    # Generar lista de amenazas
+    amenazas = []
+    for codigo in amenazas_codigos:
+        if codigo in catalogo_amenazas:
+            info = catalogo_amenazas[codigo]
+            
+            # Variar degradaciones según dimensión afectada
+            dim_afectada = info.get("dimension_afectada", "D")
+            if "D" in str(dim_afectada):
+                deg_d = min(100, deg_base + 15)
+                deg_i = max(0, deg_base - 20)
+                deg_c = max(0, deg_base - 25)
+            elif "I" in str(dim_afectada):
+                deg_d = max(0, deg_base - 20)
+                deg_i = min(100, deg_base + 15)
+                deg_c = max(0, deg_base - 10)
+            elif "C" in str(dim_afectada):
+                deg_d = max(0, deg_base - 25)
+                deg_i = max(0, deg_base - 15)
+                deg_c = min(100, deg_base + 20)
+            else:
+                deg_d = deg_base
+                deg_i = deg_base
+                deg_c = deg_base
+            
+            amenazas.append({
+                "codigo_amenaza": codigo,
+                "nombre_amenaza": info["amenaza"],
+                "vulnerabilidad": VULNERABILIDADES.get(codigo, f"Vulnerabilidad asociada a {info['amenaza']}"),
+                "degradacion_d": deg_d,
+                "degradacion_i": deg_i,
+                "degradacion_c": deg_c,
+                "justificacion": f"Amenaza típica para {tipo_activo} con criticidad {criticidad_nivel}",
+                "tipo_amenaza": info.get("tipo_amenaza", "")
+            })
+    
+    return amenazas
+
+
+# ==================== SUGERENCIA DE SALVAGUARDAS CON IA ====================
+
+def sugerir_salvaguardas_ia(
+    nombre_activo: str,
+    tipo_activo: str,
+    amenaza: str,
+    vulnerabilidad: str,
+    riesgo: float,
+    modelo: str = None
+) -> Tuple[str, str, bool]:
+    """
+    Sugiere salvaguardas y controles ISO 27002 para mitigar un riesgo específico.
+    MEJORADO: Usa el contexto de entrenamiento MAGERIT para mapeos precisos.
+    
+    Args:
+        nombre_activo: Nombre del activo
+        tipo_activo: Tipo del activo
+        amenaza: Descripción de la amenaza
+        vulnerabilidad: Descripción de la vulnerabilidad
+        riesgo: Valor del riesgo calculado
+        modelo: Modelo de Ollama a usar
+    
+    Returns:
+        (salvaguarda_sugerida, control_iso_sugerido, usó_ia)
+    """
+    modelo_usar = modelo or MODELO_DEFAULT
+    catalogo_controles = get_catalogo_controles()
+    
+    # Obtener controles recomendados del mapeo de entrenamiento
+    controles_recomendados = get_controles_para_amenaza(amenaza)
+    controles_recomendados_texto = ""
+    if controles_recomendados:
+        controles_recomendados_texto = f"""
+## CONTROLES RECOMENDADOS PARA ESTA AMENAZA (PRIORIZAR ESTOS)
+{chr(10).join(['- ' + c for c in controles_recomendados])}
+"""
+    
+    # Obtener contexto ISO 27002
+    from services.ia_context_magerit import CONTEXTO_ISO27002
+    
+    # Construir lista completa de controles disponibles
+    controles_texto = "\n".join([
+        f"- {codigo}: {info['nombre']} ({info['categoria']})"
+        for codigo, info in list(catalogo_controles.items())[:60]
+    ])
+    
+    # Determinar zona de riesgo
+    if riesgo >= 6:
+        zona = "CRÍTICO"
+        urgencia = "Implementación URGENTE e INMEDIATA"
+    elif riesgo >= 4:
+        zona = "ALTO"
+        urgencia = "Implementación prioritaria a corto plazo"
+    elif riesgo >= 2:
+        zona = "MEDIO"
+        urgencia = "Planificar implementación a mediano plazo"
+    else:
+        zona = "BAJO"
+        urgencia = "Monitorear y evaluar periódicamente"
+    
+    prompt = f"""Eres un experto certificado en ciberseguridad y gestión de riesgos MAGERIT v3 / ISO 27002:2022.
+
+## CONTEXTO ISO 27002:2022
+{CONTEXTO_ISO27002}
+
+## CONTEXTO DEL RIESGO A MITIGAR
+- **Activo:** {nombre_activo} ({tipo_activo})
+- **Amenaza:** {amenaza}
+- **Vulnerabilidad:** {vulnerabilidad}
+- **Nivel de Riesgo:** {riesgo:.2f} ({zona})
+- **Urgencia:** {urgencia}
+{controles_recomendados_texto}
+
+## CATÁLOGO COMPLETO DE CONTROLES ISO 27002:2022 (USAR SOLO ESTOS CÓDIGOS)
+{controles_texto}
+
+## TU TAREA
+Recomienda UNA salvaguarda específica y UN control ISO 27002 para mitigar este riesgo.
+IMPORTANTE: Prioriza los controles recomendados para esta amenaza si están disponibles.
+
+Responde ÚNICAMENTE con un JSON válido:
+```json
+{{
+  "salvaguarda": "Descripción concreta de la medida a implementar (máximo 150 caracteres)",
+  "control_iso": "X.XX",
+  "justificacion": "Por qué este control mitiga el riesgo según ISO 27002"
+}}
+```
+
+REGLAS OBLIGATORIAS:
+1. El control_iso DEBE ser un código válido del catálogo (5.xx, 6.xx, 7.xx, 8.xx)
+2. La salvaguarda debe ser específica y accionable
+3. Considerar la urgencia según el nivel de riesgo
+
+Responde SOLO con el JSON:"""
+
+    try:
+        response = requests.post(
+            OLLAMA_URL,
+            json={
+                "model": modelo_usar,
+                "prompt": prompt,
+                "stream": False,
+                "options": {"temperature": 0.3}
+            },
+            timeout=TIMEOUT
+        )
+        
+        if response.status_code == 200:
+            texto = response.json().get("response", "")
+            
+            # Extraer JSON
+            json_match = re.search(r'\{[^{}]*\}', texto, re.DOTALL)
+            if json_match:
+                resultado = json.loads(json_match.group())
+                salvaguarda = resultado.get("salvaguarda", "Implementar medida de control")
+                control = resultado.get("control_iso", "")
+                
+                # Validar que el control existe
+                if control and control in catalogo_controles:
+                    control_info = catalogo_controles[control]
+                    control_completo = f"{control}: {control_info['nombre']}"
+                else:
+                    # Usar control del mapeo de entrenamiento
+                    control_completo = sugerir_control_heuristico(amenaza, catalogo_controles)
+                
+                return salvaguarda, control_completo, True
+    except Exception as e:
+        pass
+    
+    # Fallback heurístico usando el mapeo de entrenamiento
+    salvaguarda = generar_salvaguarda_heuristica(amenaza, vulnerabilidad, zona)
+    control = sugerir_control_heuristico(amenaza, catalogo_controles)
+    return salvaguarda, control, False
+
+
+def generar_salvaguarda_heuristica(amenaza: str, vulnerabilidad: str, zona: str) -> str:
+    """Genera salvaguarda heurística basada en palabras clave"""
+    amenaza_lower = amenaza.lower()
+    
+    # Mapeo de palabras clave a salvaguardas
+    SALVAGUARDAS = {
+        "suplantación": "Implementar autenticación multifactor (MFA) y políticas de contraseñas robustas",
+        "acceso": "Establecer control de acceso basado en roles (RBAC) con principio de mínimo privilegio",
+        "denegación": "Implementar protección DDoS, WAF y balanceo de carga con redundancia",
+        "malware": "Desplegar solución antimalware/EDR con actualizaciones automáticas",
+        "robo": "Implementar cifrado de datos en reposo y tránsito con gestión de claves",
+        "fuga": "Implementar DLP y clasificación de información con controles de salida",
+        "incendio": "Instalar sistemas de detección y extinción automática de incendios",
+        "inundación": "Ubicar equipos en zonas elevadas con sensores de humedad",
+        "fallo eléctrico": "Instalar UPS y generador de respaldo con mantenimiento preventivo",
+        "error": "Implementar procedimientos documentados y capacitación del personal",
+        "configuración": "Establecer gestión de cambios y revisiones de configuración periódicas",
+        "interceptación": "Implementar cifrado TLS/SSL en todas las comunicaciones",
+        "modificación": "Implementar controles de integridad y firmas digitales",
+        "destrucción": "Establecer copias de seguridad 3-2-1 con pruebas de restauración",
+        "indisponibilidad": "Implementar alta disponibilidad con clustering y failover",
+    }
+    
+    for keyword, salvaguarda in SALVAGUARDAS.items():
+        if keyword in amenaza_lower:
+            return salvaguarda
+    
+    # Salvaguarda genérica según zona
+    if zona == "CRÍTICO":
+        return "Implementar controles técnicos y organizativos inmediatos para mitigar el riesgo"
+    elif zona == "ALTO":
+        return "Establecer medidas de protección prioritarias según análisis de vulnerabilidad"
+    else:
+        return "Evaluar e implementar controles preventivos apropiados"
+
+
+def sugerir_control_heuristico(amenaza: str, catalogo: Dict) -> str:
+    """
+    Sugiere un control ISO 27002 basado en el mapeo de entrenamiento MAGERIT.
+    MEJORADO: Usa MAPEO_AMENAZA_CONTROL del contexto de entrenamiento.
+    """
+    amenaza_lower = amenaza.lower()
+    
+    # Primero intentar usar el mapeo de entrenamiento
+    controles_entrenamiento = get_controles_para_amenaza(amenaza)
+    if controles_entrenamiento:
+        # Extraer el código del primer control recomendado
+        primer_control = controles_entrenamiento[0]
+        # Formato: "5.15: Control de acceso" -> extraer "5.15"
+        if ": " in primer_control:
+            codigo = primer_control.split(":")[0].strip()
+            if codigo in catalogo:
+                info = catalogo[codigo]
+                return f"{codigo}: {info['nombre']}"
+    
+    # Mapeo de respaldo basado en palabras clave (extendido)
+    MAPEO_CONTROLES = {
+        # Amenazas de acceso/autenticación
+        "suplantación": "8.5",      # Autenticación segura
+        "identity": "8.5",
+        "credencial": "8.5",
+        "password": "8.5",
+        "contraseña": "8.5",
+        "acceso no autorizado": "5.15",  # Control de acceso
+        "acceso": "5.15",
+        "privilegio": "5.18",       # Derechos de acceso privilegiado
+        
+        # Amenazas de disponibilidad
+        "denegación": "8.22",       # Segmentación de red
+        "ddos": "8.22",
+        "indisponibilidad": "8.14", # Redundancia
+        "interrupción": "8.14",
+        
+        # Amenazas de malware
+        "malware": "8.7",           # Protección contra malware
+        "virus": "8.7",
+        "ransomware": "8.7",
+        "código malicioso": "8.7",
+        
+        # Amenazas de datos
+        "robo": "7.10",             # Medios de almacenamiento
+        "fuga": "5.12",             # Clasificación de información
+        "exfiltración": "5.12",
+        "leak": "5.12",
+        
+        # Amenazas criptográficas
+        "cifrado": "8.24",          # Uso de criptografía
+        "interceptación": "8.24",
+        "escucha": "8.24",
+        "sniffing": "8.24",
+        
+        # Amenazas físicas
+        "incendio": "7.5",          # Protección contra amenazas físicas
+        "fuego": "7.5",
+        "inundación": "7.5",
+        "desastre natural": "7.5",
+        
+        # Amenazas de configuración/cambios
+        "fallo": "8.14",            # Redundancia
+        "error": "6.3",             # Concientización
+        "configuración": "8.9",     # Gestión de configuración
+        "modificación": "8.4",      # Acceso a código fuente
+        
+        # Amenazas de continuidad
+        "destrucción": "8.13",      # Copias de seguridad
+        "pérdida": "8.13",
+        "backup": "8.13",
+        
+        # Vulnerabilidades técnicas
+        "vulnerabilidad": "8.8",    # Gestión de vulnerabilidades técnicas
+        "parche": "8.8",
+        "actualización": "8.8",
+        
+        # Red y comunicaciones
+        "red": "8.20",              # Seguridad de redes
+        "comunicación": "8.20",
+        "tráfico": "8.22",          # Segmentación de red
+        
+        # Ingeniería social
+        "phishing": "6.3",          # Concientización
+        "ingeniería social": "6.3",
+        "engaño": "6.3",
+    }
+    
+    for keyword, codigo in MAPEO_CONTROLES.items():
+        if keyword in amenaza_lower:
+            if codigo in catalogo:
+                info = catalogo[codigo]
+                return f"{codigo}: {info['nombre']}"
+    
+    # Control por defecto
+    if "5.1" in catalogo:
+        return "5.1: Políticas de seguridad de la información"
+    return "8.1: Dispositivos de punto final de usuario"
+
+
+def sugerir_salvaguardas_batch(riesgos_df: pd.DataFrame, modelo: str = None) -> pd.DataFrame:
+    """
+    Sugiere salvaguardas para múltiples riesgos en batch.
+    
+    Args:
+        riesgos_df: DataFrame con columnas: Nombre_Activo, Tipo_Activo, Amenaza, Vulnerabilidad, Riesgo
+        modelo: Modelo de Ollama a usar
+    
+    Returns:
+        DataFrame con columnas adicionales: Salvaguarda_Sugerida, Control_ISO, Generado_Por_IA
+    """
+    resultados = []
+    
+    for idx, row in riesgos_df.iterrows():
+        salvaguarda, control, usó_ia = sugerir_salvaguardas_ia(
+            nombre_activo=row.get("Nombre_Activo", ""),
+            tipo_activo=row.get("Tipo_Activo", ""),
+            amenaza=row.get("Amenaza", ""),
+            vulnerabilidad=row.get("Vulnerabilidad", ""),
+            riesgo=row.get("Riesgo", 0),
+            modelo=modelo
+        )
+        resultados.append({
+            "Salvaguarda_Sugerida": salvaguarda,
+            "Control_ISO": control,
+            "Generado_IA": "✅" if usó_ia else "🔧"
+        })
+    
+    return pd.concat([riesgos_df.reset_index(drop=True), pd.DataFrame(resultados)], axis=1)
+

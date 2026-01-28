@@ -86,6 +86,19 @@ from .ollama_magerit_service import (
     get_catalogo_controles
 )
 
+# Contexto de Entrenamiento MAGERIT para IA
+from .ia_context_magerit import (
+    get_contexto_completo_ia,
+    get_amenazas_para_tipo_activo,
+    get_controles_para_amenaza,
+    construir_prompt_experto,
+    MAPEO_AMENAZA_CONTROL,
+    AMENAZAS_POR_TIPO_ACTIVO,
+    DEGRADACION_TIPICA,
+    CONTEXTO_MAGERIT,
+    CONTEXTO_ISO27002
+)
+
 # Servicio de Validación de IA Local
 from .ia_validation_service import (
     ejecutar_validacion_completa,
@@ -175,6 +188,57 @@ from .export_service import (
     generar_datos_powerbi,
     exportar_powerbi_excel,
     exportar_powerbi_csv
+)
+
+# Servicio de Vulnerabilidades
+from .vulnerabilidad_service import (
+    crear_vulnerabilidad,
+    obtener_vulnerabilidad,
+    listar_vulnerabilidades_activo,
+    listar_vulnerabilidades_evaluacion,
+    actualizar_vulnerabilidad,
+    eliminar_vulnerabilidad,
+    sugerir_vulnerabilidades_ia,
+    get_estadisticas_vulnerabilidades,
+    Vulnerabilidad,
+    SEVERIDADES
+)
+
+# Servicio de Tratamiento de Riesgos
+from .tratamiento_service import (
+    crear_tratamiento,
+    obtener_tratamiento,
+    listar_tratamientos_activo,
+    listar_tratamientos_evaluacion,
+    actualizar_tratamiento,
+    eliminar_tratamiento,
+    sugerir_tratamiento,
+    get_estadisticas_tratamiento,
+    TratamientoRiesgo,
+    TIPOS_TRATAMIENTO
+)
+
+# Servicio de Comparativa/Reevaluación
+from .comparativa_service import (
+    comparar_evaluaciones,
+    guardar_comparativa,
+    listar_historial_comparativas,
+    get_tendencia_riesgo,
+    ComparativaEvaluacion
+)
+
+# Servicio de Auditoría
+from .auditoria_service import (
+    registrar_cambio,
+    registrar_sugerencia_ia,
+    registrar_evaluacion,
+    registrar_carga_masiva,
+    obtener_historial,
+    obtener_historial_activo,
+    obtener_estadisticas_auditoria,
+    limpiar_auditoria_antigua,
+    RegistroAuditoria,
+    ACCIONES
 )
 
 __all__ = [
@@ -297,5 +361,44 @@ __all__ = [
     'PlanTratamiento',
     'ResumenEjecutivo',
     'PrediccionRiesgo',
-    'ControlPriorizado'
+    'ControlPriorizado',
+    # Vulnerabilidades Service
+    'crear_vulnerabilidad',
+    'obtener_vulnerabilidad',
+    'listar_vulnerabilidades_activo',
+    'listar_vulnerabilidades_evaluacion',
+    'actualizar_vulnerabilidad',
+    'eliminar_vulnerabilidad',
+    'sugerir_vulnerabilidades_ia',
+    'get_estadisticas_vulnerabilidades',
+    'Vulnerabilidad',
+    'SEVERIDADES',
+    # Tratamiento Service
+    'crear_tratamiento',
+    'obtener_tratamiento',
+    'listar_tratamientos_activo',
+    'listar_tratamientos_evaluacion',
+    'actualizar_tratamiento',
+    'eliminar_tratamiento',
+    'sugerir_tratamiento',
+    'get_estadisticas_tratamiento',
+    'TratamientoRiesgo',
+    'TIPOS_TRATAMIENTO',
+    # Comparativa Service
+    'comparar_evaluaciones',
+    'guardar_comparativa',
+    'listar_historial_comparativas',
+    'get_tendencia_riesgo',
+    'ComparativaEvaluacion',
+    # Auditoria Service
+    'registrar_cambio',
+    'registrar_sugerencia_ia',
+    'registrar_evaluacion',
+    'registrar_carga_masiva',
+    'obtener_historial',
+    'obtener_historial_activo',
+    'obtener_estadisticas_auditoria',
+    'limpiar_auditoria_antigua',
+    'RegistroAuditoria',
+    'ACCIONES'
 ]

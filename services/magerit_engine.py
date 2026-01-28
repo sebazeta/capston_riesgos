@@ -20,6 +20,12 @@ from services.database_service import (
     read_table, insert_rows, update_row, delete_row,
     query_rows, get_connection
 )
+from services.degradacion_service import (
+    obtener_degradacion, obtener_degradaciones_activo, guardar_degradacion,
+    sugerir_degradacion_ia, DegradacionAmenaza,
+    calcular_impacto_con_degradacion, calcular_riesgo_activo_dual,
+    calcular_riesgo_objetivo, supera_limite, obtener_limite_evaluacion
+)
 
 
 # ==================== MODELOS DE DATOS ====================
@@ -629,6 +635,9 @@ def evaluar_activo_magerit(
     riesgos_residuales = []
     todos_controles_recomendados = []
     
+    # Calcular CRITICIDAD del activo (MAGERIT): MAX(D, I, C)
+    criticidad_activo = impacto.impacto_global  # Ya es max(D, I, C)
+    
     for amenaza_data in amenazas_ia:
         codigo = amenaza_data.get("codigo", "")
         
@@ -638,20 +647,31 @@ def evaluar_activo_magerit(
         
         # Obtener info de la amenaza del catálogo
         amenaza_info = catalogo_amenazas[catalogo_amenazas["codigo"] == codigo].iloc[0]
+        tipo_amenaza = amenaza_info.get("tipo_amenaza", "")
         
-        # Determinar dimensión afectada e impacto
+        # Obtener o sugerir DEGRADACIÓN para esta amenaza
+        degradacion = obtener_degradacion(eval_id, activo_id, codigo)
+        if degradacion is None:
+            # Sugerir degradación por IA si no existe manual
+            degradacion = sugerir_degradacion_ia(
+                tipo_activo=tipo_activo,
+                codigo_amenaza=codigo,
+                tipo_amenaza=tipo_amenaza
+            )
+            degradacion.id_evaluacion = eval_id
+            degradacion.id_activo = activo_id
+            # Guardar sugerencia automáticamente
+            guardar_degradacion(degradacion)
+        
+        # FÓRMULA CORRECTA MAGERIT:
+        # IMPACTO = CRITICIDAD × MAX(Deg_D, Deg_I, Deg_C)
+        impacto_amenaza = round(criticidad_activo * degradacion.degradacion_maxima, 2)
+        
+        # Determinar dimensión afectada (para registro)
         dimension = amenaza_data.get("dimension", "D").upper()
-        if dimension == "D":
-            impacto_amenaza = impacto.disponibilidad
-        elif dimension == "I":
-            impacto_amenaza = impacto.integridad
-        elif dimension == "C":
-            impacto_amenaza = impacto.confidencialidad
-        else:
-            impacto_amenaza = impacto.impacto_global
         
-        # Calcular riesgo inherente
-        riesgo_inherente = probabilidad_ia * impacto_amenaza
+        # Calcular riesgo inherente: FRECUENCIA × IMPACTO
+        riesgo_inherente = round(probabilidad_ia * impacto_amenaza, 2)
         nivel_riesgo = get_nivel_riesgo(riesgo_inherente)
         
         # Obtener controles que mitigan esta amenaza
@@ -717,11 +737,23 @@ def evaluar_activo_magerit(
         riesgos_inherentes.append(riesgo_inherente)
         riesgos_residuales.append(riesgo_residual)
     
-    # 8. Calcular riesgos globales (máximo de todas las amenazas)
-    riesgo_inherente_global = max(riesgos_inherentes) if riesgos_inherentes else 0
-    riesgo_residual_global = max(riesgos_residuales) if riesgos_residuales else 0
+    # 8. Calcular riesgos globales con AMBAS agregaciones (MAGERIT Marco Teórico)
+    riesgos_inh = calcular_riesgo_activo_dual(riesgos_inherentes)
+    riesgos_res = calcular_riesgo_activo_dual(riesgos_residuales)
     
-    # 9. Crear resultado final
+    # Por defecto usar PROMEDIO (más balanceado), pero guardamos ambos
+    riesgo_inherente_global = riesgos_inh["promedio"]
+    riesgo_inherente_maximo = riesgos_inh["maximo"]
+    riesgo_residual_global = riesgos_res["promedio"]
+    riesgo_residual_maximo = riesgos_res["maximo"]
+    
+    # Calcular riesgo objetivo y verificar límite
+    factor_objetivo = 0.5  # Configurado por evaluación
+    riesgo_objetivo = calcular_riesgo_objetivo(riesgo_residual_global, factor_objetivo)
+    limite = obtener_limite_evaluacion(eval_id)
+    sobre_limite = supera_limite(riesgo_residual_global, limite)
+    
+    # 9. Crear resultado final (guardar criticidad para referencia)
     resultado = ResultadoEvaluacionMagerit(
         id_evaluacion=eval_id,
         id_activo=activo_id,
@@ -797,14 +829,28 @@ def guardar_resultado_magerit(resultado: ResultadoEvaluacionMagerit) -> bool:
             # Preparar controles como JSON
             controles_json = json.dumps(resultado.controles_existentes_global, ensure_ascii=False)
             
-            # Insertar resultado
+            # Insertar resultado con campos extendidos para Marco Teórico MAGERIT
+            # Calcular valores adicionales
+            criticidad = resultado.impacto.impacto_global  # MAX(D, I, C)
+            riesgo_promedio = resultado.riesgo_residual_global  # Ya es promedio
+            
+            # Calcular máximo de los riesgos individuales
+            riesgos_amenazas = [a.riesgo_residual for a in resultado.amenazas]
+            riesgo_maximo = max(riesgos_amenazas) if riesgos_amenazas else 0
+            
+            # Calcular objetivo y límite
+            limite = obtener_limite_evaluacion(resultado.id_evaluacion)
+            riesgo_objetivo = calcular_riesgo_objetivo(riesgo_promedio, 0.5)
+            sobre_limite = 1 if supera_limite(riesgo_promedio, limite) else 0
+            
             cursor.execute('''
                 INSERT INTO RESULTADOS_MAGERIT (
                     ID_Evaluacion, ID_Activo, Nombre_Activo,
                     Impacto_D, Impacto_I, Impacto_C,
                     Riesgo_Inherente, Riesgo_Residual, Nivel_Riesgo,
-                    Amenazas_JSON, Controles_JSON, Observaciones, Modelo_IA, Fecha_Evaluacion
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    Amenazas_JSON, Controles_JSON, Observaciones, Modelo_IA, Fecha_Evaluacion,
+                    Criticidad, Riesgo_Promedio, Riesgo_Maximo, Riesgo_Objetivo, Supera_Limite
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', [
                 resultado.id_evaluacion,
                 resultado.id_activo,
@@ -819,7 +865,12 @@ def guardar_resultado_magerit(resultado: ResultadoEvaluacionMagerit) -> bool:
                 controles_json,
                 resultado.observaciones,
                 resultado.modelo_ia,
-                resultado.fecha_evaluacion
+                resultado.fecha_evaluacion,
+                criticidad,
+                riesgo_promedio,
+                riesgo_maximo,
+                riesgo_objetivo,
+                sobre_limite
             ])
         
         return True

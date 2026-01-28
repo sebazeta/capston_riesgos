@@ -54,6 +54,26 @@ from .ia_advanced_ui import (
     render_ia_avanzada_ui
 )
 
+from .degradacion_ui import (
+    render_degradacion_tab
+)
+
+from .vulnerabilidades_ui import (
+    render_vulnerabilidades_tab
+)
+
+from .tratamiento_ui import (
+    render_tratamiento_tab
+)
+
+from .comparativa_ui import (
+    render_comparativa_tab
+)
+
+from .auditoria_ui import (
+    render_auditoria_tab
+)
+
 __all__ = [
     # Dashboard MAGERIT
     'render_mapa_calor_riesgos',
@@ -89,5 +109,15 @@ __all__ = [
     'render_concentracion_mini_card',
     'render_concentracion_tab',
     # IA Avanzada
-    'render_ia_avanzada_ui'
+    'render_ia_avanzada_ui',
+    # Degradación
+    'render_degradacion_tab',
+    # Vulnerabilidades
+    'render_vulnerabilidades_tab',
+    # Tratamiento
+    'render_tratamiento_tab',
+    # Comparativa
+    'render_comparativa_tab',
+    # Auditoría
+    'render_auditoria_tab'
 ]

@@ -105,6 +105,23 @@ def crear_activo(eval_id: str, datos: Dict) -> tuple:
         "RTO": datos.get("RTO", ""),
         "RPO": datos.get("RPO", ""),
         "BIA": datos.get("BIA", ""),
+        # Nuevos campos técnicos
+        "Modelo": datos.get("Modelo", ""),
+        "Serial": datos.get("Serial", ""),
+        "Fabricante": datos.get("Fabricante", ""),
+        "Sistema_Operativo": datos.get("Sistema_Operativo", ""),
+        "Virtualizacion": datos.get("Virtualizacion", "N/A"),
+        "Desc_Hardware": datos.get("Desc_Hardware", ""),
+        "Dependencias": datos.get("Dependencias", ""),
+        "Rack": datos.get("Rack", ""),
+        "Num_Administradores": datos.get("Num_Administradores", 1),
+        # Campos de mantenimiento
+        "Fecha_Instalacion": datos.get("Fecha_Instalacion", ""),
+        "Vigencia_Tecnologica": datos.get("Vigencia_Tecnologica", "Vigente"),
+        "Fecha_Garantia": datos.get("Fecha_Garantia", ""),
+        "Proveedor_Mantenimiento": datos.get("Proveedor_Mantenimiento", ""),
+        "Contrato_Mantenimiento": datos.get("Contrato_Mantenimiento", "No"),
+        # Estado
         "Estado": "Pendiente",
         "Fecha_Creacion": dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }

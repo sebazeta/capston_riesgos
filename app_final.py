@@ -106,6 +106,14 @@ except ImportError as e:
     IA_AVANZADA_DISPONIBLE = False
     print(f"Warning: IA Avanzada not available: {e}")
 
+# Componentes de Degradación MAGERIT
+try:
+    from components.degradacion_ui import render_degradacion_tab, render_resumen_degradacion_evaluacion
+    DEGRADACION_DISPONIBLE = True
+except ImportError as e:
+    DEGRADACION_DISPONIBLE = False
+    print(f"Warning: Degradación UI not available: {e}")
+
 from config.settings import (
     CUESTIONARIOS_HEADERS, RESPUESTAS_HEADERS, IMPACTO_HEADERS,
     ANALISIS_RIESGO_HEADERS, RISK_COLORS, get_risk_level,
@@ -328,16 +336,20 @@ with st.sidebar:
 
 # ==================== TABS ====================
 
-tab0, tab1, tab2, tab3, tab4, tab5, tab_matriz, tab_ia_adv, tab6, tab_ia = st.tabs([
+tab0, tab1, tab2, tab3, tab_deg, tab_vuln, tab_trat, tab4, tab5, tab_matriz, tab_ia_adv, tab_comp, tab_audit, tab_ia = st.tabs([
     "Evaluaciones",
     "Activos",
     "Cuestionarios",
     "Evaluacion con IA",
+    "⚙️ Degradación",
+    "🔓 Vulnerabilidades",
+    "🛡️ Tratamiento",
     "Dashboard",
     "Madurez",
     "Matriz MAGERIT",
     "IA Avanzada",
-    "Comparativas",
+    "📊 Comparativas",
+    "📋 Auditoría",
     "Validacion IA"
 ])
 
@@ -1376,6 +1388,45 @@ with tab3:
                                     st.info(f"📝 {resultado.get('observaciones')}")
 
 
+# ==================== TAB DEGRADACIÓN: GESTIÓN DE DEGRADACIÓN MAGERIT ====================
+with tab_deg:
+    if not st.session_state.get("eval_actual"):
+        st.error("⚠️ EVALUACIÓN REQUERIDA")
+        st.warning("Ve a la pestaña **Evaluaciones** y selecciona una evaluación primero.")
+    else:
+        if DEGRADACION_DISPONIBLE:
+            render_degradacion_tab(st.session_state["eval_actual"])
+        else:
+            st.error("❌ Componente de Degradación no disponible")
+            st.info("Verifica que el archivo `components/degradacion_ui.py` existe y no tiene errores de sintaxis.")
+
+
+# ==================== TAB VULNERABILIDADES: GESTIÓN DE VULNERABILIDADES ====================
+with tab_vuln:
+    if not st.session_state.get("eval_actual"):
+        st.error("⚠️ EVALUACIÓN REQUERIDA")
+        st.warning("Ve a la pestaña **Evaluaciones** y selecciona una evaluación primero.")
+    else:
+        try:
+            from components.vulnerabilidades_ui import render_vulnerabilidades_tab
+            render_vulnerabilidades_tab(st.session_state["eval_actual"])
+        except Exception as e:
+            st.error(f"❌ Error cargando módulo de vulnerabilidades: {e}")
+
+
+# ==================== TAB TRATAMIENTO: TRATAMIENTO DE RIESGOS ====================
+with tab_trat:
+    if not st.session_state.get("eval_actual"):
+        st.error("⚠️ EVALUACIÓN REQUERIDA")
+        st.warning("Ve a la pestaña **Evaluaciones** y selecciona una evaluación primero.")
+    else:
+        try:
+            from components.tratamiento_ui import render_tratamiento_tab
+            render_tratamiento_tab(st.session_state["eval_actual"])
+        except Exception as e:
+            st.error(f"❌ Error cargando módulo de tratamiento: {e}")
+
+
 # ==================== TAB 4: DASHBOARD RIESGOS MAGERIT ====================
 with tab4:
     st.header("Dashboard de Evaluacion")
@@ -1995,8 +2046,8 @@ with tab_ia_adv:
         render_ia_avanzada_ui()
 
 
-# ==================== TAB 6: COMPARATIVAS ====================
-with tab6:
+# ==================== TAB COMP: COMPARATIVAS MEJORADAS ====================
+with tab_comp:
     st.header("🔄 Comparativas entre Evaluaciones")
     
     st.markdown("""
@@ -2306,6 +2357,15 @@ with tab6:
                             st.write(f"• {rec}")
             else:
                 st.info("No hay datos de madurez para comparar. Calcule la madurez en el tab 🎯 Madurez primero.")
+
+
+# ==================== TAB AUDITORIA: TRAZABILIDAD COMPLETA ====================
+with tab_audit:
+    try:
+        from components.auditoria_ui import render_auditoria_tab
+        render_auditoria_tab()
+    except Exception as e:
+        st.error(f"❌ Error cargando módulo de auditoría: {e}")
 
 
 # ==================== TAB IA: VALIDACIÓN DE IA LOCAL (AL FINAL) ====================
