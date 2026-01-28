@@ -1185,10 +1185,13 @@ def calcular_frecuencia_desde_cuestionario(id_evaluacion: str, id_activo: str) -
     with get_connection() as conn:
         cursor = conn.cursor()
         
+        # Primero verificar qué columnas existen
+        cursor.execute("PRAGMA table_info(IDENTIFICACION_VALORACION)")
+        columnas_existentes = {row[1] for row in cursor.fetchall()}
+        
+        # Consulta base solo con columnas que seguro existen
         cursor.execute("""
-            SELECT D, Valor_D, I, Valor_I, C, Valor_C, Criticidad, Criticidad_Nivel,
-                   RTO_Valor, RTO_Nivel, RPO_Valor, RPO_Nivel, BIA_Valor, BIA_Nivel,
-                   Respuestas_JSON
+            SELECT D, Valor_D, I, Valor_I, C, Valor_C, Criticidad, Criticidad_Nivel
             FROM IDENTIFICACION_VALORACION 
             WHERE ID_Evaluacion = ? AND ID_Activo = ?
         """, (id_evaluacion, id_activo))
@@ -1199,17 +1202,16 @@ def calcular_frecuencia_desde_cuestionario(id_evaluacion: str, id_activo: str) -
             # Sin valoración, frecuencia media por defecto
             return 2.0, "Media", {"mensaje": "Sin valoración D/I/C - usando frecuencia media por defecto"}
         
-        # Extraer valores
+        # Extraer valores básicos
         valor_d = row[1] or 0
         valor_i = row[3] or 0
         valor_c = row[5] or 0
         criticidad = row[6] or 0
         criticidad_nivel = row[7] or "Sin valorar"
-        rto_valor = row[8] or 0
-        rto_nivel = row[9] or "N/A"
-        bla_valor = row[12] or 0
-        bia_nivel = row[13] or "N/A"
-        respuestas_json = row[14]
+        
+        # Valores opcionales (pueden no existir en la tabla)
+        rto_nivel = "N/A"
+        bia_nivel = "N/A"
         
         # Calcular frecuencia base según criticidad
         # Activos más críticos tienen mayor exposición y son más atacados

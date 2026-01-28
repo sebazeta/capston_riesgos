@@ -39,6 +39,86 @@ MODELO_DEFAULT = "llama3.2:1b"  # Usar modelo pequeño por defecto (más rápido
 TIMEOUT = 30  # Reducido a 30 segundos para fallar rápido
 
 
+# ==================== CONTEXTO DE APLICACIONES CRÍTICAS UDLA ====================
+
+APLICACIONES_CRITICAS_CONTEXTO = {
+    "Banner": {
+        "descripcion": "Sistema de Información Estudiantil (SIS) que almacena toda la información de estudiantes, docentes, personal administrativo, matrículas, calificaciones históricas, expedientes académicos y datos personales sensibles.",
+        "datos_sensibles": ["Datos personales de estudiantes", "Calificaciones", "Historial académico", "Información de docentes", "Datos de contacto"],
+        "impacto_negocio": "CRÍTICO - Afecta operaciones académicas completas",
+        "usuarios": "Estudiantes, Docentes, Personal Administrativo",
+        "amenazas_principales": ["Acceso no autorizado", "Fuga de datos personales", "Ransomware", "Inyección SQL"]
+    },
+    "Carpeta Online": {
+        "descripcion": "Plataforma de almacenamiento y distribución de materiales académicos donde se almacenan datos de clases, horarios, syllabus, materiales de estudio y documentos compartidos entre docentes y estudiantes.",
+        "datos_sensibles": ["Materiales académicos", "Horarios de clases", "Documentos de docentes", "Recursos educativos"],
+        "impacto_negocio": "ALTO - Afecta continuidad de clases y acceso a materiales",
+        "usuarios": "Docentes, Estudiantes",
+        "amenazas_principales": ["Pérdida de datos", "Acceso no autorizado", "Malware en archivos", "Indisponibilidad del servicio"]
+    },
+    "D2L": {
+        "descripcion": "Desire2Learn - Aula Virtual institucional donde se suben trabajos, pruebas, exámenes, calificaciones y se realiza toda la interacción académica virtual. Sistema crítico para educación híbrida y online.",
+        "datos_sensibles": ["Calificaciones", "Exámenes", "Trabajos de estudiantes", "Retroalimentación docente", "Foros de discusión"],
+        "impacto_negocio": "CRÍTICO - Paraliza educación virtual completamente",
+        "usuarios": "Estudiantes, Docentes, Coordinadores académicos",
+        "amenazas_principales": ["Indisponibilidad en época de exámenes", "Alteración de calificaciones", "Plagio/Integridad académica", "DDoS"]
+    },
+    "Página Web": {
+        "descripcion": "Portal web institucional público de la universidad con información de carreras, admisiones, noticias, eventos y servicios. Representa la imagen pública de la institución.",
+        "datos_sensibles": ["Información pública institucional", "Formularios de contacto", "Datos de prospectos"],
+        "impacto_negocio": "MEDIO - Afecta imagen institucional y captación de estudiantes",
+        "usuarios": "Público general, Prospectos, Comunidad universitaria",
+        "amenazas_principales": ["Defacement", "DDoS", "Inyección de código", "SEO Spam"]
+    },
+    "Portal de Pagos": {
+        "descripcion": "Sistema de pagos en línea que registra todas las transacciones financieras, matrículas, colegiaturas, pagos de servicios y estados de cuenta de estudiantes. Maneja datos financieros sensibles.",
+        "datos_sensibles": ["Datos de tarjetas de crédito", "Información bancaria", "Estados de cuenta", "Historial de pagos", "Datos fiscales"],
+        "impacto_negocio": "CRÍTICO - Afecta ingresos y operación financiera",
+        "usuarios": "Estudiantes, Padres de familia, Área de Cobranza",
+        "amenazas_principales": ["Fraude financiero", "Robo de datos de tarjetas", "PCI-DSS incumplimiento", "Phishing"]
+    },
+    "BX": {
+        "descripcion": "Biblioteca Digital institucional que provee acceso a recursos bibliográficos, bases de datos académicas, revistas científicas, e-books y material de investigación para la comunidad universitaria.",
+        "datos_sensibles": ["Historial de consultas", "Préstamos digitales", "Accesos a bases de datos"],
+        "impacto_negocio": "MEDIO - Afecta investigación y recursos académicos",
+        "usuarios": "Estudiantes, Docentes, Investigadores",
+        "amenazas_principales": ["Acceso no autorizado a recursos pagados", "Descarga masiva ilegal", "Indisponibilidad de recursos"]
+    },
+    "Uni+": {
+        "descripcion": "Aplicación móvil institucional que permite a estudiantes generar códigos de ingreso al campus, consultar horarios, calificaciones, notificaciones push y servicios universitarios desde el celular.",
+        "datos_sensibles": ["Credenciales de acceso", "Códigos de ingreso físico", "Ubicación", "Datos personales"],
+        "impacto_negocio": "ALTO - Afecta acceso físico al campus y servicios móviles",
+        "usuarios": "Estudiantes, Personal",
+        "amenazas_principales": ["Suplantación de identidad", "Acceso físico no autorizado", "Robo de credenciales", "Vulnerabilidades en app móvil"]
+    },
+    "Aprovisionamiento de Cuentas": {
+        "descripcion": "Sistema de gestión de identidades (IAM) que automatiza la creación, modificación y eliminación de cuentas de usuario en todos los sistemas institucionales. Controla accesos y privilegios.",
+        "datos_sensibles": ["Credenciales de usuarios", "Permisos de acceso", "Roles y privilegios", "Directorio de identidades"],
+        "impacto_negocio": "CRÍTICO - Afecta acceso a todos los sistemas institucionales",
+        "usuarios": "TI, Recursos Humanos, Administración",
+        "amenazas_principales": ["Escalación de privilegios", "Cuentas huérfanas", "Acceso indebido", "Fallas en desprovisión"]
+    },
+    "UniAutorization": {
+        "descripcion": "Sistema centralizado de autorización y control de acceso que gestiona permisos, roles y políticas de acceso a los diferentes sistemas y recursos institucionales basado en el principio de mínimo privilegio.",
+        "datos_sensibles": ["Políticas de acceso", "Matrices de permisos", "Logs de autorización", "Configuración de roles"],
+        "impacto_negocio": "CRÍTICO - Controla seguridad de acceso a toda la infraestructura",
+        "usuarios": "Seguridad TI, Administradores de sistemas",
+        "amenazas_principales": ["Bypass de controles", "Configuración incorrecta", "Falta de segregación de funciones"]
+    },
+    "SAP": {
+        "descripcion": "Sistema ERP (Enterprise Resource Planning) que gestiona procesos financieros, contabilidad, recursos humanos, nómina, compras, inventarios y operaciones administrativas de toda la universidad.",
+        "datos_sensibles": ["Información financiera", "Datos de nómina", "Información de proveedores", "Contratos", "Datos fiscales"],
+        "impacto_negocio": "CRÍTICO - Afecta operaciones administrativas y financieras completas",
+        "usuarios": "Finanzas, RRHH, Compras, Dirección",
+        "amenazas_principales": ["Fraude interno", "Acceso no autorizado a datos financieros", "Ransomware", "Manipulación de datos contables"]
+    }
+}
+
+def get_contexto_aplicacion_critica(nombre_app: str) -> Dict:
+    """Obtiene el contexto de una aplicación crítica para uso en evaluación de riesgos"""
+    return APLICACIONES_CRITICAS_CONTEXTO.get(nombre_app, {})
+
+
 # ==================== CARGA DE CATÁLOGOS ====================
 
 def get_catalogo_amenazas() -> Dict[str, Dict]:
@@ -83,6 +163,7 @@ def construir_contexto_activo(
     """
     Construye el contexto textual de un activo para el prompt de IA.
     Incluye datos del activo y resumen de respuestas del cuestionario.
+    También incluye contexto de la aplicación crítica si aplica.
     """
     # Datos del activo
     contexto = f"""
@@ -94,6 +175,20 @@ def construir_contexto_activo(
 - **Propietario**: {activo.get("Propietario", "")}
 - **Criticidad**: {activo.get("Criticidad", "")}
 - **Ubicación**: {activo.get("Ubicacion", "")}
+"""
+    
+    # Agregar contexto de aplicación crítica si existe
+    app_critica = activo.get("App_Critica", "")
+    if app_critica and app_critica not in ["No", "No Aplica", "", None]:
+        contexto_app = get_contexto_aplicacion_critica(app_critica)
+        if contexto_app:
+            contexto += f"""
+## APLICACIÓN CRÍTICA ASOCIADA: {app_critica}
+- **Descripción**: {contexto_app.get('descripcion', '')}
+- **Datos Sensibles**: {', '.join(contexto_app.get('datos_sensibles', []))}
+- **Impacto de Negocio**: {contexto_app.get('impacto_negocio', '')}
+- **Usuarios Afectados**: {contexto_app.get('usuarios', '')}
+- **Amenazas Principales Conocidas**: {', '.join(contexto_app.get('amenazas_principales', []))}
 """
     
     # Resumen de respuestas por bloque

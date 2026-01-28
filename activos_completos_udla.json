@@ -1,0 +1,652 @@
+{
+  "activos": [
+    {
+      "nombre_activo": "Base de datos SQL SNSQL10",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack A1",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Base de datos",
+      "app_critica": "Carpeta Online",
+      "descripcion": "Servidor SQL Server que almacena datos de clases, horarios y material académico de Carpeta Online. Criticidad Alta (C3/I3/D3). Protección: Cylance Unified Agent."
+    },
+    {
+      "nombre_activo": "Base de datos SQL SNSQL07",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack B2",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Base de datos",
+      "app_critica": "Carpeta Online",
+      "descripcion": "Servidor SQL Server secundario para Carpeta Online. Réplica de datos académicos y sincronización. Criticidad Alta (C3/I3/D3). Protección: Cylance Unified Agent."
+    },
+    {
+      "nombre_activo": "Base de datos SQL SNSQL01N1",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack A2",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Base de datos",
+      "app_critica": "Carpeta Online",
+      "descripcion": "Nodo 1 del cluster SQL Server para Carpeta Online. Alta disponibilidad para datos de clases. Criticidad Alta (C3/I3/D3). Protección: Cylance Unified Agent."
+    },
+    {
+      "nombre_activo": "Servidor IIS SNAPP13",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack B1",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Web",
+      "app_critica": "Carpeta Online",
+      "descripcion": "Servidor web IIS que hospeda la interfaz de Carpeta Online. Frontend para acceso a material académico. Criticidad Alta (C1/I2/D3). Protección: CylanceOPTICS + CylancePROTECT."
+    },
+    {
+      "nombre_activo": "Servidor IIS SNAPP12",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack A3",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Web",
+      "app_critica": "Carpeta Online",
+      "descripcion": "Servidor web IIS secundario para Carpeta Online. Balanceo de carga y redundancia. Criticidad Alta (C1/I2/D3). Protección: Cylance Unified Agent."
+    },
+    {
+      "nombre_activo": "Servidor IIS SNCL02",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack B3",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Aplicaciones",
+      "app_critica": "Carpeta Online",
+      "descripcion": "Servidor de aplicaciones para procesamiento de documentos de Carpeta Online. Gestión de archivos y versiones. Criticidad Media (C1/I2/D3). Protección: Cylance Unified Agent."
+    },
+    {
+      "nombre_activo": "Servidor SNAPI01N2",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack A4",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "API Gateway",
+      "app_critica": "Carpeta Online",
+      "descripcion": "API Gateway para integración de Carpeta Online con sistemas externos. Expone servicios REST. Criticidad Alta (C3/I2/D1). Protección: Windows Defender."
+    },
+    {
+      "nombre_activo": "Servidor SNAPI01N1",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack B4",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "API Gateway",
+      "app_critica": "Carpeta Online",
+      "descripcion": "API Gateway secundario para Carpeta Online. Failover automático. Criticidad Baja (C1/I1/D1). Protección: Windows Defender."
+    },
+    {
+      "nombre_activo": "Servidor SNAPI01N3",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack A5",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Microservicios",
+      "app_critica": "Carpeta Online",
+      "descripcion": "Servidor de microservicios para notificaciones y sincronización de Carpeta Online. Criticidad Baja (C1/I1/D1). Protección: Windows Defender."
+    },
+    {
+      "nombre_activo": "Servidor SNAPP12 - Banner",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack C1",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Web",
+      "app_critica": "Banner",
+      "descripcion": "Servidor web para Banner. Gestiona información de estudiantes, docentes, matrículas y expedientes académicos. Criticidad Media (C1/I2/D2). Protección: Cylance Unified Agent."
+    },
+    {
+      "nombre_activo": "Servidor IIS SNAPP13 - Banner",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack C2",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Web",
+      "app_critica": "Banner",
+      "descripcion": "Servidor web secundario Banner. Portal de autoservicio para estudiantes y personal académico. Criticidad Alta (C1/I1/D3). Protección: CylanceOPTICS + CylancePROTECT."
+    },
+    {
+      "nombre_activo": "Base de datos SQL SNSQL01N1 - Banner",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack C3",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Base de datos",
+      "app_critica": "Banner",
+      "descripcion": "Base de datos principal de Banner. Almacena registros de estudiantes, calificaciones históricas y datos administrativos. Criticidad Alta (C3/I1/D3). Protección: Cylance Unified Agent."
+    },
+    {
+      "nombre_activo": "OCREG04",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "UdlaPark - DataCenter Principal",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Aplicaciones",
+      "app_critica": "Banner",
+      "descripcion": "Servidor Oracle para módulo de registro académico de Banner. Procesa inscripciones y horarios. Criticidad Baja (C1/I1/D1). Sin protección adicional."
+    },
+    {
+      "nombre_activo": "OCREG03",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "Granados - DataCenter Alterno",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Aplicaciones",
+      "app_critica": "Banner",
+      "descripcion": "Servidor Oracle réplica para registro académico Banner. Contingencia y reportes. Criticidad Baja (C1/I1/D1). Sin protección adicional."
+    },
+    {
+      "nombre_activo": "OCSSB01",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "UdlaPark - DataCenter Principal",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Aplicaciones",
+      "app_critica": "Banner",
+      "descripcion": "Oracle Self-Service Banner. Portal web para consulta de notas y estado académico. Criticidad Baja (C1/I1/D1). Sin protección adicional."
+    },
+    {
+      "nombre_activo": "BASTION PROD",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "Granados - DMZ",
+      "propietario": "Seguridad TI",
+      "tipo_servicio": "Servidor Seguridad",
+      "app_critica": "Banner",
+      "descripcion": "Servidor Bastión para acceso seguro a infraestructura Banner. Control de sesiones privilegiadas. Criticidad Baja (C1/I1/D1). Sin protección adicional."
+    },
+    {
+      "nombre_activo": "OCJCOG01",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "UdlaPark - DataCenter Principal",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Reportes",
+      "app_critica": "Banner",
+      "descripcion": "Servidor Cognos para reportes de Banner. Genera informes académicos y estadísticas institucionales. Criticidad Baja (C1/I1/D1). Sin protección adicional."
+    },
+    {
+      "nombre_activo": "OCDBEIS01",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "Granados - DataCenter Alterno",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Base de datos",
+      "app_critica": "Banner",
+      "descripcion": "Base de datos Oracle para integración Banner-EIS. Data warehouse académico. Criticidad Baja (C1/I1/D1). Sin protección adicional."
+    },
+    {
+      "nombre_activo": "OCREG02",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "UdlaPark - DataCenter Principal",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Aplicaciones",
+      "app_critica": "Banner",
+      "descripcion": "Servidor de procesamiento de registro Banner. Gestión de períodos académicos. Criticidad Baja (C1/I1/D1). Sin protección adicional."
+    },
+    {
+      "nombre_activo": "OCREG01",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "Granados - DataCenter Alterno",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Aplicaciones",
+      "app_critica": "Banner",
+      "descripcion": "Servidor principal de registro Banner. Motor de reglas de inscripción. Criticidad Baja (C1/I1/D1). Sin protección adicional."
+    },
+    {
+      "nombre_activo": "OCSSB02",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "UdlaPark - DataCenter Principal",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Web",
+      "app_critica": "Banner",
+      "descripcion": "Oracle Self-Service Banner secundario. Alta disponibilidad para autoservicio estudiantil. Criticidad Baja (C1/I1/D1). Sin protección adicional."
+    },
+    {
+      "nombre_activo": "OCSSB05",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "Granados - DataCenter Alterno",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Web",
+      "app_critica": "Banner",
+      "descripcion": "Self-Service Banner para docentes. Carga de notas y gestión de cursos. Criticidad Baja (C1/I1/D1). Sin protección adicional."
+    },
+    {
+      "nombre_activo": "OCEIS01",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "UdlaPark - DataCenter Principal",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Integración",
+      "app_critica": "Banner",
+      "descripcion": "Enterprise Integration Server para Banner. Orquestación de servicios académicos. Criticidad Baja (C1/I1/D1). Sin protección adicional."
+    },
+    {
+      "nombre_activo": "OCREG02-B",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "Granados - DataCenter Alterno",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Backup",
+      "app_critica": "Banner",
+      "descripcion": "Servidor de respaldo para registro Banner. Réplica de configuraciones. Criticidad Baja (C1/I1/D1). Sin protección adicional."
+    },
+    {
+      "nombre_activo": "OCREG01-B",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "UdlaPark - DataCenter Principal",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Backup",
+      "app_critica": "Banner",
+      "descripcion": "Servidor de contingencia registro Banner. Activación manual en desastres. Criticidad Baja (C1/I1/D1). Sin protección adicional."
+    },
+    {
+      "nombre_activo": "OCSSB02-B",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "Granados - DataCenter Alterno",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Backup",
+      "app_critica": "Banner",
+      "descripcion": "Backup Self-Service Banner. Respaldo de portal estudiantil. Criticidad Baja (C1/I1/D1). Sin protección adicional."
+    },
+    {
+      "nombre_activo": "OCSSB05-B",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "UdlaPark - DataCenter Principal",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Backup",
+      "app_critica": "Banner",
+      "descripcion": "Backup SSB docentes. Contingencia para carga de notas. Criticidad Baja (C1/I1/D1). Sin protección adicional."
+    },
+    {
+      "nombre_activo": "OCEIS01-B",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "Granados - DataCenter Alterno",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Backup",
+      "app_critica": "Banner",
+      "descripcion": "Backup EIS Banner. Respaldo de servicios de integración. Criticidad Baja (C1/I1/D1). Sin protección adicional."
+    },
+    {
+      "nombre_activo": "OCJOB01",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "UdlaPark - DataCenter Principal",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Batch",
+      "app_critica": "Banner",
+      "descripcion": "Servidor de trabajos batch Banner. Procesamiento nocturno de calificaciones y reportes. Criticidad Baja (C1/I1/D1). Sin protección adicional."
+    },
+    {
+      "nombre_activo": "OCSSB03",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "Granados - DataCenter Alterno",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Web",
+      "app_critica": "Banner",
+      "descripcion": "Self-Service Banner para administrativos. Gestión de recursos humanos académicos. Criticidad Baja (C1/I1/D1). Sin protección adicional."
+    },
+    {
+      "nombre_activo": "OCSSB04",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "UdlaPark - DataCenter Principal",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Web",
+      "app_critica": "Banner",
+      "descripcion": "Self-Service Banner financiero. Consulta de estados de cuenta estudiantiles. Criticidad Baja (C1/I1/D1). Sin protección adicional."
+    },
+    {
+      "nombre_activo": "OCSSS01",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "Granados - DataCenter Alterno",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Aplicaciones",
+      "app_critica": "Banner",
+      "descripcion": "Servidor Single Sign-On para Banner. Autenticación unificada institucional. Criticidad Baja (C1/I1/D1). Sin protección adicional."
+    },
+    {
+      "nombre_activo": "OCBEP01",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "UdlaPark - DataCenter Principal",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Integración",
+      "app_critica": "Banner",
+      "descripcion": "Banner Event Publisher. Publicación de eventos académicos para integración. Criticidad Baja (C1/I1/D1). Sin protección adicional."
+    },
+    {
+      "nombre_activo": "OCADP01",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "Granados - DataCenter Alterno",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Aplicaciones",
+      "app_critica": "Banner",
+      "descripcion": "Servidor de admisiones Banner. Procesamiento de solicitudes de ingreso. Criticidad Baja (C1/I1/D1). Sin protección adicional."
+    },
+    {
+      "nombre_activo": "SNAPI01N2 - D2L",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack D1",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "API Gateway",
+      "app_critica": "D2L",
+      "descripcion": "API Gateway para D2L Brightspace. Integración de aula virtual con sistemas académicos. Criticidad Media (C2/I2/D2). Protección: Windows Defender."
+    },
+    {
+      "nombre_activo": "SNAPPF01N1",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack D2",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Web",
+      "app_critica": "D2L",
+      "descripcion": "Servidor frontend D2L Brightspace. Aula virtual para entrega de trabajos y pruebas. Criticidad Alta (C1/I2/D3). Protección: Windows Defender."
+    },
+    {
+      "nombre_activo": "SNAPI01N1 - D2L",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack D3",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "API Gateway",
+      "app_critica": "D2L",
+      "descripcion": "API para sincronización de calificaciones D2L con Banner. Transferencia de notas. Criticidad Alta (C1/I2/D3). Protección: Windows Defender."
+    },
+    {
+      "nombre_activo": "SNAPI01N3 - D2L",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack D4",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Microservicios",
+      "app_critica": "D2L",
+      "descripcion": "Microservicios D2L para notificaciones y alertas académicas. Criticidad Media (C1/I1/D2). Protección: Windows Defender."
+    },
+    {
+      "nombre_activo": "SNAPI02 - D2L",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack D5",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Aplicaciones",
+      "app_critica": "D2L",
+      "descripcion": "Servidor de aplicaciones D2L. Procesamiento de evaluaciones y rúbricas. Criticidad Media (C1/I1/D2). Protección: CylanceOPTICS + CylancePROTECT."
+    },
+    {
+      "nombre_activo": "SNAPI01 - D2L",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack D6",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Aplicaciones",
+      "app_critica": "D2L",
+      "descripcion": "Servidor principal D2L. Motor de cursos virtuales y contenido multimedia. Criticidad Media (C1/I1/D2). Protección: Kaspersky + Cylance OPTICS/PROTECT."
+    },
+    {
+      "nombre_activo": "Base de datos SQL SNSQL10 - D2L",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack D7",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Base de datos",
+      "app_critica": "D2L",
+      "descripcion": "Base de datos SQL para D2L. Almacena calificaciones, trabajos entregados y foros. Criticidad Alta (C3/I1/D2). Protección: Cylance Unified Agent."
+    },
+    {
+      "nombre_activo": "Base de datos SQL SNSQL01N1 - D2L",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack D8",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Base de datos",
+      "app_critica": "D2L",
+      "descripcion": "Cluster SQL para D2L. Réplica de datos de aula virtual. Criticidad Alta (C3/I1/D2). Protección: Cylance Unified Agent."
+    },
+    {
+      "nombre_activo": "Servidor IIS SNAPP12 - Pagos",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack E1",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Web",
+      "app_critica": "Portal de pagos",
+      "descripcion": "Portal de pagos estudiantiles. Procesamiento de matrículas y cuotas. Criticidad Alta (C1/I2/D3). Protección: Cylance Unified Agent."
+    },
+    {
+      "nombre_activo": "Servidor IIS SNAPPF01N1 - Pagos",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack E2",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Web",
+      "app_critica": "Portal de pagos",
+      "descripcion": "Frontend Portal de Pagos. Integración con pasarelas bancarias. Criticidad Alta (C1/I2/D3). Protección: Windows Defender."
+    },
+    {
+      "nombre_activo": "SNAPI01N3 - Pagos",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack E3",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "API Gateway",
+      "app_critica": "Portal de pagos",
+      "descripcion": "API para procesamiento de transacciones. Conexión con bancos y tarjetas. Criticidad Media (C2/I2/D2). Protección: Windows Defender."
+    },
+    {
+      "nombre_activo": "Base de datos SQL SNSQL01N1 - Pagos",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack E4",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Base de datos",
+      "app_critica": "Portal de pagos",
+      "descripcion": "Base de datos de transacciones de pago. Historial financiero estudiantil. Criticidad Alta (C3/I1/D2). Protección: Cylance Unified Agent."
+    },
+    {
+      "nombre_activo": "SNAPI01N1 - Pagos",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack E5",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "API Gateway",
+      "app_critica": "Portal de pagos",
+      "descripcion": "API de conciliación de pagos con SAP. Sincronización contable. Criticidad Media (C2/I2/D2). Protección: Windows Defender."
+    },
+    {
+      "nombre_activo": "SNAPI01N2 - Pagos",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack E6",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Aplicaciones",
+      "app_critica": "Portal de pagos",
+      "descripcion": "Motor de facturación electrónica. Generación de comprobantes SRI. Criticidad Media (C1/I2/D2). Protección: Windows Defender."
+    },
+    {
+      "nombre_activo": "Base de datos SQL SNSQL10 - Pagos",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack E7",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Base de datos",
+      "app_critica": "Portal de pagos",
+      "descripcion": "Base de datos de auditoría de pagos. Logs de transacciones y seguridad. Criticidad Alta (C3/I1/D2). Protección: Cylance Unified Agent."
+    },
+    {
+      "nombre_activo": "Servidor IIS SNAPP12 - BX",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack F1",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Web",
+      "app_critica": "BX",
+      "descripcion": "Portal BX para gestión de biblioteca digital. Préstamos y recursos electrónicos. Criticidad Alta (C1/I3/D3). Protección: Cylance Unified Agent."
+    },
+    {
+      "nombre_activo": "Servidor IIS SNAPPF01N1 - BX",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack F2",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Web",
+      "app_critica": "BX",
+      "descripcion": "Frontend BX biblioteca. Catálogo en línea y reservas de material. Criticidad Alta (C1/I3/D3). Protección: Windows Defender."
+    },
+    {
+      "nombre_activo": "Base de datos SQL SNSQL10 - BX",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack F3",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Base de datos",
+      "app_critica": "BX",
+      "descripcion": "Base de datos BX. Inventario de libros, revistas y recursos digitales. Criticidad Alta (C3/I1/D2). Protección: Cylance Unified Agent."
+    },
+    {
+      "nombre_activo": "SNAPI01N3 - BX",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack F4",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "API Gateway",
+      "app_critica": "BX",
+      "descripcion": "API BX para integración con bases de datos académicas externas. Criticidad Media (C1/I2/D2). Protección: Windows Defender."
+    },
+    {
+      "nombre_activo": "SNAPI01N1 - BX",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack F5",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "API Gateway",
+      "app_critica": "BX",
+      "descripcion": "API para préstamos interbibliotecarios. Conexión con otras universidades. Criticidad Media (C1/I2/D2). Protección: Windows Defender."
+    },
+    {
+      "nombre_activo": "SNAPI01N2 - BX",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack F6",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Aplicaciones",
+      "app_critica": "BX",
+      "descripcion": "Motor de búsqueda BX. Indexación de contenido académico. Criticidad Media (C1/I2/D2). Protección: Windows Defender."
+    },
+    {
+      "nombre_activo": "SNAPI02 - BX",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack F7",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Aplicaciones",
+      "app_critica": "BX",
+      "descripcion": "Servidor de digitalización BX. Procesamiento de documentos escaneados. Criticidad Media (C1/I2/D2). Protección: CylanceOPTICS + CylancePROTECT."
+    },
+    {
+      "nombre_activo": "Base de datos SNSQL01N1 - BX",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack F8",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Base de datos",
+      "app_critica": "BX",
+      "descripcion": "Cluster SQL para metadatos BX. Información bibliográfica y referencias. Criticidad Alta (C3/I1/D2). Protección: Cylance Unified Agent."
+    },
+    {
+      "nombre_activo": "SNAPI01N1 - Uni+",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack G1",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "API Gateway",
+      "app_critica": "Uni+",
+      "descripcion": "API principal Uni+ móvil. Generación de códigos QR de ingreso al campus. Criticidad Media (C1/I2/D2). Protección: Windows Defender."
+    },
+    {
+      "nombre_activo": "Base de datos SQL SNSQL01N1 - Uni+",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack G2",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Base de datos",
+      "app_critica": "Uni+",
+      "descripcion": "Base de datos Uni+. Tokens de acceso, horarios y notificaciones push. Criticidad Alta (C3/I1/D2). Protección: Cylance Unified Agent."
+    },
+    {
+      "nombre_activo": "Servidor IIS SNAPP12 - Uni+",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack G3",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Web",
+      "app_critica": "Uni+",
+      "descripcion": "Backend Uni+ para app móvil. Consulta de horarios y calificaciones. Criticidad Alta (C2/I3/D3). Protección: Cylance Unified Agent."
+    },
+    {
+      "nombre_activo": "Servidor IIS SNAPPF01N1 - Uni+",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack G4",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Web",
+      "app_critica": "Uni+",
+      "descripcion": "API REST Uni+. Integración con torniquetes y control de acceso. Criticidad Alta (C2/I3/D3). Protección: Windows Defender."
+    },
+    {
+      "nombre_activo": "SNAPI01 - Uni+",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack G5",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Aplicaciones",
+      "app_critica": "Uni+",
+      "descripcion": "Motor de notificaciones push Uni+. Alertas de clases y eventos. Criticidad Media (C1/I2/D2). Protección: Kaspersky + Cylance OPTICS/PROTECT."
+    },
+    {
+      "nombre_activo": "SNAPI01N2 - Uni+",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack G6",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "API Gateway",
+      "app_critica": "Uni+",
+      "descripcion": "API de geolocalización Uni+. Servicios de ubicación en campus. Criticidad Media (C1/I2/D2). Protección: Windows Defender."
+    },
+    {
+      "nombre_activo": "Servidor IIS SNAPP09",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack G7",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Web",
+      "app_critica": "Uni+",
+      "descripcion": "Portal web complementario Uni+. Versión web de la app móvil. Criticidad Alta (C1/I3/D3). Protección: Windows Defender."
+    },
+    {
+      "nombre_activo": "Base de datos SQL SNSQL10 - Uni+",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack G8",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Base de datos",
+      "app_critica": "Uni+",
+      "descripcion": "Base de datos de sesiones Uni+. Logs de acceso y analytics. Criticidad Media (C1/I1/D2). Protección: Cylance Unified Agent."
+    },
+    {
+      "nombre_activo": "SNAPI01N3 - Uni+",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack G9",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Microservicios",
+      "app_critica": "Uni+",
+      "descripcion": "Microservicios Uni+ para calendario académico sincronizado. Criticidad Media (C1/I2/D1). Protección: Windows Defender."
+    },
+    {
+      "nombre_activo": "SNAPI02 - Uni+",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack G10",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Aplicaciones",
+      "app_critica": "Uni+",
+      "descripcion": "Servidor de mapas interactivos Uni+. Navegación en campus. Criticidad Media (C1/I2/D1). Protección: CylanceOPTICS + CylancePROTECT."
+    },
+    {
+      "nombre_activo": "SNABR01",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack H1",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Aplicaciones",
+      "app_critica": "Aprovisionamiento de cuentas",
+      "descripcion": "Servidor de aprovisionamiento automático. Creación de cuentas de usuario en AD y sistemas. Criticidad Media (C1/I2/D1). Protección: Windows Defender."
+    },
+    {
+      "nombre_activo": "SNCL02",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack H2",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Aplicaciones",
+      "app_critica": "Aprovisionamiento de cuentas",
+      "descripcion": "Motor de reglas de aprovisionamiento. Asignación automática de licencias y grupos. Criticidad Media (C1/I2/D1). Protección: Cylance Unified Agent."
+    },
+    {
+      "nombre_activo": "SNFILE01",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack H3",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Archivos",
+      "app_critica": "UniAutorization",
+      "descripcion": "Servidor de archivos para políticas de autorización. Documentos de flujos de aprobación. Criticidad Media (C1/I2/D1). Protección: CylanceOPTICS + CylancePROTECT."
+    },
+    {
+      "nombre_activo": "SNAPI01 - SAP",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack I1",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Aplicaciones",
+      "app_critica": "SAP",
+      "descripcion": "Servidor de aplicaciones SAP ERP. Módulos FI/CO para gestión financiera y contable. Criticidad Media (C1/I2/D1). Protección: Kaspersky + Cylance OPTICS/PROTECT."
+    },
+    {
+      "nombre_activo": "SNSQL01N1 - SAP",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack I2",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Base de datos",
+      "app_critica": "SAP",
+      "descripcion": "Base de datos SAP HANA. Datos financieros, nómina y proveedores. Criticidad Media (C1/I2/D1). Protección: Cylance Unified Agent."
+    }
+  ]
+}

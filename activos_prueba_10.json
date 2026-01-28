@@ -1,0 +1,112 @@
+{
+  "activos": [
+    {
+      "nombre_activo": "Servidor BD Principal Banner",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack A1",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Base de datos",
+      "app_critica": "Banner",
+      "descripcion": "Base de datos Oracle principal. Almacena información de estudiantes, docentes, matrículas y calificaciones históricas. Sistema crítico para operación académica."
+    },
+    {
+      "nombre_activo": "Servidor Web D2L Brightspace",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack B1",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Web",
+      "app_critica": "D2L",
+      "descripcion": "Aula virtual para entrega de trabajos, pruebas en línea y calificaciones. Crítico durante período de exámenes."
+    },
+    {
+      "nombre_activo": "Gateway Portal de Pagos",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - DMZ",
+      "propietario": "Seguridad TI",
+      "tipo_servicio": "API Gateway",
+      "app_critica": "Portal de pagos",
+      "descripcion": "Pasarela de pagos con integración bancaria. Procesa transacciones de matrículas y cuotas estudiantiles."
+    },
+    {
+      "nombre_activo": "Servidor Archivos Carpeta Online",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack C1",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Archivos",
+      "app_critica": "Carpeta Online",
+      "descripcion": "Almacenamiento de material de clases, horarios y documentos académicos compartidos entre docentes y estudiantes."
+    },
+    {
+      "nombre_activo": "API Backend Uni+ Móvil",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack D1",
+      "propietario": "Desarrollo",
+      "tipo_servicio": "API Gateway",
+      "app_critica": "Uni+",
+      "descripcion": "Backend de la aplicación móvil Uni+. Genera códigos QR de ingreso al campus y envía notificaciones push."
+    },
+    {
+      "nombre_activo": "Host VMware ESXi Principal",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "UdlaPark - DataCenter Principal",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Virtualización",
+      "app_critica": "Banner",
+      "descripcion": "Host de virtualización que aloja 15 VMs de producción incluyendo Banner y D2L. Criticidad extrema."
+    },
+    {
+      "nombre_activo": "Firewall Perimetral Palo Alto",
+      "tipo_activo": "Equipo de Red",
+      "ubicacion": "UdlaPark - DMZ",
+      "propietario": "Seguridad TI",
+      "tipo_servicio": "Firewall",
+      "app_critica": "Portal de pagos",
+      "descripcion": "Firewall principal que protege la red del campus. Inspección de tráfico y prevención de intrusiones."
+    },
+    {
+      "nombre_activo": "Storage NetApp Principal",
+      "tipo_activo": "Almacenamiento",
+      "ubicacion": "UdlaPark - DataCenter Principal",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Storage",
+      "app_critica": "Carpeta Online",
+      "descripcion": "Almacenamiento SAN con 50TB para bases de datos y archivos. Incluye snapshots y replicación."
+    },
+    {
+      "nombre_activo": "Servidor SAP ERP Financiero",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack E1",
+      "propietario": "Finanzas",
+      "tipo_servicio": "Servidor Aplicaciones",
+      "app_critica": "SAP",
+      "descripcion": "Sistema ERP para contabilidad, nómina y gestión de proveedores. Datos financieros confidenciales."
+    },
+    {
+      "nombre_activo": "Servidor Biblioteca Digital BX",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack F1",
+      "propietario": "Biblioteca",
+      "tipo_servicio": "Servidor Web",
+      "app_critica": "BX",
+      "descripcion": "Catálogo en línea de biblioteca. Gestión de préstamos, reservas y acceso a recursos electrónicos."
+    },
+    {
+      "nombre_activo": "Switch Core Cisco Nexus",
+      "tipo_activo": "Equipo de Red",
+      "ubicacion": "UdlaPark - DataCenter Principal",
+      "propietario": "Infraestructura Redes",
+      "tipo_servicio": "Switch",
+      "app_critica": "Banner",
+      "descripcion": "Switch core de la red del campus. Interconecta todos los servidores y VLANs críticas."
+    },
+    {
+      "nombre_activo": "Servidor Aprovisionamiento LDAP",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack G1",
+      "propietario": "Seguridad TI",
+      "tipo_servicio": "Servidor Aplicaciones",
+      "app_critica": "Aprovisionamiento de cuentas",
+      "descripcion": "Motor de aprovisionamiento automático. Crea cuentas de usuario en Active Directory y asigna licencias."
+    }
+  ]
+}

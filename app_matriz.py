@@ -21,6 +21,7 @@ import json
 import datetime as dt
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 import plotly.express as px
 import plotly.graph_objects as go
 from typing import Optional
@@ -357,10 +358,11 @@ with tab1:
     """)
     
     # Tabs internos para los catálogos
-    cat_tab1, cat_tab2, cat_tab3 = st.tabs([
+    cat_tab1, cat_tab2, cat_tab3, cat_tab4 = st.tabs([
         "⚠️ Amenazas MAGERIT",
         "🛡️ Controles ISO 27002",
-        "🔒 Salvaguardas MAGERIT"
+        "🔒 Salvaguardas",
+        "🔓 Vulnerabilidades"
     ])
     
     # ===== AMENAZAS MAGERIT =====
@@ -533,124 +535,422 @@ with tab1:
         else:
             st.error("❌ No se pudo cargar el catálogo de controles. Ejecuta `seed_catalogos.py`")
     
-    # ===== SALVAGUARDAS MAGERIT =====
+    # ===== SALVAGUARDAS =====
     with cat_tab3:
-        st.subheader("🔒 Catálogo de Salvaguardas MAGERIT v3")
+        st.subheader("🔒 Catálogo de Salvaguardas")
         st.markdown("""
-        Las salvaguardas MAGERIT están alineadas con los controles ISO 27002.
-        Se organizan en las siguientes categorías:
+        Las salvaguardas son medidas de protección para reducir el riesgo.
+        Están organizadas por tipo de activo a proteger.
         """)
         
-        # Definir salvaguardas MAGERIT (mapeo a ISO 27002)
+        # Catálogo completo de Salvaguardas
         salvaguardas_magerit = {
             "H": {
                 "nombre": "Protecciones Generales",
-                "descripcion": "Medidas de carácter general que afectan a toda la organización",
-                "controles_iso": ["5.1", "5.2", "5.3", "5.4", "5.5"]
+                "descripcion": "Medidas de carácter general aplicables a toda la organización",
+                "salvaguardas": [
+                    {"codigo": "H.1", "nombre": "Política de seguridad", "descripcion": "Documento que establece el compromiso de la dirección y los objetivos de seguridad"},
+                    {"codigo": "H.2", "nombre": "Normativa de seguridad", "descripcion": "Conjunto de normas que desarrollan la política de seguridad"},
+                    {"codigo": "H.3", "nombre": "Procedimientos de seguridad", "descripcion": "Instrucciones detalladas para realizar tareas de seguridad"},
+                    {"codigo": "H.4", "nombre": "Proceso de autorización", "descripcion": "Mecanismo formal para autorizar el acceso a recursos"},
+                    {"codigo": "H.5", "nombre": "Auditorías de seguridad", "descripcion": "Revisiones periódicas del cumplimiento de la normativa"}
+                ]
             },
             "D": {
-                "nombre": "Protección de Datos/Información",
-                "descripcion": "Salvaguardas para proteger la información",
-                "controles_iso": ["5.10", "5.12", "5.13", "5.14", "8.10", "8.11", "8.12"]
-            },
-            "K": {
-                "nombre": "Gestión de Claves Criptográficas",
-                "descripcion": "Protección mediante criptografía",
-                "controles_iso": ["8.24"]
+                "nombre": "Protección de los Datos/Información",
+                "descripcion": "Salvaguardas para proteger la información almacenada y procesada",
+                "salvaguardas": [
+                    {"codigo": "D.1", "nombre": "Clasificación de la información", "descripcion": "Etiquetado y tratamiento según nivel de confidencialidad"},
+                    {"codigo": "D.2", "nombre": "Cifrado de información", "descripcion": "Uso de criptografía para proteger datos sensibles"},
+                    {"codigo": "D.3", "nombre": "Copias de seguridad (backup)", "descripcion": "Respaldos periódicos de información crítica"},
+                    {"codigo": "D.4", "nombre": "Borrado seguro", "descripcion": "Destrucción irrecuperable de información cuando ya no se necesita"},
+                    {"codigo": "D.5", "nombre": "Firma electrónica", "descripcion": "Garantía de autenticidad e integridad de documentos"},
+                    {"codigo": "D.6", "nombre": "Control de acceso a datos", "descripcion": "Restricción de acceso basada en necesidad de conocer"}
+                ]
             },
             "S": {
-                "nombre": "Protección de Servicios",
-                "descripcion": "Salvaguardas para servicios de TI",
-                "controles_iso": ["8.6", "8.13", "8.14", "8.15", "8.16"]
+                "nombre": "Protección de los Servicios",
+                "descripcion": "Salvaguardas para proteger los servicios que presta la organización",
+                "salvaguardas": [
+                    {"codigo": "S.1", "nombre": "Disponibilidad del servicio", "descripcion": "Mecanismos de alta disponibilidad y redundancia"},
+                    {"codigo": "S.2", "nombre": "Continuidad del servicio", "descripcion": "Planes de contingencia para mantener operación"},
+                    {"codigo": "S.3", "nombre": "Monitorización del servicio", "descripcion": "Vigilancia continua del estado del servicio"},
+                    {"codigo": "S.4", "nombre": "Gestión de incidentes", "descripcion": "Procedimiento para detectar, reportar y resolver incidentes"},
+                    {"codigo": "S.5", "nombre": "SLA y acuerdos de nivel de servicio", "descripcion": "Compromisos formales de disponibilidad y rendimiento"}
+                ]
             },
             "SW": {
-                "nombre": "Protección del Software",
-                "descripcion": "Salvaguardas para aplicaciones",
-                "controles_iso": ["8.25", "8.26", "8.27", "8.28", "8.29", "8.30", "8.31"]
+                "nombre": "Protección de las Aplicaciones (Software)",
+                "descripcion": "Salvaguardas para proteger el software y aplicaciones",
+                "salvaguardas": [
+                    {"codigo": "SW.1", "nombre": "Desarrollo seguro", "descripcion": "Metodología de desarrollo con seguridad integrada (SDLC)"},
+                    {"codigo": "SW.2", "nombre": "Pruebas de seguridad", "descripcion": "Testing de vulnerabilidades antes de producción"},
+                    {"codigo": "SW.3", "nombre": "Gestión de parches", "descripcion": "Actualización oportuna de software para corregir vulnerabilidades"},
+                    {"codigo": "SW.4", "nombre": "Control de versiones", "descripcion": "Gestión de cambios y versiones del software"},
+                    {"codigo": "SW.5", "nombre": "Antimalware", "descripcion": "Protección contra virus, ransomware y software malicioso"},
+                    {"codigo": "SW.6", "nombre": "Control de instalación", "descripcion": "Restricción de software autorizado (whitelisting)"},
+                    {"codigo": "SW.7", "nombre": "Análisis de código", "descripcion": "Revisión estática y dinámica del código fuente"}
+                ]
             },
             "HW": {
-                "nombre": "Protección del Hardware",
-                "descripcion": "Salvaguardas para equipamiento",
-                "controles_iso": ["7.8", "7.9", "7.10", "7.11", "7.12", "7.13"]
+                "nombre": "Protección de los Equipos (Hardware)",
+                "descripcion": "Salvaguardas para proteger equipos físicos",
+                "salvaguardas": [
+                    {"codigo": "HW.1", "nombre": "Inventario de equipos", "descripcion": "Registro actualizado de todos los equipos"},
+                    {"codigo": "HW.2", "nombre": "Mantenimiento preventivo", "descripcion": "Revisiones periódicas para prevenir fallos"},
+                    {"codigo": "HW.3", "nombre": "Protección física", "descripcion": "Seguridad física contra robo y manipulación"},
+                    {"codigo": "HW.4", "nombre": "Equipos de respaldo", "descripcion": "Hardware redundante para contingencias"},
+                    {"codigo": "HW.5", "nombre": "Control de acceso físico", "descripcion": "Restricción de acceso a equipos críticos"},
+                    {"codigo": "HW.6", "nombre": "Etiquetado y seguimiento", "descripcion": "Identificación y trazabilidad de equipos"}
+                ]
             },
             "COM": {
-                "nombre": "Protección de Comunicaciones",
-                "descripcion": "Salvaguardas para redes y comunicaciones",
-                "controles_iso": ["8.20", "8.21", "8.22", "8.23"]
+                "nombre": "Protección de las Comunicaciones",
+                "descripcion": "Salvaguardas para proteger redes y comunicaciones",
+                "salvaguardas": [
+                    {"codigo": "COM.1", "nombre": "Firewall perimetral", "descripcion": "Control de tráfico entrante y saliente"},
+                    {"codigo": "COM.2", "nombre": "Segmentación de red", "descripcion": "Separación de redes por zonas de seguridad (VLANs)"},
+                    {"codigo": "COM.3", "nombre": "VPN", "descripcion": "Túneles cifrados para comunicaciones remotas"},
+                    {"codigo": "COM.4", "nombre": "IDS/IPS", "descripcion": "Sistemas de detección y prevención de intrusos"},
+                    {"codigo": "COM.5", "nombre": "Control de acceso a red (NAC)", "descripcion": "Autenticación de dispositivos antes de conectar"},
+                    {"codigo": "COM.6", "nombre": "Cifrado de comunicaciones (TLS/SSL)", "descripcion": "Protección de datos en tránsito"},
+                    {"codigo": "COM.7", "nombre": "Protección WiFi", "descripcion": "Seguridad en redes inalámbricas (WPA3)"}
+                ]
             },
             "SI": {
-                "nombre": "Protección de Soportes de Información",
+                "nombre": "Protección de los Soportes de Información",
                 "descripcion": "Salvaguardas para medios de almacenamiento",
-                "controles_iso": ["7.10", "7.14", "8.10"]
+                "salvaguardas": [
+                    {"codigo": "SI.1", "nombre": "Cifrado de discos", "descripcion": "Encriptación de dispositivos de almacenamiento"},
+                    {"codigo": "SI.2", "nombre": "Control de medios extraíbles", "descripcion": "Política de uso de USB, discos externos"},
+                    {"codigo": "SI.3", "nombre": "Destrucción segura de soportes", "descripcion": "Borrado certificado o destrucción física"},
+                    {"codigo": "SI.4", "nombre": "Almacenamiento seguro", "descripcion": "Custodia física de medios sensibles"},
+                    {"codigo": "SI.5", "nombre": "Inventario de soportes", "descripcion": "Registro de medios con información clasificada"}
+                ]
             },
             "AUX": {
-                "nombre": "Elementos Auxiliares",
-                "descripcion": "Protección de instalaciones auxiliares",
-                "controles_iso": ["7.5", "7.6", "7.7", "7.11", "7.12"]
+                "nombre": "Protección de Elementos Auxiliares",
+                "descripcion": "Salvaguardas para infraestructura de soporte",
+                "salvaguardas": [
+                    {"codigo": "AUX.1", "nombre": "SAI/UPS", "descripcion": "Sistema de alimentación ininterrumpida"},
+                    {"codigo": "AUX.2", "nombre": "Generador eléctrico", "descripcion": "Suministro eléctrico de respaldo"},
+                    {"codigo": "AUX.3", "nombre": "Climatización", "descripcion": "Control de temperatura y humedad en datacenter"},
+                    {"codigo": "AUX.4", "nombre": "Detección y extinción de incendios", "descripcion": "Sistemas automáticos de protección contra fuego"},
+                    {"codigo": "AUX.5", "nombre": "Protección contra inundaciones", "descripcion": "Drenaje y detección de agua"},
+                    {"codigo": "AUX.6", "nombre": "Cableado estructurado", "descripcion": "Organización y protección del cableado"}
+                ]
             },
             "L": {
-                "nombre": "Protección de Instalaciones",
+                "nombre": "Protección de las Instalaciones",
                 "descripcion": "Seguridad física del entorno",
-                "controles_iso": ["7.1", "7.2", "7.3", "7.4"]
+                "salvaguardas": [
+                    {"codigo": "L.1", "nombre": "Control de acceso físico", "descripcion": "Tarjetas, biometría, torniquetes"},
+                    {"codigo": "L.2", "nombre": "Vigilancia (CCTV)", "descripcion": "Videovigilancia y grabación"},
+                    {"codigo": "L.3", "nombre": "Seguridad perimetral", "descripcion": "Cercas, barreras, iluminación exterior"},
+                    {"codigo": "L.4", "nombre": "Áreas seguras", "descripcion": "Zonas restringidas para equipos críticos"},
+                    {"codigo": "L.5", "nombre": "Registro de visitantes", "descripcion": "Control de acceso de personal externo"},
+                    {"codigo": "L.6", "nombre": "Protección del datacenter", "descripcion": "Seguridad física especializada para CPD"}
+                ]
             },
             "PS": {
                 "nombre": "Gestión del Personal",
-                "descripcion": "Salvaguardas relacionadas con el personal",
-                "controles_iso": ["6.1", "6.2", "6.3", "6.4", "6.5", "6.6", "6.7", "6.8"]
-            },
-            "G": {
-                "nombre": "Organización",
-                "descripcion": "Salvaguardas organizativas",
-                "controles_iso": ["5.1", "5.2", "5.3", "5.4"]
+                "descripcion": "Salvaguardas relacionadas con las personas",
+                "salvaguardas": [
+                    {"codigo": "PS.1", "nombre": "Formación en seguridad", "descripcion": "Capacitación y concienciación del personal"},
+                    {"codigo": "PS.2", "nombre": "Verificación de antecedentes", "descripcion": "Investigación previa a la contratación"},
+                    {"codigo": "PS.3", "nombre": "Acuerdos de confidencialidad (NDA)", "descripcion": "Compromiso legal de no divulgación"},
+                    {"codigo": "PS.4", "nombre": "Segregación de funciones", "descripcion": "Separación de tareas críticas"},
+                    {"codigo": "PS.5", "nombre": "Proceso de baja/desvinculación", "descripcion": "Revocación de accesos al terminar relación"},
+                    {"codigo": "PS.6", "nombre": "Gestión de vacaciones/ausencias", "descripcion": "Cobertura de funciones críticas"}
+                ]
             },
             "BC": {
                 "nombre": "Continuidad del Negocio",
                 "descripcion": "Planes de continuidad y recuperación",
-                "controles_iso": ["5.29", "5.30"]
+                "salvaguardas": [
+                    {"codigo": "BC.1", "nombre": "Plan de Continuidad de Negocio (BCP)", "descripcion": "Estrategia para mantener operaciones críticas"},
+                    {"codigo": "BC.2", "nombre": "Plan de Recuperación ante Desastres (DRP)", "descripcion": "Procedimientos para restaurar sistemas"},
+                    {"codigo": "BC.3", "nombre": "Sitio alternativo", "descripcion": "Ubicación de respaldo para operaciones"},
+                    {"codigo": "BC.4", "nombre": "Pruebas de continuidad", "descripcion": "Simulacros periódicos de recuperación"},
+                    {"codigo": "BC.5", "nombre": "RTO/RPO definidos", "descripcion": "Objetivos de tiempo y punto de recuperación"}
+                ]
+            },
+            "G": {
+                "nombre": "Gestión de la Seguridad",
+                "descripcion": "Salvaguardas organizativas y de gobierno",
+                "salvaguardas": [
+                    {"codigo": "G.1", "nombre": "Comité de seguridad", "descripcion": "Órgano de gobierno de seguridad de la información"},
+                    {"codigo": "G.2", "nombre": "CISO/Responsable de seguridad", "descripcion": "Rol dedicado a la gestión de seguridad"},
+                    {"codigo": "G.3", "nombre": "Gestión de riesgos", "descripcion": "Proceso formal de análisis y tratamiento de riesgos"},
+                    {"codigo": "G.4", "nombre": "Cumplimiento normativo", "descripcion": "Verificación de requisitos legales y regulatorios"},
+                    {"codigo": "G.5", "nombre": "Mejora continua", "descripcion": "Ciclo PDCA para evolucionar la seguridad"}
+                ]
             },
             "E": {
-                "nombre": "Relaciones Externas",
+                "nombre": "Relaciones con Terceros",
                 "descripcion": "Gestión de proveedores y terceros",
-                "controles_iso": ["5.19", "5.20", "5.21", "5.22", "5.23"]
+                "salvaguardas": [
+                    {"codigo": "E.1", "nombre": "Evaluación de proveedores", "descripcion": "Due diligence de seguridad antes de contratar"},
+                    {"codigo": "E.2", "nombre": "Cláusulas de seguridad en contratos", "descripcion": "Requisitos de seguridad en acuerdos"},
+                    {"codigo": "E.3", "nombre": "Auditoría de proveedores", "descripcion": "Verificación periódica del cumplimiento"},
+                    {"codigo": "E.4", "nombre": "Gestión de accesos de terceros", "descripcion": "Control de acceso de personal externo"},
+                    {"codigo": "E.5", "nombre": "Acuerdos de nivel de servicio (SLA)", "descripcion": "Compromisos de seguridad con proveedores"}
+                ]
             },
-            "NEW": {
-                "nombre": "Adquisición y Desarrollo",
-                "descripcion": "Seguridad en adquisición y desarrollo",
-                "controles_iso": ["5.8", "8.25", "8.26", "8.27", "8.28", "8.29", "8.30", "8.31", "8.32", "8.33", "8.34"]
+            "AC": {
+                "nombre": "Control de Acceso",
+                "descripcion": "Gestión de identidades y accesos",
+                "salvaguardas": [
+                    {"codigo": "AC.1", "nombre": "Autenticación robusta", "descripcion": "Contraseñas fuertes, MFA, biometría"},
+                    {"codigo": "AC.2", "nombre": "Gestión de identidades (IAM)", "descripcion": "Alta, baja y modificación de usuarios"},
+                    {"codigo": "AC.3", "nombre": "Principio de mínimo privilegio", "descripcion": "Solo los permisos estrictamente necesarios"},
+                    {"codigo": "AC.4", "nombre": "Revisión periódica de accesos", "descripcion": "Recertificación de permisos"},
+                    {"codigo": "AC.5", "nombre": "Single Sign-On (SSO)", "descripcion": "Autenticación unificada"},
+                    {"codigo": "AC.6", "nombre": "Gestión de cuentas privilegiadas (PAM)", "descripcion": "Control especial de administradores"}
+                ]
+            },
+            "MON": {
+                "nombre": "Monitorización y Detección",
+                "descripcion": "Vigilancia y detección de incidentes",
+                "salvaguardas": [
+                    {"codigo": "MON.1", "nombre": "SIEM", "descripcion": "Correlación y análisis de eventos de seguridad"},
+                    {"codigo": "MON.2", "nombre": "Logs y registros de auditoría", "descripcion": "Registro de actividades para trazabilidad"},
+                    {"codigo": "MON.3", "nombre": "SOC (Centro de Operaciones de Seguridad)", "descripcion": "Monitorización 24x7"},
+                    {"codigo": "MON.4", "nombre": "Alertas automatizadas", "descripcion": "Notificación de eventos sospechosos"},
+                    {"codigo": "MON.5", "nombre": "Threat Intelligence", "descripcion": "Información de amenazas actuales"}
+                ]
             }
         }
         
-        # Mostrar como cards
-        for codigo, info in salvaguardas_magerit.items():
-            with st.expander(f"**[{codigo}]** {info['nombre']}", expanded=False):
-                st.markdown(f"**Descripción:** {info['descripcion']}")
-                st.markdown("**Controles ISO 27002 relacionados:**")
+        # Mostrar como cards expandibles
+        total_salvaguardas = sum(len(cat["salvaguardas"]) for cat in salvaguardas_magerit.values())
+        st.metric("Total Salvaguardas", total_salvaguardas)
+        
+        for codigo_cat, info_cat in salvaguardas_magerit.items():
+            with st.expander(f"**[{codigo_cat}]** {info_cat['nombre']} ({len(info_cat['salvaguardas'])} salvaguardas)", expanded=False):
+                st.markdown(f"*{info_cat['descripcion']}*")
+                st.markdown("---")
                 
-                # Mostrar controles relacionados
-                controles_relacionados = info["controles_iso"]
-                if catalogo_controles:
-                    for ctrl_code in controles_relacionados:
-                        ctrl_info = catalogo_controles.get(ctrl_code, {})
-                        nombre_ctrl = ctrl_info.get("nombre", "Control no encontrado")
-                        st.markdown(f"- `{ctrl_code}`: {nombre_ctrl}")
-                else:
-                    st.markdown(", ".join([f"`{c}`" for c in controles_relacionados]))
+                # Tabla de salvaguardas de esta categoría
+                data_cat = []
+                for salv in info_cat["salvaguardas"]:
+                    data_cat.append({
+                        "Código": salv["codigo"],
+                        "Salvaguarda": salv["nombre"],
+                        "Descripción": salv["descripcion"]
+                    })
+                
+                df_cat = pd.DataFrame(data_cat)
+                st.dataframe(df_cat, use_container_width=True, hide_index=True)
         
         st.markdown("---")
         
-        # Tabla resumen
-        st.subheader("📋 Resumen de Categorías")
-        data_salvaguardas = []
+        # Tabla resumen de categorías
+        st.subheader("📋 Resumen por Categoría")
+        data_resumen = []
         for codigo, info in salvaguardas_magerit.items():
-            data_salvaguardas.append({
+            data_resumen.append({
                 "Código": codigo,
                 "Categoría": info["nombre"],
-                "Descripción": info["descripcion"],
-                "# Controles ISO": len(info["controles_iso"])
+                "Salvaguardas": len(info["salvaguardas"])
             })
         
-        df_salvaguardas = pd.DataFrame(data_salvaguardas)
-        st.dataframe(df_salvaguardas, use_container_width=True, hide_index=True)
+        df_resumen = pd.DataFrame(data_resumen)
+        st.dataframe(df_resumen, use_container_width=True, hide_index=True)
+
+    # ===== VULNERABILIDADES =====
+    with cat_tab4:
+        st.subheader("🔓 Catálogo de Vulnerabilidades por Tipo de Activo")
+        st.markdown("""
+        Las **vulnerabilidades** son debilidades que pueden ser explotadas por las amenazas.
+        Este catálogo muestra las vulnerabilidades más comunes para cada tipo de activo según MAGERIT.
+        """)
+        
+        # Catálogo de Vulnerabilidades organizado por tipo de activo
+        vulnerabilidades_catalogo = {
+            "SW": {
+                "nombre": "Software / Aplicaciones",
+                "icono": "💻",
+                "vulnerabilidades": [
+                    {"codigo": "SW-V01", "nombre": "Software desactualizado", "descripcion": "Falta de parches de seguridad en aplicaciones", "nivel": "Alto"},
+                    {"codigo": "SW-V02", "nombre": "Configuración por defecto", "descripcion": "Uso de credenciales y configuraciones predeterminadas", "nivel": "Alto"},
+                    {"codigo": "SW-V03", "nombre": "Inyección SQL", "descripcion": "Vulnerabilidad a inyección de código en consultas SQL", "nivel": "Alto"},
+                    {"codigo": "SW-V04", "nombre": "Cross-Site Scripting (XSS)", "descripcion": "Ejecución de scripts maliciosos en navegador", "nivel": "Alto"},
+                    {"codigo": "SW-V05", "nombre": "Autenticación débil", "descripcion": "Mecanismos de autenticación insuficientes", "nivel": "Alto"},
+                    {"codigo": "SW-V06", "nombre": "Falta de cifrado", "descripcion": "Datos sensibles sin encriptar", "nivel": "Alto"},
+                    {"codigo": "SW-V07", "nombre": "Gestión insegura de sesiones", "descripcion": "Tokens de sesión predecibles o expuestos", "nivel": "Alto"},
+                    {"codigo": "SW-V08", "nombre": "APIs expuestas", "descripcion": "Interfaces de programación sin autenticación adecuada", "nivel": "Alto"},
+                    {"codigo": "SW-V09", "nombre": "Falta de validación de entrada", "descripcion": "No se validan datos de usuario", "nivel": "Alto"},
+                    {"codigo": "SW-V10", "nombre": "Dependencias vulnerables", "descripcion": "Uso de librerías con vulnerabilidades conocidas", "nivel": "Medio"}
+                ]
+            },
+            "HW": {
+                "nombre": "Hardware / Equipos",
+                "icono": "🖥️",
+                "vulnerabilidades": [
+                    {"codigo": "HW-V01", "nombre": "Firmware desactualizado", "descripcion": "BIOS/UEFI sin actualizaciones de seguridad", "nivel": "Alto"},
+                    {"codigo": "HW-V02", "nombre": "Puertos USB habilitados", "descripcion": "Acceso físico a puertos sin control", "nivel": "Medio"},
+                    {"codigo": "HW-V03", "nombre": "Falta de TPM", "descripcion": "Sin módulo de plataforma segura para cifrado", "nivel": "Medio"},
+                    {"codigo": "HW-V04", "nombre": "Discos sin cifrar", "descripcion": "Almacenamiento local sin encriptación", "nivel": "Alto"},
+                    {"codigo": "HW-V05", "nombre": "BIOS sin contraseña", "descripcion": "Configuración de hardware accesible", "nivel": "Medio"},
+                    {"codigo": "HW-V06", "nombre": "Hardware obsoleto", "descripcion": "Equipos sin soporte del fabricante", "nivel": "Alto"},
+                    {"codigo": "HW-V07", "nombre": "Sin protección física", "descripcion": "Equipos sin cerraduras o cables de seguridad", "nivel": "Bajo"}
+                ]
+            },
+            "COM": {
+                "nombre": "Comunicaciones / Red",
+                "icono": "🌐",
+                "vulnerabilidades": [
+                    {"codigo": "COM-V01", "nombre": "Red sin segmentar", "descripcion": "Toda la red en un mismo segmento sin VLANs", "nivel": "Alto"},
+                    {"codigo": "COM-V02", "nombre": "WiFi con WEP/WPA", "descripcion": "Protocolos de red inalámbrica obsoletos", "nivel": "Alto"},
+                    {"codigo": "COM-V03", "nombre": "Puertos innecesarios abiertos", "descripcion": "Servicios expuestos sin necesidad", "nivel": "Alto"},
+                    {"codigo": "COM-V04", "nombre": "Sin firewall", "descripcion": "Falta de control de tráfico perimetral", "nivel": "Alto"},
+                    {"codigo": "COM-V05", "nombre": "Protocolos inseguros", "descripcion": "Uso de FTP, Telnet, HTTP sin cifrar", "nivel": "Alto"},
+                    {"codigo": "COM-V06", "nombre": "DNS sin protección", "descripcion": "Vulnerable a DNS spoofing/poisoning", "nivel": "Medio"},
+                    {"codigo": "COM-V07", "nombre": "Sin IDS/IPS", "descripcion": "Falta de detección de intrusiones", "nivel": "Medio"},
+                    {"codigo": "COM-V08", "nombre": "VPN débil", "descripcion": "Uso de protocolos VPN obsoletos (PPTP)", "nivel": "Alto"}
+                ]
+            },
+            "D": {
+                "nombre": "Datos / Información",
+                "icono": "📊",
+                "vulnerabilidades": [
+                    {"codigo": "D-V01", "nombre": "Datos sin clasificar", "descripcion": "Información sin etiquetas de confidencialidad", "nivel": "Medio"},
+                    {"codigo": "D-V02", "nombre": "Backups sin cifrar", "descripcion": "Copias de seguridad en texto plano", "nivel": "Alto"},
+                    {"codigo": "D-V03", "nombre": "Retención indefinida", "descripcion": "Datos que deberían eliminarse aún disponibles", "nivel": "Medio"},
+                    {"codigo": "D-V04", "nombre": "Sin control de acceso", "descripcion": "Datos accesibles sin autorización", "nivel": "Alto"},
+                    {"codigo": "D-V05", "nombre": "Transmisión sin cifrar", "descripcion": "Datos enviados en texto plano", "nivel": "Alto"},
+                    {"codigo": "D-V06", "nombre": "Sin respaldo", "descripcion": "Información importante sin backup", "nivel": "Alto"},
+                    {"codigo": "D-V07", "nombre": "Logs insuficientes", "descripcion": "Sin trazabilidad de acceso a datos", "nivel": "Medio"}
+                ]
+            },
+            "S": {
+                "nombre": "Servicios",
+                "icono": "⚙️",
+                "vulnerabilidades": [
+                    {"codigo": "S-V01", "nombre": "Sin redundancia", "descripcion": "Servicio con punto único de fallo", "nivel": "Alto"},
+                    {"codigo": "S-V02", "nombre": "Sin SLA definido", "descripcion": "Falta de compromisos de disponibilidad", "nivel": "Medio"},
+                    {"codigo": "S-V03", "nombre": "Sin monitoreo", "descripcion": "Servicio sin vigilancia de estado", "nivel": "Alto"},
+                    {"codigo": "S-V04", "nombre": "Dependencia de terceros", "descripcion": "Servicio crítico dependiente de proveedor externo", "nivel": "Medio"},
+                    {"codigo": "S-V05", "nombre": "Sin plan de recuperación", "descripcion": "Falta de DRP para el servicio", "nivel": "Alto"},
+                    {"codigo": "S-V06", "nombre": "Capacidad insuficiente", "descripcion": "Sin escalabilidad ante picos de demanda", "nivel": "Medio"}
+                ]
+            },
+            "PS": {
+                "nombre": "Personal",
+                "icono": "👤",
+                "vulnerabilidades": [
+                    {"codigo": "PS-V01", "nombre": "Falta de formación", "descripcion": "Personal sin capacitación en seguridad", "nivel": "Alto"},
+                    {"codigo": "PS-V02", "nombre": "Susceptibilidad a phishing", "descripcion": "Usuarios que caen en ingeniería social", "nivel": "Alto"},
+                    {"codigo": "PS-V03", "nombre": "Contraseñas débiles", "descripcion": "Uso de contraseñas fáciles de adivinar", "nivel": "Alto"},
+                    {"codigo": "PS-V04", "nombre": "Sin acuerdos de confidencialidad", "descripcion": "Personal sin NDA firmado", "nivel": "Medio"},
+                    {"codigo": "PS-V05", "nombre": "Privilegios excesivos", "descripcion": "Usuarios con más permisos de los necesarios", "nivel": "Alto"},
+                    {"codigo": "PS-V06", "nombre": "Rotación sin control", "descripcion": "Accesos no revocados al salir", "nivel": "Alto"}
+                ]
+            },
+            "L": {
+                "nombre": "Instalaciones",
+                "icono": "🏢",
+                "vulnerabilidades": [
+                    {"codigo": "L-V01", "nombre": "Acceso físico no controlado", "descripcion": "Cualquiera puede entrar a áreas sensibles", "nivel": "Alto"},
+                    {"codigo": "L-V02", "nombre": "Sin CCTV", "descripcion": "Falta de videovigilancia", "nivel": "Medio"},
+                    {"codigo": "L-V03", "nombre": "Sin detección de incendios", "descripcion": "Falta de alarmas y extintores", "nivel": "Alto"},
+                    {"codigo": "L-V04", "nombre": "Climatización inadecuada", "descripcion": "Datacenter sin control de temperatura", "nivel": "Alto"},
+                    {"codigo": "L-V05", "nombre": "Sin protección eléctrica", "descripcion": "Falta de UPS y reguladores", "nivel": "Alto"},
+                    {"codigo": "L-V06", "nombre": "Ubicación vulnerable", "descripcion": "Zona propensa a inundaciones o sismos", "nivel": "Medio"}
+                ]
+            },
+            "AUX": {
+                "nombre": "Servicios Auxiliares",
+                "icono": "🔌",
+                "vulnerabilidades": [
+                    {"codigo": "AUX-V01", "nombre": "Sin UPS", "descripcion": "Equipos sin alimentación ininterrumpida", "nivel": "Alto"},
+                    {"codigo": "AUX-V02", "nombre": "Sin generador", "descripcion": "Falta de respaldo eléctrico prolongado", "nivel": "Medio"},
+                    {"codigo": "AUX-V03", "nombre": "Aire acondicionado único", "descripcion": "Sin redundancia de climatización", "nivel": "Medio"},
+                    {"codigo": "AUX-V04", "nombre": "Cableado desordenado", "descripcion": "Infraestructura física sin organizar", "nivel": "Bajo"},
+                    {"codigo": "AUX-V05", "nombre": "Conexión a internet única", "descripcion": "Sin ISP de respaldo", "nivel": "Alto"}
+                ]
+            }
+        }
+        
+        # Resumen de vulnerabilidades
+        total_vulns = sum(len(cat["vulnerabilidades"]) for cat in vulnerabilidades_catalogo.values())
+        
+        col_v1, col_v2, col_v3 = st.columns(3)
+        with col_v1:
+            st.metric("Total Vulnerabilidades", total_vulns)
+        with col_v2:
+            altas = sum(1 for cat in vulnerabilidades_catalogo.values() 
+                       for v in cat["vulnerabilidades"] if v["nivel"] == "Alto")
+            st.metric("Altas", altas)
+        with col_v3:
+            medias = sum(1 for cat in vulnerabilidades_catalogo.values() 
+                        for v in cat["vulnerabilidades"] if v["nivel"] == "Medio")
+            st.metric("Medias", medias)
+        
+        st.markdown("---")
+        
+        # Filtro por nivel
+        nivel_filtro = st.multiselect(
+            "Filtrar por nivel de riesgo:",
+            ["Alto", "Medio", "Bajo", "Nulo"],
+            default=["Alto", "Medio", "Bajo", "Nulo"],
+            key="filtro_nivel_vuln"
+        )
+        
+        # Mostrar vulnerabilidades por categoría
+        for codigo_cat, info_cat in vulnerabilidades_catalogo.items():
+            vulns_filtradas = [v for v in info_cat["vulnerabilidades"] if v["nivel"] in nivel_filtro]
+            
+            if vulns_filtradas:
+                with st.expander(f"{info_cat['icono']} **[{codigo_cat}]** {info_cat['nombre']} ({len(vulns_filtradas)} vulnerabilidades)", expanded=False):
+                    
+                    # Tabla de vulnerabilidades
+                    data_vulns = []
+                    for vuln in vulns_filtradas:
+                        # Color según nivel
+                        if vuln["nivel"] == "Alto":
+                            nivel_emoji = "🔴"
+                        elif vuln["nivel"] == "Medio":
+                            nivel_emoji = "🟡"
+                        elif vuln["nivel"] == "Bajo":
+                            nivel_emoji = "🟢"
+                        else:
+                            nivel_emoji = "⚪"
+                        
+                        data_vulns.append({
+                            "Código": vuln["codigo"],
+                            "Vulnerabilidad": vuln["nombre"],
+                            "Descripción": vuln["descripcion"],
+                            "Nivel": f"{nivel_emoji} {vuln['nivel']}"
+                        })
+                    
+                    df_vulns = pd.DataFrame(data_vulns)
+                    st.dataframe(df_vulns, use_container_width=True, hide_index=True)
+        
+        st.markdown("---")
+        
+        # Matriz resumen
+        st.subheader("📊 Matriz de Vulnerabilidades por Tipo de Activo")
+        
+        data_matriz_v = []
+        for codigo, info in vulnerabilidades_catalogo.items():
+            altas = sum(1 for v in info["vulnerabilidades"] if v["nivel"] == "Alto")
+            medias = sum(1 for v in info["vulnerabilidades"] if v["nivel"] == "Medio")
+            bajas = sum(1 for v in info["vulnerabilidades"] if v["nivel"] == "Bajo")
+            nulas = sum(1 for v in info["vulnerabilidades"] if v["nivel"] == "Nulo")
+            
+            data_matriz_v.append({
+                "Tipo": f"{info['icono']} {info['nombre']}",
+                "🔴 Altas": altas,
+                "🟡 Medias": medias,
+                "🟢 Bajas": bajas,
+                "⚪ Nulas": nulas,
+                "Total": len(info["vulnerabilidades"])
+            })
+        
+        df_matriz_v = pd.DataFrame(data_matriz_v)
+        st.dataframe(df_matriz_v, use_container_width=True, hide_index=True)
 
 
 # ==================== TAB 2: ACTIVOS ====================
@@ -666,7 +966,7 @@ with tab2:
     activos = get_activos_matriz(ID_EVALUACION)
     
     # Métricas
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Total Activos", len(activos))
     with col2:
@@ -677,9 +977,6 @@ with tab2:
         if not activos.empty and "Tipo_Activo" in activos.columns:
             virtuales = len(activos[activos["Tipo_Activo"].str.contains("Virtual", case=False, na=False)])
             st.metric("Virtuales", virtuales)
-    with col4:
-        valorados = len(activos[activos["Criticidad_Nivel"] != "Pendiente"]) if not activos.empty else 0
-        st.metric("Valorados", valorados)
     
     st.markdown("---")
     
@@ -716,7 +1013,13 @@ with tab2:
                     key="nuevo_activo_propietario"
                 )
                 tipo_servicio = st.text_input("Finalidad de Uso *", key="nuevo_activo_servicio")
-                app_critica = st.text_input("Aplicación Crítica", key="nuevo_activo_app")
+                app_critica = st.selectbox(
+                    "Aplicación Crítica",
+                    ["No Aplica", "Banner", "Carpeta Online", "D2L", "Página Web", "Portal de Pagos", 
+                     "BX", "Uni+", "Aprovisionamiento de Cuentas", "UniAutorization", "SAP"],
+                    key="nuevo_activo_app",
+                    help="Selecciona la aplicación crítica asociada a este activo"
+                )
             
             with col3:
                 rack = st.text_input("Rack/Ubicación Física", key="nuevo_activo_rack")
@@ -775,7 +1078,7 @@ with tab2:
                         "Ubicacion": ubicacion,
                         "Propietario": propietario,
                         "Tipo_Servicio": tipo_servicio,
-                        "App_Critica": app_critica if app_critica else "No",
+                        "App_Critica": app_critica if app_critica != "No Aplica" else "No",
                         # Nuevos campos técnicos
                         "Modelo": modelo,
                         "Serial": serial,
@@ -970,31 +1273,15 @@ with tab2:
     if not activos.empty:
         st.subheader("📋 Lista de Activos")
         
-        # Columnas a mostrar (formato matriz)
+        # Columnas a mostrar (sin criticidad - eso se calcula en Tab 3)
         columnas_mostrar = [
             "Nombre_Activo", "Tipo_Activo", "Ubicacion", 
-            "Area_Responsable", "Finalidad_Uso", "Criticidad_Nivel", "Estado"
+            "Area_Responsable", "Finalidad_Uso", "Estado"
         ]
         columnas_existentes = [c for c in columnas_mostrar if c in activos.columns]
         
-        # Aplicar estilos por criticidad
-        def colorear_criticidad(val):
-            if val == "Alta":
-                return "background-color: #ff4444; color: white"
-            elif val == "Media":
-                return "background-color: #ffbb33; color: black"
-            elif val == "Baja":
-                return "background-color: #00C851; color: white"
-            elif val == "Nula":
-                return "background-color: #33b5e5; color: white"
-            return ""
-        
         df_display = activos[columnas_existentes].copy()
-        if "Criticidad_Nivel" in df_display.columns:
-            styled_df = df_display.style.map(colorear_criticidad, subset=["Criticidad_Nivel"])
-            st.dataframe(styled_df, use_container_width=True, hide_index=True)
-        else:
-            st.dataframe(df_display, use_container_width=True, hide_index=True)
+        st.dataframe(df_display, use_container_width=True, hide_index=True)
         
         # Editar/Eliminar activo
         with st.expander("✏️ Editar o Eliminar Activo"):
@@ -1033,7 +1320,7 @@ with tab2:
                             st.rerun()
                     with col_btn2:
                         if st.button("🗑️ Eliminar Activo", type="secondary", key="btn_del_activo"):
-                            eliminar_activo(activo_sel)
+                            eliminar_activo(ID_EVALUACION, activo_sel)
                             st.success("✅ Activo eliminado")
                             st.rerun()
     else:
@@ -1288,19 +1575,19 @@ with tab3:
                 
                 with col_rto:
                     rto_nivel = resultado_preview.get("RTO_Nivel", "Bajo")
-                    rto_color = {"Crítico": "🔴", "Alto": "🟠", "Medio": "🟡", "Bajo": "🟢"}.get(rto_nivel, "⚪")
+                    rto_color = {"Alto": "🔴", "Medio": "🟡", "Bajo": "🟢", "Nulo": "⚪"}.get(rto_nivel, "⚪")
                     rto_tiempo = resultado_preview.get("RTO_Tiempo", "No definido")
                     st.metric(f"{rto_color} RTO", rto_tiempo, delta=rto_nivel)
                 
                 with col_rpo:
                     rpo_nivel = resultado_preview.get("RPO_Nivel", "Bajo")
-                    rpo_color = {"Crítico": "🔴", "Alto": "🟠", "Medio": "🟡", "Bajo": "🟢"}.get(rpo_nivel, "⚪")
+                    rpo_color = {"Alto": "🔴", "Medio": "🟡", "Bajo": "🟢", "Nulo": "⚪"}.get(rpo_nivel, "⚪")
                     rpo_tiempo = resultado_preview.get("RPO_Tiempo", "No definido")
                     st.metric(f"{rpo_color} RPO", rpo_tiempo, delta=rpo_nivel)
                 
                 with col_bia:
                     bia_nivel = resultado_preview.get("BIA_Nivel", "Bajo")
-                    bia_color = {"Crítico": "🔴", "Alto": "🟠", "Medio": "🟡", "Bajo": "🟢"}.get(bia_nivel, "⚪")
+                    bia_color = {"Alto": "🔴", "Medio": "🟡", "Bajo": "🟢", "Nulo": "⚪"}.get(bia_nivel, "⚪")
                     bia_valor = resultado_preview.get("BIA_Valor", 0)
                     st.metric(f"{bia_color} Impacto BIA", bia_nivel, delta=f"Nivel {bia_valor}")
             
@@ -1363,11 +1650,22 @@ with tab3:
         if not valoraciones.empty:
             st.markdown("---")
             
-            # Columnas a mostrar (incluyendo RTO/RPO/BIA)
+            # Agregar nombre del activo a las valoraciones
+            valoraciones_display = valoraciones.copy()
+            
+            # Obtener nombres de activos
+            for idx, row in valoraciones_display.iterrows():
+                activo_data = activos[activos["ID_Activo"] == row["ID_Activo"]]
+                if not activo_data.empty:
+                    valoraciones_display.loc[idx, "Nombre_Activo"] = activo_data["Nombre_Activo"].values[0]
+                else:
+                    valoraciones_display.loc[idx, "Nombre_Activo"] = row["ID_Activo"]
+            
+            # Columnas a mostrar (incluyendo nombre y RTO/RPO/BIA)
             cols = ["Nombre_Activo", "D", "Valor_D", "I", "Valor_I", "C", "Valor_C", 
                     "Criticidad", "Criticidad_Nivel", "RTO_Tiempo", "RTO_Nivel", 
                     "RPO_Tiempo", "RPO_Nivel", "BIA_Nivel"]
-            cols_existentes = [c for c in cols if c in valoraciones.columns]
+            cols_existentes = [c for c in cols if c in valoraciones_display.columns]
             
             def colorear_criticidad(val):
                 if val == "Alta": return "background-color: #ff4444; color: white"
@@ -1375,7 +1673,7 @@ with tab3:
                 elif val == "Baja": return "background-color: #00C851; color: white"
                 return ""
             
-            styled_df = valoraciones[cols_existentes].style.map(
+            styled_df = valoraciones_display[cols_existentes].style.map(
                 colorear_criticidad, subset=["Criticidad_Nivel"]
             )
             st.dataframe(styled_df, use_container_width=True, hide_index=True)
@@ -1384,8 +1682,8 @@ with tab3:
             st.markdown("---")
             st.subheader("📊 Distribución de Criticidad")
             
-            if "Criticidad_Nivel" in valoraciones.columns:
-                dist = valoraciones["Criticidad_Nivel"].value_counts().reset_index()
+            if "Criticidad_Nivel" in valoraciones_display.columns:
+                dist = valoraciones_display["Criticidad_Nivel"].value_counts().reset_index()
                 dist.columns = ["Nivel", "Cantidad"]
                 
                 fig_crit = px.pie(
@@ -1586,14 +1884,14 @@ with tab4:
                         imp_c = valor_c * (deg_c / 100)
                         impacto = max(imp_d, imp_i, imp_c)
                         
-                        if impacto >= 2.5:
-                            st.error(f"Impacto: **{impacto:.2f}** (Crítico)")
-                        elif impacto >= 1.5:
-                            st.warning(f"Impacto: **{impacto:.2f}** (Alto)")
+                        if impacto >= 2.0:
+                            st.error(f"Impacto: **{impacto:.2f}** (Alto)")
+                        elif impacto >= 1.0:
+                            st.warning(f"Impacto: **{impacto:.2f}** (Medio)")
                         elif impacto >= 0.5:
-                            st.info(f"Impacto: **{impacto:.2f}** (Medio)")
+                            st.info(f"Impacto: **{impacto:.2f}** (Bajo)")
                         else:
-                            st.success(f"Impacto: **{impacto:.2f}** (Bajo)")
+                            st.success(f"Impacto: **{impacto:.2f}** (Nulo)")
                     
                     # Checkbox para incluir
                     incluir = st.checkbox("✅ Incluir esta amenaza", value=True, key=f"incluir_{idx}_{activo_sel}")
@@ -1644,74 +1942,29 @@ with tab4:
             with col_save2:
                 st.caption(f"Se guardarán **{len(amenazas_a_guardar)}** amenazas seleccionadas con sus degradaciones.")
         
-        st.markdown("---")
-        
-        # ===== VULNERABILIDADES REGISTRADAS =====
+        # Mostrar mensaje si hay vulnerabilidades del activo actual
         vulns = get_vulnerabilidades_activo(ID_EVALUACION, activo_sel)
         
         if not vulns.empty:
-            st.subheader(f"📋 Vulnerabilidades/Amenazas Guardadas: {activo_info['Nombre_Activo']}")
-            
-            # Calcular impactos
-            vulns["Impacto"] = vulns.apply(
-                lambda row: max(
-                    valor_d * row.get("Degradacion_D", 0),
-                    valor_i * row.get("Degradacion_I", 0),
-                    valor_c * row.get("Degradacion_C", 0)
-                ), axis=1
-            )
-            
-            # Formatear degradación
-            vulns_display = vulns.copy()
-            for col in ["Degradacion_D", "Degradacion_I", "Degradacion_C"]:
-                if col in vulns_display.columns:
-                    vulns_display[col] = vulns_display[col].apply(lambda x: f"{x*100:.0f}%" if pd.notna(x) else "0%")
-            
-            cols = ["Cod_Amenaza", "Vulnerabilidad", "Amenaza", 
-                    "Degradacion_D", "Degradacion_I", "Degradacion_C", "Impacto"]
-            cols_existentes = [c for c in cols if c in vulns_display.columns]
-            
-            def colorear_impacto(val):
-                try:
-                    v = float(val)
-                    if v >= 2.5: return "background-color: #ff4444; color: white"
-                    elif v >= 1.5: return "background-color: #ff8800; color: white"
-                    elif v >= 0.5: return "background-color: #ffbb33; color: black"
-                    return "background-color: #00C851; color: white"
-                except:
-                    return ""
-            
-            if "Impacto" in cols_existentes:
-                styled_df = vulns_display[cols_existentes].style.map(colorear_impacto, subset=["Impacto"])
-                st.dataframe(styled_df, use_container_width=True, hide_index=True)
-            else:
-                st.dataframe(vulns_display[cols_existentes], use_container_width=True, hide_index=True)
-            
-            # Eliminar vulnerabilidad
-            with st.expander("🗑️ Eliminar Vulnerabilidad/Amenaza"):
-                vuln_a_eliminar = st.selectbox(
-                    "Seleccionar para eliminar",
-                    vulns["id"].tolist(),
-                    format_func=lambda x: f"[{vulns[vulns['id'] == x]['Cod_Amenaza'].values[0]}] {vulns[vulns['id'] == x]['Vulnerabilidad'].values[0][:50]}..."
-                )
-                if st.button("🗑️ Eliminar", type="secondary", key="btn_del_vuln"):
-                    eliminar_vulnerabilidad_amenaza(vuln_a_eliminar)
-                    st.success("✅ Vulnerabilidad/Amenaza eliminada")
-                    st.rerun()
+            st.success(f"✅ **{activo_info['Nombre_Activo']}** tiene {len(vulns)} vulnerabilidades/amenazas registradas. Ver tabla unificada abajo.")
         else:
-            st.info("📭 No hay vulnerabilidades/amenazas registradas. Usa el botón 'Analizar con IA' para identificar automáticamente.")
+            st.info("📭 No hay vulnerabilidades/amenazas registradas para este activo. Usa el botón 'Analizar con IA' para identificar automáticamente.")
     
     st.markdown("---")
     
-    # ===== RESUMEN GENERAL =====
-    st.subheader("📋 Resumen: Todas las Vulnerabilidades/Amenazas de la Evaluación")
+    # ===== TABLA UNIFICADA DE VULNERABILIDADES/AMENAZAS =====
+    st.subheader("📋 Registro de Vulnerabilidades y Amenazas")
+    st.caption("💡 Pasa el mouse sobre Amenaza o Vulnerabilidad para ver la descripción completa")
+    
     todas_vulns = get_vulnerabilidades_evaluacion(ID_EVALUACION)
     
     if not todas_vulns.empty:
+        # Enriquecer con datos de valoración
         for idx, row in todas_vulns.iterrows():
             val = get_valoracion_activo(ID_EVALUACION, row["ID_Activo"])
             if val:
                 todas_vulns.loc[idx, "Criticidad"] = val.get("Criticidad", 0)
+                todas_vulns.loc[idx, "Criticidad_Nivel"] = val.get("Criticidad_Nivel", "N/A")
                 v_d = val.get("Valor_D", 0)
                 v_i = val.get("Valor_I", 0)
                 v_c = val.get("Valor_C", 0)
@@ -1720,23 +1973,117 @@ with tab4:
                     v_i * row.get("Degradacion_I", 0),
                     v_c * row.get("Degradacion_C", 0)
                 )
+            else:
+                todas_vulns.loc[idx, "Criticidad"] = 0
+                todas_vulns.loc[idx, "Criticidad_Nivel"] = "N/A"
+                todas_vulns.loc[idx, "Impacto"] = 0
         
-        cols = ["Nombre_Activo", "Criticidad", "Cod_Amenaza", "Vulnerabilidad", "Amenaza", 
-                "Degradacion_D", "Degradacion_I", "Degradacion_C", "Impacto"]
-        cols_existentes = [c for c in cols if c in todas_vulns.columns]
+        # Función para escapar HTML
+        def escape_html(text):
+            return str(text).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace("'", '&#39;')
         
-        todas_vulns_display = todas_vulns.copy()
-        for col in ["Degradacion_D", "Degradacion_I", "Degradacion_C"]:
-            if col in todas_vulns_display.columns:
-                todas_vulns_display[col] = todas_vulns_display[col].apply(lambda x: f"{float(x)*100:.0f}%" if pd.notna(x) else "0%")
+        # Construir tabla HTML con tooltips (estilo similar a st.dataframe)
+        num_rows = len(todas_vulns)
+        table_height = min(400, 45 + num_rows * 38)
         
-        st.dataframe(todas_vulns_display[cols_existentes], use_container_width=True, hide_index=True)
+        html_table = f'''
+        <style>
+            .st-table-container {{
+                max-height: {table_height}px;
+                overflow-y: auto;
+                border: 1px solid #e0e0e0;
+                border-radius: 4px;
+            }}
+            .st-table {{
+                width: 100%;
+                border-collapse: collapse;
+                font-family: "Source Sans Pro", sans-serif;
+                font-size: 14px;
+            }}
+            .st-table th {{
+                background-color: #fafafa;
+                color: #31333F;
+                padding: 8px 12px;
+                text-align: left;
+                font-weight: 600;
+                border-bottom: 1px solid #e0e0e0;
+                position: sticky;
+                top: 0;
+                z-index: 10;
+            }}
+            .st-table td {{
+                padding: 8px 12px;
+                border-bottom: 1px solid #f0f0f0;
+                color: #31333F;
+            }}
+            .st-table tr:hover {{
+                background-color: #f5f5f5;
+            }}
+            .tooltip-link {{
+                color: #0068c9;
+                text-decoration: none;
+                border-bottom: 1px dotted #0068c9;
+                cursor: help;
+            }}
+            .tooltip-link:hover {{
+                color: #0054a3;
+            }}
+        </style>
+        <div class="st-table-container">
+        <table class="st-table">
+            <thead>
+                <tr>
+                    <th>Nombre_Activo</th>
+                    <th>Criticidad</th>
+                    <th>Cod_Amenaza</th>
+                    <th>Vulnerabilidad</th>
+                    <th>Deg_D</th>
+                    <th>Deg_I</th>
+                    <th>Deg_C</th>
+                    <th>Impacto</th>
+                </tr>
+            </thead>
+            <tbody>
+        '''
+        
+        for idx, row in todas_vulns.iterrows():
+            nombre = escape_html(row.get("Nombre_Activo", "N/A"))
+            crit = row.get("Criticidad_Nivel", "N/A")
+            cod = escape_html(row.get("Cod_Amenaza", "N/A"))
+            amenaza_desc = escape_html(row.get("Amenaza", "Sin descripción"))
+            vuln_full = escape_html(row.get("Vulnerabilidad", "Sin descripción"))
+            vuln_short = vuln_full[:40] + "..." if len(vuln_full) > 40 else vuln_full
+            deg_d = f"{row.get('Degradacion_D', 0)*100:.0f}%"
+            deg_i = f"{row.get('Degradacion_I', 0)*100:.0f}%"
+            deg_c = f"{row.get('Degradacion_C', 0)*100:.0f}%"
+            impacto = f"{row.get('Impacto', 0):.2f}"
+            
+            html_table += f'''
+                <tr>
+                    <td>{nombre}</td>
+                    <td>{crit}</td>
+                    <td><span class="tooltip-link" title="{amenaza_desc}">{cod}</span></td>
+                    <td><span class="tooltip-link" title="{vuln_full}">{vuln_short}</span></td>
+                    <td>{deg_d}</td>
+                    <td>{deg_i}</td>
+                    <td>{deg_c}</td>
+                    <td>{impacto}</td>
+                </tr>
+            '''
+        
+        html_table += '''
+            </tbody>
+        </table>
+        </div>
+        '''
+        
+        components.html(html_table, height=table_height + 20, scrolling=False)
         
         # Estadísticas
         st.markdown("### 📈 Estadísticas")
         col_stat1, col_stat2, col_stat3 = st.columns(3)
         with col_stat1:
-            st.metric("Total Vulnerabilidades", len(todas_vulns))
+            st.metric("Total Registros", len(todas_vulns))
         with col_stat2:
             if "Impacto" in todas_vulns.columns:
                 alto_impacto = len(todas_vulns[todas_vulns["Impacto"] >= 1.5])
@@ -1744,6 +2091,19 @@ with tab4:
         with col_stat3:
             activos_afectados = todas_vulns["ID_Activo"].nunique()
             st.metric("Activos Afectados", activos_afectados)
+        
+        # Eliminar vulnerabilidad
+        with st.expander("🗑️ Eliminar Vulnerabilidad/Amenaza"):
+            vuln_a_eliminar = st.selectbox(
+                "Seleccionar para eliminar",
+                todas_vulns["id"].tolist(),
+                format_func=lambda x: f"[{todas_vulns[todas_vulns['id'] == x]['Nombre_Activo'].values[0]}] {todas_vulns[todas_vulns['id'] == x]['Cod_Amenaza'].values[0]} - {str(todas_vulns[todas_vulns['id'] == x]['Vulnerabilidad'].values[0])[:30]}...",
+                key="sel_eliminar_vuln_unificado"
+            )
+            if st.button("🗑️ Eliminar", type="secondary", key="btn_del_vuln_unificado"):
+                eliminar_vulnerabilidad_amenaza(vuln_a_eliminar)
+                st.success("✅ Vulnerabilidad/Amenaza eliminada")
+                st.rerun()
     else:
         st.info("📭 No hay vulnerabilidades/amenazas registradas en esta evaluación.")
 
@@ -1787,10 +2147,10 @@ with tab5:
             st.markdown("""
             | Rango | Nivel |
             |:-----:|:-----:|
-            | ≥ 2.5 | Crítico 🔴 |
-            | ≥ 1.5 | Alto 🟠 |
-            | ≥ 0.5 | Medio 🟡 |
-            | < 0.5 | Bajo 🟢 |
+            | ≥ 2.0 | Alto 🔴 |
+            | ≥ 1.0 | Medio 🟡 |
+            | ≥ 0.5 | Bajo 🟢 |
+            | < 0.5 | Nulo ⚪ |
             """)
         
         with col_ref3:
@@ -1798,10 +2158,10 @@ with tab5:
             st.markdown("""
             | Rango | Nivel |
             |:-----:|:-----:|
-            | ≥ 6.0 | Crítico 🔴 |
-            | ≥ 4.0 | Alto 🟠 |
-            | ≥ 2.0 | Medio 🟡 |
-            | < 2.0 | Bajo 🟢 |
+            | ≥ 6.0 | Alto 🔴 |
+            | ≥ 4.0 | Medio 🟡 |
+            | ≥ 2.0 | Bajo 🟢 |
+            | < 2.0 | Nulo ⚪ |
             """)
     
     st.markdown("---")
@@ -2015,11 +2375,11 @@ with tab5:
         with col_stat1:
             st.metric("Total Riesgos", len(riesgos))
         with col_stat2:
-            criticos = len(riesgos[riesgos["Riesgo"] >= 6])
-            st.metric("🔴 Críticos (≥6)", criticos)
+            altos = len(riesgos[riesgos["Riesgo"] >= 6])
+            st.metric("🔴 Altos (≥6)", altos)
         with col_stat3:
-            altos = len(riesgos[(riesgos["Riesgo"] >= 4) & (riesgos["Riesgo"] < 6)])
-            st.metric("🟠 Altos (4-6)", altos)
+            medios = len(riesgos[(riesgos["Riesgo"] >= 4) & (riesgos["Riesgo"] < 6)])
+            st.metric("🟡 Medios (4-6)", medios)
         with col_stat4:
             riesgo_promedio = riesgos["Riesgo"].mean()
             st.metric("📊 Promedio", f"{riesgo_promedio:.2f}")
@@ -2071,21 +2431,21 @@ with tab6:
     col_s1, col_s2, col_s3, col_s4, col_s5 = st.columns(5)
     
     total = len(riesgos)
-    criticos = len(riesgos[riesgos["Riesgo"] >= 6])
-    altos = len(riesgos[(riesgos["Riesgo"] >= 4) & (riesgos["Riesgo"] < 6)])
-    medios = len(riesgos[(riesgos["Riesgo"] >= 2) & (riesgos["Riesgo"] < 4)])
-    bajos = len(riesgos[riesgos["Riesgo"] < 2])
+    altos_count = len(riesgos[riesgos["Riesgo"] >= 6])
+    medios_count = len(riesgos[(riesgos["Riesgo"] >= 4) & (riesgos["Riesgo"] < 6)])
+    bajos_count = len(riesgos[(riesgos["Riesgo"] >= 2) & (riesgos["Riesgo"] < 4)])
+    nulos_count = len(riesgos[riesgos["Riesgo"] < 2])
     
     with col_s1:
         st.metric("📊 Total", total)
     with col_s2:
-        st.metric("🔴 Críticos", criticos)
+        st.metric("🔴 Altos", altos_count)
     with col_s3:
-        st.metric("🟠 Altos", altos)
+        st.metric("🟡 Medios", medios_count)
     with col_s4:
-        st.metric("🟡 Medios", medios)
+        st.metric("🟢 Bajos", bajos_count)
     with col_s5:
-        st.metric("🟢 Bajos", bajos)
+        st.metric("⚪ Nulos", nulos_count)
     
     st.markdown("---")
     
@@ -2095,7 +2455,7 @@ with tab6:
     
     # Crear matriz 4x4 (Frecuencia vs Impacto)
     # Frecuencia: 0.1 (Nula), 1 (Baja), 2 (Media), 3 (Alta)
-    # Impacto: <0.5 (Bajo), 0.5-1.5 (Medio), 1.5-2.5 (Alto), >=2.5 (Crítico)
+    # Impacto: <0.5 (Nulo), 0.5-1.0 (Bajo), 1.0-2.0 (Medio), >=2.0 (Alto)
     
     # Clasificar cada riesgo en la matriz
     def clasificar_frecuencia(f):
@@ -2105,21 +2465,21 @@ with tab6:
         else: return "Nula"
     
     def clasificar_impacto(i):
-        if i >= 2.5: return "Crítico"
-        elif i >= 1.5: return "Alto"
-        elif i >= 0.5: return "Medio"
-        else: return "Bajo"
+        if i >= 2.0: return "Alto"
+        elif i >= 1.0: return "Medio"
+        elif i >= 0.5: return "Bajo"
+        else: return "Nulo"
     
     riesgos["Freq_Nivel"] = riesgos["Frecuencia"].apply(clasificar_frecuencia)
     riesgos["Imp_Nivel"] = riesgos["Impacto"].apply(clasificar_impacto)
     
     # Contar riesgos por celda
     freq_niveles = ["Nula", "Baja", "Media", "Alta"]
-    imp_niveles = ["Bajo", "Medio", "Alto", "Crítico"]
+    imp_niveles = ["Nulo", "Bajo", "Medio", "Alto"]
     
     # Crear matriz de conteo
     matriz_data = []
-    for imp in reversed(imp_niveles):  # De arriba a abajo: Crítico -> Bajo
+    for imp in reversed(imp_niveles):  # De arriba a abajo: Alto -> Nulo
         fila = {"Impacto": imp}
         for freq in freq_niveles:
             count = len(riesgos[(riesgos["Freq_Nivel"] == freq) & (riesgos["Imp_Nivel"] == imp)])
@@ -2129,31 +2489,31 @@ with tab6:
     df_matriz = pd.DataFrame(matriz_data)
     df_matriz.set_index("Impacto", inplace=True)
     
-    # Definir colores para cada celda de la matriz (MAGERIT)
+    # Definir colores para cada celda de la matriz
     # Formato: [fila (impacto)][columna (frecuencia)]
     colores_matriz = {
-        ("Crítico", "Alta"): "#ff0000",      # Rojo intenso
-        ("Crítico", "Media"): "#ff4444",     # Rojo
-        ("Crítico", "Baja"): "#ff8800",      # Naranja
-        ("Crítico", "Nula"): "#ffbb33",      # Amarillo oscuro
-        ("Alto", "Alta"): "#ff4444",         # Rojo
-        ("Alto", "Media"): "#ff8800",        # Naranja
-        ("Alto", "Baja"): "#ffbb33",         # Amarillo oscuro
-        ("Alto", "Nula"): "#ffdd00",         # Amarillo
-        ("Medio", "Alta"): "#ff8800",        # Naranja
-        ("Medio", "Media"): "#ffbb33",       # Amarillo oscuro
-        ("Medio", "Baja"): "#ffdd00",        # Amarillo
-        ("Medio", "Nula"): "#99dd00",        # Verde amarillo
-        ("Bajo", "Alta"): "#ffbb33",         # Amarillo oscuro
-        ("Bajo", "Media"): "#ffdd00",        # Amarillo
-        ("Bajo", "Baja"): "#99dd00",         # Verde amarillo
-        ("Bajo", "Nula"): "#00C851",         # Verde
+        ("Alto", "Alta"): "#ff0000",        # Rojo intenso
+        ("Alto", "Media"): "#ff4444",       # Rojo
+        ("Alto", "Baja"): "#ff8800",        # Naranja
+        ("Alto", "Nula"): "#ffbb33",        # Amarillo oscuro
+        ("Medio", "Alta"): "#ff4444",       # Rojo
+        ("Medio", "Media"): "#ff8800",      # Naranja
+        ("Medio", "Baja"): "#ffbb33",       # Amarillo oscuro
+        ("Medio", "Nula"): "#ffdd00",       # Amarillo
+        ("Bajo", "Alta"): "#ff8800",        # Naranja
+        ("Bajo", "Media"): "#ffbb33",       # Amarillo oscuro
+        ("Bajo", "Baja"): "#ffdd00",        # Amarillo
+        ("Bajo", "Nula"): "#99dd00",        # Verde amarillo
+        ("Nulo", "Alta"): "#ffbb33",        # Amarillo oscuro
+        ("Nulo", "Media"): "#ffdd00",       # Amarillo
+        ("Nulo", "Baja"): "#99dd00",        # Verde amarillo
+        ("Nulo", "Nula"): "#00C851",        # Verde
     }
     
     # Crear mapa de calor con Plotly
     z_values = df_matriz.values
     x_labels = ["Nula (0.1)", "Baja (1)", "Media (2)", "Alta (3)"]
-    y_labels = ["Crítico (≥2.5)", "Alto (1.5-2.5)", "Medio (0.5-1.5)", "Bajo (<0.5)"]
+    y_labels = ["Alto (≥2.0)", "Medio (1.0-2.0)", "Bajo (0.5-1.0)", "Nulo (<0.5)"]
     
     # Crear colores personalizados para cada celda
     colorscale = [
@@ -2166,7 +2526,7 @@ with tab6:
     
     # Calcular nivel de riesgo para cada celda (para colorear)
     z_colors = []
-    for i, imp in enumerate(["Crítico", "Alto", "Medio", "Bajo"]):
+    for i, imp in enumerate(["Alto", "Medio", "Bajo", "Nulo"]):
         fila_colores = []
         for j, freq in enumerate(["Nula", "Baja", "Media", "Alta"]):
             # El color depende de la zona de riesgo (no del conteo)
@@ -2220,84 +2580,142 @@ with tab6:
     # Leyenda
     col_leg1, col_leg2, col_leg3, col_leg4 = st.columns(4)
     with col_leg1:
-        st.markdown("🟢 **Riesgo Bajo** - Aceptar/Monitorear")
+        st.markdown("🟢 **Riesgo Nulo** - Aceptar/Monitorear")
     with col_leg2:
-        st.markdown("🟡 **Riesgo Medio** - Reducir si es posible")
+        st.markdown("🟡 **Riesgo Bajo** - Monitorear")
     with col_leg3:
-        st.markdown("🟠 **Riesgo Alto** - Tratar prioritario")
+        st.markdown("🟠 **Riesgo Medio** - Reducir si es posible")
     with col_leg4:
-        st.markdown("🔴 **Riesgo Crítico** - Acción inmediata")
+        st.markdown("🔴 **Riesgo Alto** - Acción inmediata")
     
     st.markdown("---")
     
-    # ===== GRÁFICO DE DISPERSIÓN =====
-    st.markdown("### 📊 Gráfico de Dispersión (Detalle)")
+    # ===== GRÁFICO RADAR DE RIESGO POR ACTIVO =====
+    st.markdown("### 🕸️ Mapa Radar de Riesgo por Activo")
+    st.caption("Compara el riesgo ACTUAL vs OBJETIVO vs LÍMITE para cada activo")
     
-    # Crear figura con zonas de color
-    fig = go.Figure()
+    # Debug: mostrar columnas disponibles
+    # st.write("Columnas disponibles:", riesgos.columns.tolist())
     
-    # Agregar zonas de fondo
-    # Zona Verde (Bajo)
-    fig.add_shape(type="rect", x0=0, y0=0, x1=1, y1=0.5,
-                  fillcolor="rgba(0, 200, 81, 0.3)", line_width=0)
-    fig.add_shape(type="rect", x0=0, y0=0, x1=0.5, y1=1,
-                  fillcolor="rgba(0, 200, 81, 0.3)", line_width=0)
+    # Identificar la columna de nombre del activo
+    col_nombre = None
+    for posible in ["Nombre_Activo", "nombre_activo", "Activo", "activo", "ID_Activo", "id_activo"]:
+        if posible in riesgos.columns:
+            col_nombre = posible
+            break
     
-    # Zona Amarilla (Medio)
-    fig.add_shape(type="rect", x0=0.5, y0=0.5, x1=2, y1=1.5,
-                  fillcolor="rgba(255, 221, 0, 0.3)", line_width=0)
-    
-    # Zona Naranja (Alto)
-    fig.add_shape(type="rect", x0=1.5, y0=1.5, x1=2.5, y1=2.5,
-                  fillcolor="rgba(255, 136, 0, 0.3)", line_width=0)
-    
-    # Zona Roja (Crítico)
-    fig.add_shape(type="rect", x0=2, y0=2, x1=3.5, y1=3.5,
-                  fillcolor="rgba(255, 0, 0, 0.3)", line_width=0)
-    
-    # Determinar color de cada punto
-    def color_riesgo(r):
-        if r >= 6: return "red"
-        elif r >= 4: return "orange"
-        elif r >= 2: return "gold"
-        else: return "green"
-    
-    colores = riesgos["Riesgo"].apply(color_riesgo)
-    
-    # Agregar puntos
-    fig.add_trace(go.Scatter(
-        x=riesgos["Frecuencia"],
-        y=riesgos["Impacto"],
-        mode="markers+text",
-        marker=dict(
-            size=riesgos["Riesgo"] * 5 + 10,  # Tamaño proporcional al riesgo
-            color=colores,
-            line=dict(width=2, color="white"),
-            opacity=0.8
-        ),
-        text=riesgos.apply(lambda r: f"R{r.name+1}", axis=1),
-        textposition="top center",
-        textfont=dict(size=10),
-        hovertemplate="<b>%{customdata[0]}</b><br>" +
-                      "Amenaza: %{customdata[1]}<br>" +
-                      "Impacto: %{y:.2f}<br>" +
-                      "Frecuencia: %{x:.2f}<br>" +
-                      "Riesgo: %{customdata[2]:.2f}<extra></extra>",
-        customdata=riesgos[["Nombre_Activo", "Amenaza", "Riesgo"]].values
-    ))
-    
-    fig.update_layout(
-        title="Dispersión de Riesgos",
-        xaxis_title="Frecuencia (Probabilidad)",
-        yaxis_title="Impacto",
-        xaxis=dict(range=[0, 3.5], tickvals=[0.1, 1, 2, 3], 
-                   ticktext=["Nula", "Baja", "Media", "Alta"]),
-        yaxis=dict(range=[0, 3.5]),
-        height=450,
-        showlegend=False
-    )
-    
-    st.plotly_chart(fig, use_container_width=True)
+    if col_nombre is None:
+        st.warning("⚠️ No se encontró columna de nombre de activo en los datos de riesgo.")
+        st.write("Columnas disponibles:", riesgos.columns.tolist())
+    elif len(riesgos) >= 3:
+        # Agrupar riesgos por activo (tomar el máximo riesgo por activo)
+        riesgos_por_activo = riesgos.groupby(col_nombre).agg({
+            "Riesgo": "max"
+        }).reset_index()
+        
+        # Limitar a los primeros 10 activos con mayor riesgo para el radar
+        top_activos = riesgos_por_activo.nlargest(min(10, len(riesgos_por_activo)), "Riesgo")
+        
+        if len(top_activos) >= 3:
+            # Preparar datos para el radar
+            activos_nombres = top_activos[col_nombre].tolist()
+            riesgo_actual = top_activos["Riesgo"].tolist()
+            
+            # Acortar nombres largos para el radar
+            activos_nombres_cortos = [n[:25] + "..." if len(str(n)) > 25 else str(n) for n in activos_nombres]
+            
+            # Calcular objetivo (50% del actual, mínimo 1)
+            riesgo_objetivo = [max(1.0, r * 0.5) for r in riesgo_actual]
+            
+            # Límite de tolerancia (por ejemplo, 7 para todos o basado en criticidad)
+            riesgo_limite = [7.0] * len(activos_nombres_cortos)
+            
+            # Cerrar el polígono (repetir el primer valor al final)
+            activos_nombres_closed = activos_nombres_cortos + [activos_nombres_cortos[0]]
+            riesgo_actual_closed = riesgo_actual + [riesgo_actual[0]]
+            riesgo_objetivo_closed = riesgo_objetivo + [riesgo_objetivo[0]]
+            riesgo_limite_closed = riesgo_limite + [riesgo_limite[0]]
+            
+            # Crear gráfico radar
+            fig_radar = go.Figure()
+        
+            # Línea ACTUAL (verde)
+            fig_radar.add_trace(go.Scatterpolar(
+                r=riesgo_actual_closed,
+                theta=activos_nombres_closed,
+                fill='toself',
+                fillcolor='rgba(76, 175, 80, 0.3)',
+                line=dict(color='#4CAF50', width=2),
+                marker=dict(size=8, color='#4CAF50'),
+                name='ACTUAL'
+            ))
+            
+            # Línea OBJETIVO (azul)
+            fig_radar.add_trace(go.Scatterpolar(
+                r=riesgo_objetivo_closed,
+                theta=activos_nombres_closed,
+                fill='toself',
+                fillcolor='rgba(33, 150, 243, 0.2)',
+                line=dict(color='#2196F3', width=2),
+                marker=dict(size=8, color='#2196F3'),
+                name='OBJETIVO'
+            ))
+            
+            # Línea LÍMITE (amarillo/naranja)
+            fig_radar.add_trace(go.Scatterpolar(
+                r=riesgo_limite_closed,
+                theta=activos_nombres_closed,
+                fill='none',
+                line=dict(color='#FFC107', width=3),
+                marker=dict(size=6, color='#FFC107'),
+                name='LÍMITE'
+            ))
+            
+            fig_radar.update_layout(
+                polar=dict(
+                    radialaxis=dict(
+                        visible=True,
+                        range=[0, 8],
+                        tickvals=[1, 2, 3, 4, 5, 6, 7],
+                        tickfont=dict(size=10)
+                    ),
+                    angularaxis=dict(
+                        tickfont=dict(size=11)
+                    )
+                ),
+                showlegend=True,
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.05,
+                    xanchor="center",
+                    x=0.5
+                ),
+                title=dict(
+                    text="RIESGO POR ACTIVO",
+                    font=dict(size=16),
+                    x=0.5
+                ),
+                height=500
+            )
+            
+            st.plotly_chart(fig_radar, use_container_width=True)
+            
+            # Tabla resumen del radar
+            col_r1, col_r2 = st.columns(2)
+            with col_r1:
+                st.markdown("**📊 Leyenda del Radar:**")
+                st.markdown("- 🟢 **ACTUAL**: Nivel de riesgo calculado actualmente")
+                st.markdown("- 🔵 **OBJETIVO**: Meta de reducción (50% del actual)")
+                st.markdown("- 🟡 **LÍMITE**: Tolerancia máxima aceptable (7)")
+            
+            with col_r2:
+                st.markdown("**📋 Activos en el Radar:**")
+                for i, (activo, riesgo) in enumerate(zip(activos_nombres_cortos, riesgo_actual)):
+                    zona = "🔴" if riesgo >= 6 else "🟠" if riesgo >= 4 else "🟡" if riesgo >= 2 else "🟢"
+                    st.markdown(f"{zona} {activo}: **{riesgo:.2f}**")
+        else:
+            st.info("Se necesitan al menos 3 activos únicos con riesgos para mostrar el radar.")
     
     st.markdown("---")
     
@@ -2306,10 +2724,10 @@ with tab6:
     
     # Agregar columna de zona de riesgo
     def zona_riesgo(r):
-        if r >= 6: return "🔴 Crítico"
-        elif r >= 4: return "🟠 Alto"
-        elif r >= 2: return "🟡 Medio"
-        else: return "🟢 Bajo"
+        if r >= 6: return "🔴 Alto"
+        elif r >= 4: return "🟡 Medio"
+        elif r >= 2: return "🟢 Bajo"
+        else: return "⚪ Nulo"
     
     riesgos_display = riesgos.copy()
     riesgos_display["Zona"] = riesgos_display["Riesgo"].apply(zona_riesgo)
@@ -2456,7 +2874,7 @@ with tab7:
         
         # Generar observaciones automáticas
         if riesgo_actual >= 6:
-            observacion = "⚠️ CRÍTICO: Tratamiento urgente requerido. Implementar salvaguardas inmediatamente."
+            observacion = "⚠️ ALTO: Tratamiento urgente requerido. Implementar salvaguardas inmediatamente."
         elif riesgo_actual >= limite:
             observacion = "🔴 Sobre límite: Priorizar mitigación. Revisar controles existentes."
         elif riesgo_actual >= riesgo_objetivo:
@@ -2699,7 +3117,7 @@ with tab8:
                 salvaguardas = []
                 controles = []
                 for _, row in riesgos.iterrows():
-                    zona = "CRÍTICO" if row.get("Riesgo", 0) >= 6 else "ALTO" if row.get("Riesgo", 0) >= 4 else "MEDIO"
+                    zona = "ALTO" if row.get("Riesgo", 0) >= 6 else "MEDIO" if row.get("Riesgo", 0) >= 4 else "BAJO"
                     salvaguardas.append(generar_salvaguarda_heuristica(
                         row.get("Amenaza", ""), 
                         row.get("Vulnerabilidad", ""), 
@@ -2721,7 +3139,7 @@ with tab8:
         salvaguardas = []
         controles = []
         for _, row in riesgos.iterrows():
-            zona = "CRÍTICO" if row.get("Riesgo", 0) >= 6 else "ALTO" if row.get("Riesgo", 0) >= 4 else "MEDIO"
+            zona = "ALTO" if row.get("Riesgo", 0) >= 6 else "MEDIO" if row.get("Riesgo", 0) >= 4 else "BAJO"
             salvaguardas.append(generar_salvaguarda_heuristica(
                 row.get("Amenaza", ""), 
                 row.get("Vulnerabilidad", ""), 
@@ -2738,16 +3156,16 @@ with tab8:
     for idx, row in df_display.iterrows():
         riesgo_val = row.get("Riesgo", 0)
         if riesgo_val >= 6:
-            zona = "🔴 Crítico"
+            zona = "🔴 Alto"
             prioridad = "Alta"
         elif riesgo_val >= 4:
-            zona = "🟠 Alto"
-            prioridad = "Alta"
-        elif riesgo_val >= 2:
             zona = "🟡 Medio"
             prioridad = "Media"
-        else:
+        elif riesgo_val >= 2:
             zona = "🟢 Bajo"
+            prioridad = "Baja"
+        else:
+            zona = "⚪ Nulo"
             prioridad = "Baja"
         
         tabla_salvaguardas.append({
@@ -2989,8 +3407,8 @@ with tab9:
     with col3:
         st.metric("🎯 Riesgos", len(riesgos) if not riesgos.empty else 0)
     with col4:
-        criticos = len(riesgos[riesgos["Riesgo"] >= 6]) if not riesgos.empty else 0
-        st.metric("🔴 Críticos", criticos)
+        altos_dash = len(riesgos[riesgos["Riesgo"] >= 6]) if not riesgos.empty else 0
+        st.metric("🔴 Altos", altos_dash)
     with col5:
         promedio = riesgos["Riesgo"].mean() if not riesgos.empty else 0
         st.metric("📈 Riesgo Prom.", f"{promedio:.2f}")
@@ -2999,15 +3417,15 @@ with tab9:
     
     # ===== SUB-TABS PARA DASHBOARDS =====
     dash_tab1, dash_tab2, dash_tab3, dash_tab4 = st.tabs([
-        "🔥 Activos Críticos",
+        "🔥 Activos en Riesgo",
         "⚡ Amenazas",
         "🔓 Vulnerabilidades",
         "📊 Riesgos"
     ])
     
-    # ----- Dashboard: Activos Críticos -----
+    # ----- Dashboard: Activos en Riesgo -----
     with dash_tab1:
-        st.subheader("🔥 Top 10 Activos Más Críticos")
+        st.subheader("🔥 Top 10 Activos con Mayor Riesgo")
         
         if not riesgos_activos.empty:
             top_activos = riesgos_activos.sort_values("Riesgo_Actual", ascending=False).head(10)
@@ -3049,7 +3467,7 @@ with tab9:
                 hide_index=True
             )
         else:
-            st.info("Recalcula los riesgos en Tab 7 para ver los activos críticos.")
+            st.info("Recalcula los riesgos en Tab 7 para ver los activos en riesgo.")
     
     # ----- Dashboard: Amenazas -----
     with dash_tab2:
@@ -3080,10 +3498,10 @@ with tab9:
             with col1:
                 # Distribución por zona de riesgo de las amenazas
                 def get_zona(r):
-                    if r >= 6: return "Crítico"
-                    elif r >= 4: return "Alto"
-                    elif r >= 2: return "Medio"
-                    return "Bajo"
+                    if r >= 6: return "Alto"
+                    elif r >= 4: return "Medio"
+                    elif r >= 2: return "Bajo"
+                    return "Nulo"
                 
                 riesgos["Zona"] = riesgos["Riesgo"].apply(get_zona)
                 zona_count = riesgos["Zona"].value_counts()
@@ -3539,15 +3957,15 @@ with tab12:
     
     col1, col2 = st.columns([1, 2])
     with col1:
-        if st.button("📊 Generar Excel", type="primary"):
-            with st.spinner("Generando archivo Excel..."):
-                excel_bytes = exportar_matriz_excel(ID_EVALUACION, NOMBRE_EVALUACION)
-                st.download_button(
-                    "💾 Descargar Excel",
-                    data=excel_bytes,
-                    file_name=f"Matriz_MAGERIT_{NOMBRE_EVALUACION}_{dt.date.today()}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+        # Generar Excel directamente
+        excel_bytes = exportar_matriz_excel(ID_EVALUACION, NOMBRE_EVALUACION)
+        st.download_button(
+            "📊 Descargar Excel Completo",
+            data=excel_bytes,
+            file_name=f"Matriz_MAGERIT_{NOMBRE_EVALUACION}_{dt.date.today()}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            type="primary"
+        )
     with col2:
         st.caption("El archivo Excel incluye todas las hojas: Criterios, Activos, Valoración, Vulnerabilidades, Riesgos, Mapa, Salvaguardas.")
     
@@ -3681,176 +4099,216 @@ with tab12:
 with tab13:
     st.header("📋 Resumen Ejecutivo")
     st.markdown("""
-    **Propósito:** Informe ejecutivo generado por IA para presentar a la alta gerencia.
+    **Propósito:** Informe ejecutivo para presentar a la alta gerencia.
     
     Incluye:
     - Hallazgos principales
     - Activos más críticos
     - Recomendaciones prioritarias
-    - Inversión estimada
-    - Reducción de riesgo esperada
+    - Distribución de riesgos
     """)
     
-    # Botón para generar
-    col1, col2 = st.columns([1, 2])
-    with col1:
-        generar = st.button("🤖 Generar Resumen con IA", type="primary")
-    with col2:
-        modelo_ia = st.selectbox(
-            "Modelo IA",
-            ["llama3.2:1b", "llama3.2:3b", "llama3:8b"],
-            index=0,
-            help="Modelos más grandes generan mejores resúmenes pero son más lentos"
-        )
+    # ===== RESUMEN AUTOMÁTICO BASADO EN DATOS =====
+    st.markdown("### 📊 Resumen Automático (Datos Actuales)")
     
-    if generar:
-        with st.spinner("🔄 Generando resumen ejecutivo con IA... (puede tomar 30-60 segundos)"):
-            exito, resumen, mensaje = generar_resumen_ejecutivo(ID_EVALUACION, modelo_ia)
-            
-            if exito and resumen:
-                st.session_state.resumen_ejecutivo = resumen
-                st.success(mensaje)
-            else:
-                st.error(f"Error: {mensaje}")
+    # Obtener datos
+    activos_resumen = get_activos_matriz(ID_EVALUACION)
+    riesgos_resumen = get_riesgos_evaluacion(ID_EVALUACION)
+    vulns_resumen = get_vulnerabilidades_evaluacion(ID_EVALUACION)
     
-    # Mostrar resumen si existe
-    if "resumen_ejecutivo" in st.session_state:
-        resumen = st.session_state.resumen_ejecutivo
-        
-        st.markdown("---")
-        
-        # Encabezado
-        st.markdown(f"""
-        <div style="background: linear-gradient(135deg, #1a1a2e, #16213e); padding: 2rem; border-radius: 10px; color: white; margin-bottom: 1rem;">
-            <h2 style="margin: 0;">📊 Resumen Ejecutivo - Evaluación de Riesgos</h2>
-            <p style="margin: 0.5rem 0 0 0; opacity: 0.8;">Evaluación: {NOMBRE_EVALUACION} | Fecha: {resumen.fecha_generacion}</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
+    if not activos_resumen.empty:
         # Métricas principales
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric("📦 Activos Evaluados", resumen.total_activos)
+            st.metric("📦 Activos Evaluados", len(activos_resumen))
         with col2:
-            st.metric("⚠️ Amenazas Identificadas", resumen.total_amenazas)
+            st.metric("⚠️ Amenazas/Vulns", len(vulns_resumen))
         with col3:
-            st.metric("💰 Inversión Estimada", resumen.inversion_estimada)
+            st.metric("📊 Riesgos Calculados", len(riesgos_resumen))
         with col4:
-            st.metric("📉 Reducción Esperada", resumen.reduccion_riesgo_esperada)
-        
-        st.markdown("---")
-        
-        # Hallazgos principales
-        st.subheader("🔍 Hallazgos Principales")
-        for i, hallazgo in enumerate(resumen.hallazgos_principales, 1):
-            st.markdown(f"**{i}.** {hallazgo}")
-        
-        st.markdown("---")
-        
-        # Activos críticos
-        st.subheader("🔥 Activos Más Críticos")
-        if resumen.activos_criticos:
-            tabla_criticos = pd.DataFrame(resumen.activos_criticos)
-            st.dataframe(tabla_criticos, use_container_width=True, hide_index=True)
+            if not riesgos_resumen.empty:
+                riesgo_prom = riesgos_resumen["Riesgo"].mean()
+                st.metric("📈 Riesgo Promedio", f"{riesgo_prom:.2f}")
+            else:
+                st.metric("📈 Riesgo Promedio", "N/A")
         
         st.markdown("---")
         
         # Distribución de riesgos
-        if resumen.distribucion_riesgo:
-            st.subheader("📊 Distribución de Riesgos")
-            dist = resumen.distribucion_riesgo
+        if not riesgos_resumen.empty:
+            col_dist1, col_dist2 = st.columns([1, 1])
             
-            # Gráfico de pastel
-            fig = go.Figure(data=[go.Pie(
-                labels=list(dist.keys()),
-                values=list(dist.values()),
-                marker_colors=["#ff0000", "#ff8800", "#ffdd00", "#00C851"],
-                hole=0.4
+            with col_dist1:
+                st.markdown("#### 📊 Distribución de Riesgos")
+                criticos = len(riesgos_resumen[riesgos_resumen["Riesgo"] >= 6])
+                altos = len(riesgos_resumen[(riesgos_resumen["Riesgo"] >= 4) & (riesgos_resumen["Riesgo"] < 6)])
+                medios = len(riesgos_resumen[(riesgos_resumen["Riesgo"] >= 2) & (riesgos_resumen["Riesgo"] < 4)])
+                bajos = len(riesgos_resumen[riesgos_resumen["Riesgo"] < 2])
+                
+                fig_dist = go.Figure(data=[go.Pie(
+                    labels=["🔴 Alto", "🟡 Medio", "🟢 Bajo", "⚪ Nulo"],
+                    values=[criticos, altos, medios, bajos],
+                    marker_colors=["#ff0000", "#ffdd00", "#00C851", "#6c757d"],
+                    hole=0.4
+                )])
+                fig_dist.update_layout(height=300, showlegend=True)
+                st.plotly_chart(fig_dist, use_container_width=True)
+            
+            with col_dist2:
+                st.markdown("#### 🔥 Top 5 Riesgos Más Altos")
+                top5 = riesgos_resumen.nlargest(5, "Riesgo")[["Nombre_Activo", "Amenaza", "Riesgo"]]
+                st.dataframe(top5, use_container_width=True, hide_index=True)
+        
+        st.markdown("---")
+        
+        # Activos por tipo
+        st.markdown("#### 📦 Activos por Tipo")
+        if "Tipo_Activo" in activos_resumen.columns:
+            tipo_counts = activos_resumen["Tipo_Activo"].value_counts()
+            fig_tipos = go.Figure(data=[go.Bar(
+                x=tipo_counts.index.tolist(),
+                y=tipo_counts.values.tolist(),
+                marker_color="#3498db"
             )])
-            fig.update_layout(height=300)
-            st.plotly_chart(fig, use_container_width=True)
+            fig_tipos.update_layout(height=300, xaxis_title="Tipo", yaxis_title="Cantidad")
+            st.plotly_chart(fig_tipos, use_container_width=True)
         
         st.markdown("---")
         
-        # Recomendaciones
-        st.subheader("💡 Recomendaciones Prioritarias")
-        for i, rec in enumerate(resumen.recomendaciones_prioritarias, 1):
-            st.info(f"**{i}.** {rec}")
-        
-        st.markdown("---")
-        
-        # Conclusión
-        st.subheader("📝 Conclusión")
-        st.markdown(f"> {resumen.conclusion}")
-        
-        st.markdown("---")
-        
-        # Descarga del informe
-        st.subheader("📥 Descargar Informe")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Generar texto del informe
-            informe_texto = f"""
+        # Generar texto del resumen para descargar
+        resumen_texto = f"""
 RESUMEN EJECUTIVO - EVALUACIÓN DE RIESGOS MAGERIT
 =================================================
 Evaluación: {NOMBRE_EVALUACION}
-Fecha: {resumen.fecha_generacion}
+Fecha: {dt.date.today()}
 Generado por: TITA - Sistema de Gestión de Riesgos
 
 MÉTRICAS PRINCIPALES
 --------------------
-- Activos Evaluados: {resumen.total_activos}
-- Amenazas Identificadas: {resumen.total_amenazas}
-- Inversión Estimada: {resumen.inversion_estimada}
-- Reducción de Riesgo Esperada: {resumen.reduccion_riesgo_esperada}
-
-HALLAZGOS PRINCIPALES
----------------------
+- Activos Evaluados: {len(activos_resumen)}
+- Amenazas/Vulnerabilidades: {len(vulns_resumen)}
+- Riesgos Calculados: {len(riesgos_resumen)}
 """
-            for i, h in enumerate(resumen.hallazgos_principales, 1):
-                informe_texto += f"{i}. {h}\n"
-            
-            informe_texto += "\nRECOMENDACIONES PRIORITARIAS\n----------------------------\n"
-            for i, r in enumerate(resumen.recomendaciones_prioritarias, 1):
-                informe_texto += f"{i}. {r}\n"
-            
-            informe_texto += f"\nCONCLUSIÓN\n----------\n{resumen.conclusion}\n"
-            
+        if not riesgos_resumen.empty:
+            resumen_texto += f"""- Riesgo Promedio: {riesgos_resumen["Riesgo"].mean():.2f}
+- Riesgos Altos: {criticos}
+- Riesgos Medios: {altos}
+- Riesgos Bajos: {medios}
+- Riesgos Nulos: {bajos}
+
+TOP 5 RIESGOS MÁS ALTOS
+--------------------------
+"""
+            for i, (_, row) in enumerate(riesgos_resumen.nlargest(5, "Riesgo").iterrows(), 1):
+                resumen_texto += f"{i}. {row['Nombre_Activo']} - {row['Amenaza']}: Riesgo {row['Riesgo']:.2f}\n"
+        
+        resumen_texto += f"""
+CONCLUSIÓN
+----------
+La evaluación de riesgos MAGERIT ha identificado {len(riesgos_resumen)} riesgos 
+en {len(activos_resumen)} activos evaluados. Se recomienda priorizar la atención 
+en los {criticos} riesgos altos identificados.
+"""
+        
+        # Botones de descarga
+        st.markdown("### 📥 Descargar Resumen")
+        col_dl1, col_dl2, col_dl3 = st.columns(3)
+        
+        with col_dl1:
             st.download_button(
-                "📄 Descargar Informe (TXT)",
-                data=informe_texto,
+                "📄 Descargar TXT",
+                data=resumen_texto,
                 file_name=f"Resumen_Ejecutivo_{NOMBRE_EVALUACION}.txt",
                 mime="text/plain"
             )
         
-        with col2:
+        with col_dl2:
             # JSON para Power BI
-            informe_json = {
+            resumen_json = {
                 "evaluacion": NOMBRE_EVALUACION,
-                "fecha": resumen.fecha_generacion,
+                "fecha": str(dt.date.today()),
                 "metricas": {
-                    "activos": resumen.total_activos,
-                    "amenazas": resumen.total_amenazas,
-                    "inversion": resumen.inversion_estimada,
-                    "reduccion_riesgo": resumen.reduccion_riesgo_esperada
+                    "activos": len(activos_resumen),
+                    "amenazas": len(vulns_resumen),
+                    "riesgos": len(riesgos_resumen),
+                    "riesgo_promedio": float(riesgos_resumen["Riesgo"].mean()) if not riesgos_resumen.empty else 0
                 },
-                "hallazgos": resumen.hallazgos_principales,
-                "activos_criticos": resumen.activos_criticos,
-                "recomendaciones": resumen.recomendaciones_prioritarias,
-                "conclusion": resumen.conclusion,
-                "distribucion_riesgo": resumen.distribucion_riesgo
+                "distribucion": {
+                    "alto": criticos if not riesgos_resumen.empty else 0,
+                    "medio": altos if not riesgos_resumen.empty else 0,
+                    "bajo": medios if not riesgos_resumen.empty else 0,
+                    "nulo": bajos if not riesgos_resumen.empty else 0
+                }
             }
-            
             st.download_button(
-                "📊 Descargar JSON (Power BI)",
-                data=json.dumps(informe_json, indent=2, ensure_ascii=False),
+                "📊 Descargar JSON",
+                data=json.dumps(resumen_json, indent=2, ensure_ascii=False),
                 file_name=f"Resumen_Ejecutivo_{NOMBRE_EVALUACION}.json",
                 mime="application/json"
             )
+        
+        with col_dl3:
+            # CSV de activos con mayor riesgo
+            if not riesgos_resumen.empty:
+                st.download_button(
+                    "📋 Top Riesgos CSV",
+                    data=riesgos_resumen.nlargest(10, "Riesgo").to_csv(index=False),
+                    file_name=f"Top_Riesgos_{NOMBRE_EVALUACION}.csv",
+                    mime="text/csv"
+                )
     else:
-        st.info("📭 Haz clic en 'Generar Resumen con IA' para crear el informe ejecutivo.")
+        st.warning("⚠️ No hay activos en esta evaluación. Agrega activos primero en el Tab 2.")
+    
+    st.markdown("---")
+    
+    # ===== RESUMEN CON IA (OPCIONAL) =====
+    with st.expander("🤖 Generar Resumen Avanzado con IA (Opcional)", expanded=False):
+        st.info("Requiere Ollama corriendo localmente con un modelo instalado.")
+        
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            generar = st.button("🤖 Generar con IA", type="secondary")
+        with col2:
+            modelo_ia = st.selectbox(
+                "Modelo IA",
+                ["llama3.2:1b", "llama3.2:3b", "llama3:8b"],
+                index=0,
+                help="Modelos más grandes generan mejores resúmenes pero son más lentos"
+            )
+        
+        if generar:
+            with st.spinner("🔄 Generando resumen ejecutivo con IA... (puede tomar 30-60 segundos)"):
+                exito, resumen, mensaje = generar_resumen_ejecutivo(ID_EVALUACION, modelo_ia)
+                
+                if exito and resumen:
+                    st.session_state.resumen_ejecutivo = resumen
+                    st.success(mensaje)
+                else:
+                    st.error(f"Error: {mensaje}")
+        
+        # Mostrar resumen IA si existe
+        if "resumen_ejecutivo" in st.session_state:
+            resumen = st.session_state.resumen_ejecutivo
+            
+            st.markdown("---")
+            st.markdown("#### 🤖 Resumen Generado por IA")
+            
+            # Hallazgos principales
+            if hasattr(resumen, 'hallazgos_principales') and resumen.hallazgos_principales:
+                st.markdown("**🔍 Hallazgos:**")
+                for h in resumen.hallazgos_principales:
+                    st.markdown(f"- {h}")
+            
+            # Recomendaciones
+            if hasattr(resumen, 'recomendaciones_prioritarias') and resumen.recomendaciones_prioritarias:
+                st.markdown("**💡 Recomendaciones:**")
+                for r in resumen.recomendaciones_prioritarias:
+                    st.info(r)
+            
+            # Conclusión
+            if hasattr(resumen, 'conclusion') and resumen.conclusion:
+                st.markdown("**📝 Conclusión:**")
+                st.markdown(f"> {resumen.conclusion}")
 
 
 # ==================== FOOTER ====================
