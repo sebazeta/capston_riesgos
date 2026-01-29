@@ -242,11 +242,11 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12, tab13
     "🗺️ 6. Mapa Riesgos",
     "📊 7. Riesgo Activos",
     "🛡️ 8. Salvaguardas",
-    "📈 9. Dashboards",
-    "🎯 10. Madurez",
-    "🔄 11. Comparativa",
+    "🎯 9. Madurez",
+    "📈 10. Dashboards (Standby)",
+    "🔄 11. Comparativa (Standby)",
     "📑 12. Matriz Excel",
-    "📋 13. Resumen Ejecutivo"
+    "📋 13. Resumen (Standby)"
 ])
 
 
@@ -394,8 +394,7 @@ with tab1:
                 data_amenazas.append({
                     "Código": codigo,
                     "Amenaza": info.get("amenaza", ""),
-                    "Tipo": tipo_nombre,
-                    "Dimensión": info.get("dimension_afectada", "D")
+                    "Tipo": tipo_nombre
                 })
             
             df_amenazas = pd.DataFrame(data_amenazas)
@@ -2036,7 +2035,7 @@ with tab4:
                     <th>Nombre_Activo</th>
                     <th>Criticidad</th>
                     <th>Cod_Amenaza</th>
-                    <th>Vulnerabilidad</th>
+                    <th>Cod_Vuln</th>
                     <th>Deg_D</th>
                     <th>Deg_I</th>
                     <th>Deg_C</th>
@@ -2046,13 +2045,27 @@ with tab4:
             <tbody>
         '''
         
+        # Cargar catálogo de amenazas para tooltips enriquecidos
+        catalogo_amenazas_tab4 = get_catalogo_amenazas()
+        
         for idx, row in todas_vulns.iterrows():
             nombre = escape_html(row.get("Nombre_Activo", "N/A"))
             crit = row.get("Criticidad_Nivel", "N/A")
             cod = escape_html(row.get("Cod_Amenaza", "N/A"))
-            amenaza_desc = escape_html(row.get("Amenaza", "Sin descripción"))
+            amenaza_nombre = escape_html(row.get("Amenaza", "Sin descripción"))
+            
+            # Tooltip enriquecido para amenaza: nombre + descripción del catálogo
+            amenaza_tooltip = amenaza_nombre
+            if cod and catalogo_amenazas_tab4.get(cod):
+                info_amenaza = catalogo_amenazas_tab4[cod]
+                amenaza_tooltip = f"{info_amenaza.get('amenaza', amenaza_nombre)} | Tipo: {info_amenaza.get('tipo_amenaza', 'N/A')} | Dimensión: {info_amenaza.get('dimension_afectada', 'N/A')}"
+            
+            # Tooltip para vulnerabilidad: nombre corto + descripción completa
             vuln_full = escape_html(row.get("Vulnerabilidad", "Sin descripción"))
-            vuln_short = vuln_full[:40] + "..." if len(vuln_full) > 40 else vuln_full
+            # Generar código de vulnerabilidad basado en índice
+            cod_vuln = f"V{idx+1:03d}"
+            vuln_tooltip = vuln_full
+            
             deg_d = f"{row.get('Degradacion_D', 0)*100:.0f}%"
             deg_i = f"{row.get('Degradacion_I', 0)*100:.0f}%"
             deg_c = f"{row.get('Degradacion_C', 0)*100:.0f}%"
@@ -2062,8 +2075,8 @@ with tab4:
                 <tr>
                     <td>{nombre}</td>
                     <td>{crit}</td>
-                    <td><span class="tooltip-link" title="{amenaza_desc}">{cod}</span></td>
-                    <td><span class="tooltip-link" title="{vuln_full}">{vuln_short}</span></td>
+                    <td><span class="tooltip-link" title="{amenaza_tooltip}">{cod}</span></td>
+                    <td><span class="tooltip-link" title="{vuln_tooltip}">{cod_vuln}</span></td>
                     <td>{deg_d}</td>
                     <td>{deg_i}</td>
                     <td>{deg_c}</td>
@@ -2116,12 +2129,6 @@ with tab5:
     **Propósito:** Calcular el riesgo para cada par activo-amenaza identificado.
     
     **Fórmula MAGERIT:** `RIESGO = FRECUENCIA × IMPACTO`
-    
-    **💡 La FRECUENCIA se calcula automáticamente** basándose en:
-    - Criticidad del activo (D/I/C)
-    - RTO (Tiempo de Recuperación)
-    - BIA (Impacto al Negocio)
-    - Tipo de amenaza
     """)
     
     # Importar función de cálculo de frecuencia
@@ -2164,209 +2171,149 @@ with tab5:
             | < 2.0 | Nulo ⚪ |
             """)
     
-    st.markdown("---")
-    
     # Obtener vulnerabilidades
     todas_vulns = get_vulnerabilidades_evaluacion(ID_EVALUACION)
+    activos = get_activos_matriz(ID_EVALUACION)
     
     if todas_vulns.empty:
         st.warning("⚠️ No hay vulnerabilidades/amenazas identificadas. Ve a la pestaña 'Vulnerabilidades y Amenazas' primero.")
         st.stop()
     
-    # Obtener activos
-    activos = get_activos_matriz(ID_EVALUACION)
+    st.markdown("---")
     
-    # ===== SELECTOR DE ACTIVO =====
-    st.subheader("📦 Selección de Activo")
+    # ===== CALCULAR RIESGOS PARA TODOS LOS ACTIVOS =====
+    st.subheader("🔄 Calcular Riesgos")
     
-    activo_sel = st.selectbox(
-        "🎯 Seleccionar Activo para Calcular Riesgo",
-        activos["ID_Activo"].tolist(),
-        format_func=lambda x: f"{activos[activos['ID_Activo'] == x]['Nombre_Activo'].values[0]} ({activos[activos['ID_Activo'] == x]['Tipo_Activo'].values[0]})",
-        key="riesgo_activo_sel"
-    )
+    col_calc1, col_calc2 = st.columns([1, 2])
+    with col_calc1:
+        if st.button("⚡ Calcular Todos los Riesgos", type="primary", key="calc_all_risks"):
+            total_guardados = 0
+            for _, activo in activos.iterrows():
+                id_activo = activo["ID_Activo"]
+                amenazas = calcular_frecuencia_todas_amenazas(ID_EVALUACION, id_activo)
+                for am in amenazas:
+                    calcular_riesgo_amenaza(
+                        id_evaluacion=ID_EVALUACION,
+                        id_activo=id_activo,
+                        id_va=am['id_va'],
+                        frecuencia=am['frecuencia']
+                    )
+                    total_guardados += 1
+            st.success(f"✅ Se calcularon y guardaron {total_guardados} riesgos")
+            st.rerun()
     
-    if activo_sel:
-        activo_info = activos[activos["ID_Activo"] == activo_sel].iloc[0]
-        vulns_activo = get_vulnerabilidades_activo(ID_EVALUACION, activo_sel)
-        valoracion = get_valoracion_activo(ID_EVALUACION, activo_sel)
-        
-        # Valores D/I/C
-        valor_d = valoracion.get("Valor_D", 0) if valoracion else 0
-        valor_i = valoracion.get("Valor_I", 0) if valoracion else 0
-        valor_c = valoracion.get("Valor_C", 0) if valoracion else 0
-        criticidad = valoracion.get("Criticidad", 0) if valoracion else 0
-        criticidad_nivel = valoracion.get("Criticidad_Nivel", "Sin valorar") if valoracion else "Sin valorar"
-        rto_nivel = valoracion.get("RTO_Nivel", "N/A") if valoracion else "N/A"
-        bia_nivel = valoracion.get("BIA_Nivel", "N/A") if valoracion else "N/A"
-        
-        # ===== INFORMACIÓN DEL ACTIVO =====
-        st.markdown("---")
-        st.markdown("### 📋 Información del Activo")
-        
-        col_info1, col_info2, col_info3, col_info4 = st.columns(4)
-        with col_info1:
-            st.markdown(f"**ID:** `{activo_sel}`")
-        with col_info2:
-            st.markdown(f"**Nombre:** {activo_info['Nombre_Activo']}")
-        with col_info3:
-            st.markdown(f"**Tipo:** {activo_info['Tipo_Activo']}")
-        with col_info4:
-            crit_color = {"Alta": "🔴", "Media": "🟡", "Baja": "🟢"}.get(criticidad_nivel, "⚪")
-            st.markdown(f"**Criticidad:** {crit_color} {criticidad} ({criticidad_nivel})")
-        
-        # Valoración D/I/C + RTO/BIA
-        col_v1, col_v2, col_v3, col_v4, col_v5 = st.columns(5)
-        with col_v1:
-            st.metric("D", valor_d)
-        with col_v2:
-            st.metric("I", valor_i)
-        with col_v3:
-            st.metric("C", valor_c)
-        with col_v4:
-            st.metric("RTO", rto_nivel)
-        with col_v5:
-            st.metric("BIA", bia_nivel)
-        
-        # ===== FRECUENCIA CALCULADA AUTOMÁTICAMENTE =====
-        st.markdown("---")
-        st.markdown("### 🤖 Frecuencia Calculada Automáticamente")
-        
-        freq_base, freq_nivel, freq_detalles = calcular_frecuencia_desde_cuestionario(ID_EVALUACION, activo_sel)
-        
-        col_freq1, col_freq2 = st.columns([1, 2])
-        with col_freq1:
-            freq_color = {"Alta": "🔴", "Media": "🟡", "Baja": "🟢", "Nula": "⚪"}.get(freq_nivel, "⚪")
-            st.metric(f"{freq_color} Frecuencia Base", f"{freq_base} ({freq_nivel})")
-        
-        with col_freq2:
-            st.info(f"""
-            **Factores considerados:**
-            - Criticidad: {freq_detalles.get('factores', {}).get('criticidad_aporte', 'N/A')}
-            - RTO: {freq_detalles.get('factores', {}).get('rto_aporte', 'N/A')}
-            - BIA: {freq_detalles.get('factores', {}).get('bia_aporte', 'N/A')}
-            """)
-        
-        st.markdown("---")
-        
-        if vulns_activo.empty:
-            st.warning("⚠️ Este activo no tiene vulnerabilidades/amenazas registradas. Ve al Tab 4 primero.")
-        else:
-            st.markdown("### ⚡ Riesgo por Amenaza")
-            
-            # Calcular frecuencia y riesgo para todas las amenazas
-            amenazas_con_riesgo = calcular_frecuencia_todas_amenazas(ID_EVALUACION, activo_sel)
-            
-            if amenazas_con_riesgo:
-                st.success(f"✅ Se calcularon automáticamente **{len(amenazas_con_riesgo)}** riesgos basados en el cuestionario.")
-                
-                # Mostrar tabla resumen
-                df_riesgos = pd.DataFrame(amenazas_con_riesgo)
-                
-                # Formatear columnas
-                df_display = df_riesgos[["cod_amenaza", "amenaza", "impacto", "frecuencia", "frecuencia_nivel", "riesgo"]].copy()
-                df_display.columns = ["Código", "Amenaza", "Impacto", "Frecuencia", "Freq. Nivel", "RIESGO"]
-                df_display["Impacto"] = df_display["Impacto"].apply(lambda x: f"{x:.2f}")
-                df_display["RIESGO"] = df_display["RIESGO"].apply(lambda x: f"{x:.2f}")
-                
-                # Colorear riesgo
-                def colorear_riesgo(val):
-                    try:
-                        v = float(val)
-                        if v >= 6: return "background-color: #ff4444; color: white"
-                        elif v >= 4: return "background-color: #ff8800; color: white"
-                        elif v >= 2: return "background-color: #ffbb33; color: black"
-                        return "background-color: #00C851; color: white"
-                    except:
-                        return ""
-                
-                styled_df = df_display.style.map(colorear_riesgo, subset=["RIESGO"])
-                st.dataframe(styled_df, use_container_width=True, hide_index=True)
-                
-                # Mostrar detalle expandible de cada amenaza
-                st.markdown("#### 📋 Detalle por Amenaza")
-                for am in amenazas_con_riesgo:
-                    riesgo = am["riesgo"]
-                    if riesgo >= 6:
-                        icon = "🔴"
-                    elif riesgo >= 4:
-                        icon = "🟠"
-                    elif riesgo >= 2:
-                        icon = "🟡"
-                    else:
-                        icon = "🟢"
-                    
-                    with st.expander(f"{icon} [{am['cod_amenaza']}] {am['amenaza']} - Riesgo: {riesgo:.2f}", expanded=False):
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.markdown(f"**Vulnerabilidad:** {am['vulnerabilidad'][:200]}...")
-                            st.markdown(f"**Impacto:** {am['impacto']:.2f}")
-                        with col2:
-                            st.markdown(f"**Frecuencia:** {am['frecuencia']} ({am['frecuencia_nivel']})")
-                            st.markdown(f"**Cálculo:** {am['frecuencia']} × {am['impacto']:.2f} = **{riesgo:.2f}**")
-                            
-                            # Ajuste manual si se desea
-                            freq_manual = st.select_slider(
-                                "Ajustar frecuencia (opcional)",
-                                options=[0.1, 1, 2, 3],
-                                value=am['frecuencia'],
-                                key=f"freq_adj_{am['id_va']}",
-                                format_func=lambda x: f"{x} - {['Nula', 'Baja', 'Media', 'Alta'][int(x) if x >= 1 else 0]}"
-                            )
-                            
-                            if freq_manual != am['frecuencia']:
-                                nuevo_riesgo = freq_manual * am['impacto']
-                                st.info(f"Riesgo ajustado: {freq_manual} × {am['impacto']:.2f} = **{nuevo_riesgo:.2f}**")
-                
-                # Botón para guardar todos los riesgos
-                st.markdown("---")
-                col_save1, col_save2 = st.columns([1, 2])
-                
-                with col_save1:
-                    if st.button("💾 Guardar Todos los Riesgos", type="primary", key="save_all_risks"):
-                        guardados = 0
-                        for am in amenazas_con_riesgo:
-                            # Verificar si hay ajuste manual
-                            freq_ajustada = st.session_state.get(f"freq_adj_{am['id_va']}", am['frecuencia'])
-                            calcular_riesgo_amenaza(
-                                id_evaluacion=ID_EVALUACION,
-                                id_activo=activo_sel,
-                                id_va=am['id_va'],
-                                frecuencia=freq_ajustada
-                            )
-                            guardados += 1
-                        st.success(f"✅ Se guardaron {guardados} riesgos calculados automáticamente")
-                        st.rerun()
-                
-                with col_save2:
-                    st.caption("Guarda los riesgos con la frecuencia calculada automáticamente (o ajustada manualmente).")
+    with col_calc2:
+        st.caption("Calcula automáticamente la frecuencia basándose en criticidad, RTO y BIA de cada activo.")
     
     st.markdown("---")
     
-    # ===== RESUMEN DE TODOS LOS RIESGOS =====
-    st.subheader("📋 Resumen: Todos los Riesgos de la Evaluación")
+    # ===== TABLA UNIFICADA DE RIESGOS =====
+    st.subheader("📋 Resumen de Riesgos")
+    st.caption("💡 Pasa el mouse sobre la Amenaza para ver la descripción completa")
+    
     riesgos = get_riesgos_evaluacion(ID_EVALUACION)
     
     if not riesgos.empty:
-        # Mostrar tabla con colores
-        cols = ["Nombre_Activo", "Amenaza", "Impacto", "Frecuencia", "Frecuencia_Nivel", "Riesgo"]
-        cols_existentes = [c for c in cols if c in riesgos.columns]
+        # Función para escapar HTML
+        def escape_html(text):
+            return str(text).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace("'", '&#39;')
         
-        def colorear_riesgo_tabla(val):
-            try:
-                v = float(val)
-                if v >= 6: return "background-color: #ff4444; color: white"
-                elif v >= 4: return "background-color: #ff8800; color: white"
-                elif v >= 2: return "background-color: #ffbb33; color: black"
-                else: return "background-color: #00C851; color: white"
-            except:
-                return ""
+        # Tabla HTML con tooltip en Amenaza
+        num_rows = len(riesgos)
+        table_height = min(420, 45 + num_rows * 38)
         
-        if "Riesgo" in cols_existentes:
-            styled_df = riesgos[cols_existentes].style.map(colorear_riesgo_tabla, subset=["Riesgo"])
-            st.dataframe(styled_df, use_container_width=True, hide_index=True)
-        else:
-            st.dataframe(riesgos[cols_existentes], use_container_width=True, hide_index=True)
+        html_table = f'''
+        <style>
+            .risk-table-container {{
+                max-height: {table_height}px;
+                overflow-y: auto;
+                border: 1px solid #e0e0e0;
+                border-radius: 4px;
+            }}
+            .risk-table {{
+                width: 100%;
+                border-collapse: collapse;
+                font-family: "Source Sans Pro", sans-serif;
+                font-size: 14px;
+            }}
+            .risk-table th {{
+                background-color: #fafafa;
+                color: #31333F;
+                padding: 8px 12px;
+                text-align: left;
+                font-weight: 600;
+                border-bottom: 1px solid #e0e0e0;
+                position: sticky;
+                top: 0;
+                z-index: 10;
+            }}
+            .risk-table td {{
+                padding: 8px 12px;
+                border-bottom: 1px solid #f0f0f0;
+                color: #31333F;
+            }}
+            .risk-table tr:hover {{
+                background-color: #f5f5f5;
+            }}
+            .tooltip-link {{
+                color: #0068c9;
+                text-decoration: none;
+                border-bottom: 1px dotted #0068c9;
+                cursor: help;
+            }}
+            .tooltip-link:hover {{
+                color: #0054a3;
+            }}
+        </style>
+        <div class="risk-table-container">
+        <table class="risk-table">
+            <thead>
+                <tr>
+                    <th>Activo</th>
+                    <th>Amenaza</th>
+                    <th>Frecuencia</th>
+                    <th>Impacto</th>
+                    <th>Riesgo</th>
+                </tr>
+            </thead>
+            <tbody>
+        '''
+        
+        # Cargar catálogo de amenazas para tooltips enriquecidos
+        catalogo_amenazas_tab5 = get_catalogo_amenazas()
+        
+        for _, row in riesgos.iterrows():
+            nombre = escape_html(row.get("Nombre_Activo", "N/A"))
+            cod_amenaza = escape_html(row.get("Cod_Amenaza", "N/A"))
+            amenaza_nombre = escape_html(row.get("Amenaza", "Sin descripción"))
+            
+            # Tooltip enriquecido: nombre + descripción del catálogo
+            amenaza_tooltip = amenaza_nombre
+            if cod_amenaza and catalogo_amenazas_tab5.get(cod_amenaza):
+                info_am = catalogo_amenazas_tab5[cod_amenaza]
+                amenaza_tooltip = f"{info_am.get('amenaza', amenaza_nombre)} | Tipo: {info_am.get('tipo_amenaza', 'N/A')} | Dimensión afectada: {info_am.get('dimension_afectada', 'N/A')}"
+            
+            freq = row.get("Frecuencia", 0)
+            impacto = row.get("Impacto", 0)
+            riesgo_val = row.get("Riesgo", 0)
+            
+            html_table += f'''
+                <tr>
+                    <td>{nombre}</td>
+                    <td><span class="tooltip-link" title="{amenaza_tooltip}">{cod_amenaza}</span></td>
+                    <td>{float(freq):.2f}</td>
+                    <td>{float(impacto):.2f}</td>
+                    <td>{float(riesgo_val):.2f}</td>
+                </tr>
+            '''
+        
+        html_table += '''
+            </tbody>
+        </table>
+        </div>
+        '''
+        
+        components.html(html_table, height=table_height + 20, scrolling=False)
         
         # Estadísticas
         st.markdown("### 📈 Estadísticas de Riesgo")
@@ -2383,19 +2330,8 @@ with tab5:
         with col_stat4:
             riesgo_promedio = riesgos["Riesgo"].mean()
             st.metric("📊 Promedio", f"{riesgo_promedio:.2f}")
-        
-        # Límite de riesgo organizacional
-        st.markdown("---")
-        st.markdown("### 🎯 Límite de Riesgo Organizacional")
-        limite_riesgo = 7.0
-        riesgos_sobre_limite = len(riesgos[riesgos["Riesgo"] > limite_riesgo])
-        
-        if riesgos_sobre_limite > 0:
-            st.error(f"⚠️ **{riesgos_sobre_limite}** riesgos superan el límite organizacional de **{limite_riesgo}**. Requieren tratamiento urgente.")
-        else:
-            st.success(f"✅ Todos los riesgos están dentro del límite organizacional ({limite_riesgo})")
     else:
-        st.info("📭 No hay riesgos guardados aún. Seleccione un activo y guarde los riesgos calculados.")
+        st.info("📭 No hay riesgos calculados. Presiona 'Calcular Todos los Riesgos' para generarlos.")
 
 
 # ==================== TAB 6: MAPA DE RIESGOS ====================
@@ -2719,93 +2655,47 @@ with tab6:
     
     st.markdown("---")
     
-    # ===== LISTA DE RIESGOS =====
+    # ===== TABLA UNIFICADA DE RIESGOS =====
     st.markdown("### 📋 Lista de Riesgos")
     
-    # Agregar columna de zona de riesgo
-    def zona_riesgo(r):
-        if r >= 6: return "🔴 Alto"
-        elif r >= 4: return "🟡 Medio"
-        elif r >= 2: return "🟢 Bajo"
-        else: return "⚪ Nulo"
-    
     riesgos_display = riesgos.copy()
-    riesgos_display["Zona"] = riesgos_display["Riesgo"].apply(zona_riesgo)
-    riesgos_display["ID"] = riesgos_display.index.map(lambda x: f"R{x+1}")
+    riesgos_display["Riesgo_ID"] = riesgos_display.index.map(lambda x: f"R{x+1}")
     
-    # Ordenar por riesgo descendente
-    riesgos_display = riesgos_display.sort_values("Riesgo", ascending=False)
-    
-    # Seleccionar columnas a mostrar
-    cols_mostrar = ["ID", "Nombre_Activo", "Amenaza", "Impacto", "Frecuencia", "Frecuencia_Nivel", "Riesgo", "Zona"]
-    cols_existentes = [c for c in cols_mostrar if c in riesgos_display.columns]
-    
-    # Formatear valores numéricos
-    df_show = riesgos_display[cols_existentes].copy()
-    if "Impacto" in df_show.columns:
-        df_show["Impacto"] = df_show["Impacto"].apply(lambda x: f"{x:.2f}")
-    if "Riesgo" in df_show.columns:
-        df_show["Riesgo"] = df_show["Riesgo"].apply(lambda x: f"{x:.2f}")
-    
-    st.dataframe(df_show, use_container_width=True, hide_index=True)
-    
-    # ===== CUADRO DESCRIPTIVO DE RIESGOS =====
-    st.markdown("---")
-    st.markdown("### 📝 Cuadro Descriptivo de Riesgos")
-    st.caption("Tabla con número de riesgo y su descripción completa")
-    
-    # Crear tabla descriptiva con ID, descripción del riesgo
-    tabla_descriptiva = []
-    for idx, row in riesgos_display.iterrows():
-        id_riesgo = row["ID"]
+    def construir_descripcion(row):
         activo = row.get("Nombre_Activo", "N/A")
         amenaza = row.get("Amenaza", "N/A")
-        vulnerabilidad = row.get("Vulnerabilidad", "N/A")
-        impacto = row.get("Impacto", 0)
-        frecuencia = row.get("Frecuencia", 0)
-        riesgo_val = row.get("Riesgo", 0)
-        zona = row.get("Zona", "N/A")
+        cod_amenaza = row.get("Cod_Amenaza", "")
+        vulnerabilidad = row.get("Vulnerabilidad", "")
         
-        # Construir descripción
-        descripcion = f"El activo '{activo}' está expuesto a la amenaza '{amenaza}'"
-        if vulnerabilidad and vulnerabilidad != "N/A":
-            descripcion += f", con vulnerabilidad: {vulnerabilidad}"
-        
-        tabla_descriptiva.append({
-            "N° Riesgo": id_riesgo,
-            "Activo": activo,
-            "Amenaza": amenaza,
-            "Descripción/Vulnerabilidad": vulnerabilidad if vulnerabilidad else "Sin especificar",
-            "Impacto": f"{impacto:.2f}" if isinstance(impacto, (int, float)) else impacto,
-            "Frecuencia": f"{frecuencia:.2f}" if isinstance(frecuencia, (int, float)) else frecuencia,
-            "Valor Riesgo": f"{riesgo_val:.2f}" if isinstance(riesgo_val, (int, float)) else riesgo_val,
-            "Zona de Riesgo": zona
-        })
+        descripcion = f"Riesgo en '{activo}' por amenaza {cod_amenaza}: {amenaza}"
+        if vulnerabilidad and vulnerabilidad != "N/A" and len(str(vulnerabilidad)) > 5:
+            descripcion += f". Vulnerabilidad: {str(vulnerabilidad)[:80]}..."
+        return descripcion
     
-    df_descripcion = pd.DataFrame(tabla_descriptiva)
+    riesgos_display["Descripcion"] = riesgos_display.apply(construir_descripcion, axis=1)
     
-    # Mostrar tabla con estilo
+    df_unificada = riesgos_display[["Riesgo_ID", "Impacto", "Frecuencia", "Riesgo", "Descripcion"]].copy()
+    df_unificada["Impacto"] = df_unificada["Impacto"].apply(lambda x: f"{x:.2f}")
+    df_unificada["Frecuencia"] = df_unificada["Frecuencia"].apply(lambda x: f"{x:.2f}")
+    df_unificada["Riesgo"] = df_unificada["Riesgo"].apply(lambda x: f"{x:.2f}")
+    
     st.dataframe(
-        df_descripcion, 
-        use_container_width=True, 
+        df_unificada,
+        use_container_width=True,
         hide_index=True,
         column_config={
-            "N° Riesgo": st.column_config.TextColumn("N° Riesgo", width="small"),
-            "Activo": st.column_config.TextColumn("Activo", width="medium"),
-            "Amenaza": st.column_config.TextColumn("Amenaza", width="medium"),
-            "Descripción/Vulnerabilidad": st.column_config.TextColumn("Descripción/Vulnerabilidad", width="large"),
+            "Riesgo_ID": st.column_config.TextColumn("ID", width="small"),
             "Impacto": st.column_config.TextColumn("Impacto", width="small"),
             "Frecuencia": st.column_config.TextColumn("Frecuencia", width="small"),
-            "Valor Riesgo": st.column_config.TextColumn("Riesgo", width="small"),
-            "Zona de Riesgo": st.column_config.TextColumn("Zona", width="small"),
+            "Riesgo": st.column_config.TextColumn("Riesgo", width="small"),
+            "Descripcion": st.column_config.TextColumn("Descripción", width="large")
         }
     )
     
-    # Opción para descargar la tabla
     st.download_button(
-        label="📥 Descargar Cuadro de Riesgos (CSV)",
-        data=df_descripcion.to_csv(index=False, encoding='utf-8-sig'),
-        file_name="cuadro_riesgos.csv",
+        label="📥 Descargar Lista de Riesgos (CSV)",
+        data=df_unificada.to_csv(index=False, encoding='utf-8-sig'),
+        file_name="lista_riesgos.csv",
         mime="text/csv"
     )
     
@@ -2891,7 +2781,6 @@ with tab7:
             estado = "❌ Excede límite"
         
         tabla_riesgos.append({
-            "ID_Activo": row.get("ID_Activo", f"ACT-{idx+1}"),
             "Nombre": row.get("Nombre_Activo", ""),
             "Riesgo Actual": round(riesgo_actual, 2),
             "Objetivo": round(riesgo_objetivo, 2),
@@ -2909,7 +2798,6 @@ with tab7:
         use_container_width=True,
         hide_index=True,
         column_config={
-            "ID_Activo": st.column_config.TextColumn("ID Activo", width="small"),
             "Nombre": st.column_config.TextColumn("Nombre Activo", width="medium"),
             "Riesgo Actual": st.column_config.NumberColumn("Riesgo Actual", format="%.2f"),
             "Objetivo": st.column_config.NumberColumn("Objetivo", format="%.2f"),
@@ -3091,6 +2979,10 @@ with tab8:
     else:
         riesgos["Tipo_Activo"] = ""
     
+    # Cargar catálogos para tooltips
+    catalogo_amenazas = get_catalogo_amenazas()
+    catalogo_controles = get_catalogo_controles()
+    
     # Botón para generar salvaguardas con IA
     col_btn1, col_btn2 = st.columns([1, 3])
     with col_btn1:
@@ -3151,498 +3043,199 @@ with tab8:
         riesgos["Generado_IA"] = "🔧"
         df_display = riesgos
     
-    # Preparar tabla para mostrar
-    tabla_salvaguardas = []
+    # ===== CONSTRUIR TABLA HTML CON TOOLTIPS =====
+    tabla_rows_salv = []
     for idx, row in df_display.iterrows():
         riesgo_val = row.get("Riesgo", 0)
         if riesgo_val >= 6:
-            zona = "🔴 Alto"
-            prioridad = "Alta"
+            prioridad = "🔴 Alta"
+            prioridad_class = "alto"
         elif riesgo_val >= 4:
-            zona = "🟡 Medio"
-            prioridad = "Media"
+            prioridad = "🟡 Media"
+            prioridad_class = "medio"
         elif riesgo_val >= 2:
-            zona = "🟢 Bajo"
-            prioridad = "Baja"
+            prioridad = "🟢 Baja"
+            prioridad_class = "bajo"
         else:
-            zona = "⚪ Nulo"
-            prioridad = "Baja"
+            prioridad = "⚪ Baja"
+            prioridad_class = "nulo"
         
-        tabla_salvaguardas.append({
-            "ID Activo": row.get("ID_Activo", ""),
-            "Nombre Activo": row.get("Nombre_Activo", ""),
-            "Riesgo": round(riesgo_val, 2),
-            "Zona": zona,
-            "Vulnerabilidad": row.get("Vulnerabilidad", "")[:50] + "..." if len(str(row.get("Vulnerabilidad", ""))) > 50 else row.get("Vulnerabilidad", ""),
-            "Amenaza": row.get("Amenaza", ""),
-            "Salvaguarda Sugerida": row.get("Salvaguarda_Sugerida", ""),
-            "Control ISO 27002": row.get("Control_ISO", ""),
-            "Prioridad": prioridad,
-            "IA": row.get("Generado_IA", "🔧")
+        # Obtener datos para tooltips
+        cod_amenaza = row.get("Cod_Amenaza", "")
+        amenaza_texto = row.get("Amenaza", "")
+        amenaza_desc = ""
+        if cod_amenaza and catalogo_amenazas.get(cod_amenaza):
+            amenaza_info = catalogo_amenazas[cod_amenaza]
+            amenaza_desc = f"{amenaza_info.get('amenaza', '')} - Tipo: {amenaza_info.get('tipo_amenaza', '')} - Dimensión: {amenaza_info.get('dimension_afectada', '')}"
+        
+        vuln_texto = row.get("Vulnerabilidad", "")
+        vuln_corto = vuln_texto[:40] + "..." if len(str(vuln_texto)) > 40 else vuln_texto
+        
+        salvaguarda = row.get("Salvaguarda_Sugerida", "")
+        salvaguarda_corto = salvaguarda[:50] + "..." if len(str(salvaguarda)) > 50 else salvaguarda
+        
+        control_iso = row.get("Control_ISO", "")
+        control_desc = ""
+        # Extraer código del control (ej: "5.1 - Nombre" -> "5.1")
+        control_codigo = control_iso.split(" - ")[0].strip() if " - " in control_iso else control_iso.split(" ")[0] if control_iso else ""
+        if control_codigo and catalogo_controles.get(control_codigo):
+            control_info = catalogo_controles[control_codigo]
+            control_desc = f"{control_info.get('nombre', '')} - Categoría: {control_info.get('categoria', '')}"
+        
+        tabla_rows_salv.append({
+            "nombre_activo": row.get("Nombre_Activo", ""),
+            "riesgo": round(riesgo_val, 2),
+            "vuln_corto": vuln_corto,
+            "vuln_full": vuln_texto,
+            "amenaza_codigo": cod_amenaza,
+            "amenaza_texto": amenaza_texto,
+            "amenaza_desc": amenaza_desc,
+            "salvaguarda_corto": salvaguarda_corto,
+            "salvaguarda_full": salvaguarda,
+            "control_iso": control_iso,
+            "control_desc": control_desc,
+            "prioridad": prioridad,
+            "prioridad_class": prioridad_class,
+            "ia_icon": row.get("Generado_IA", "🔧")
         })
     
-    df_tabla_salv = pd.DataFrame(tabla_salvaguardas)
-    
-    # Ordenar por riesgo descendente
-    df_tabla_salv = df_tabla_salv.sort_values("Riesgo", ascending=False)
-    
-    st.dataframe(
-        df_tabla_salv,
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "ID Activo": st.column_config.TextColumn("ID", width="small"),
-            "Nombre Activo": st.column_config.TextColumn("Activo", width="medium"),
-            "Riesgo": st.column_config.NumberColumn("Riesgo", format="%.2f", width="small"),
-            "Zona": st.column_config.TextColumn("Zona", width="small"),
-            "Vulnerabilidad": st.column_config.TextColumn("Vulnerabilidad", width="medium"),
-            "Amenaza": st.column_config.TextColumn("Amenaza", width="medium"),
-            "Salvaguarda Sugerida": st.column_config.TextColumn("Salvaguarda", width="large"),
-            "Control ISO 27002": st.column_config.TextColumn("Control ISO", width="medium"),
-            "Prioridad": st.column_config.TextColumn("Prioridad", width="small"),
-            "IA": st.column_config.TextColumn("", width="small")
+    # Generar HTML
+    html_salvaguardas = """
+    <style>
+        .salv-table-container {
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
         }
-    )
+        .salv-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            background: white;
+        }
+        .salv-table th {
+            background: #f8f9fa;
+            color: #333;
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            border-bottom: 2px solid #dee2e6;
+        }
+        .salv-table td {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            vertical-align: top;
+        }
+        .salv-table tr:hover {
+            background: #f5f5f5;
+        }
+        .tooltip-link-salv {
+            color: #0066cc;
+            text-decoration: none;
+            border-bottom: 1px dotted #0066cc;
+            cursor: help;
+        }
+        .tooltip-link-salv:hover {
+            background: #e6f2ff;
+        }
+        .nivel-alto { background: #ffe0e0; }
+        .nivel-medio { background: #fff3cd; }
+        .nivel-bajo { background: #d4edda; }
+        .nivel-nulo { background: #f8f9fa; }
+        .riesgo-badge {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+    </style>
+    <div class="salv-table-container">
+    <table class="salv-table">
+        <thead>
+            <tr>
+                <th>Activo</th>
+                <th>Riesgo</th>
+                <th>Vulnerabilidad</th>
+                <th>Amenaza</th>
+                <th>Salvaguarda Sugerida</th>
+                <th>Control ISO 27002</th>
+                <th>Prioridad</th>
+            </tr>
+        </thead>
+        <tbody>
+    """
+    
+    for row in tabla_rows_salv:
+        # Clase de nivel según riesgo
+        nivel_class = f"nivel-{row['prioridad_class']}"
+        
+        html_salvaguardas += f"""
+        <tr class="{nivel_class}">
+            <td>{row['nombre_activo']}</td>
+            <td><span class="riesgo-badge">{row['riesgo']}</span></td>
+            <td><span class="tooltip-link-salv" title="{row['vuln_full']}">{row['vuln_corto']}</span></td>
+            <td><span class="tooltip-link-salv" title="{row['amenaza_desc'] or row['amenaza_texto']}">{row['amenaza_codigo'] or row['amenaza_texto'][:20]}</span></td>
+            <td><span class="tooltip-link-salv" title="{row['salvaguarda_full']}">{row['salvaguarda_corto']}</span></td>
+            <td><span class="tooltip-link-salv" title="{row['control_desc'] or row['control_iso']}">{row['control_iso'][:30] if len(row['control_iso']) > 30 else row['control_iso']}</span></td>
+            <td>{row['prioridad']} {row['ia_icon']}</td>
+        </tr>
+        """
+    
+    html_salvaguardas += """
+        </tbody>
+    </table>
+    </div>
+    """
+    
+    components.html(html_salvaguardas, height=550, scrolling=True)
     
     # Leyenda
-    st.caption("✅ = Generado por IA | 🔧 = Generado heurísticamente")
+    st.caption("✅ = Generado por IA | 🔧 = Generado heurísticamente | 💡 Pasa el mouse sobre las celdas para ver más detalles")
+    
+    # Preparar DataFrame para descarga
+    df_download_salv = pd.DataFrame([{
+        "Activo": r["nombre_activo"],
+        "Riesgo": r["riesgo"],
+        "Vulnerabilidad": r["vuln_full"],
+        "Amenaza": f"{r['amenaza_codigo']} - {r['amenaza_texto']}",
+        "Salvaguarda": r["salvaguarda_full"],
+        "Control ISO": r["control_iso"],
+        "Prioridad": r["prioridad"]
+    } for r in tabla_rows_salv])
     
     # Botón de descarga
     st.download_button(
         label="📥 Descargar Tabla de Salvaguardas (CSV)",
-        data=df_tabla_salv.to_csv(index=False, encoding='utf-8-sig'),
+        data=df_download_salv.to_csv(index=False, encoding='utf-8-sig'),
         file_name="salvaguardas_sugeridas.csv",
         mime="text/csv"
     )
-    
-    st.markdown("---")
-    
-    # ===== SECCIÓN DE GESTIÓN DE SALVAGUARDAS =====
-    st.markdown("### ⚙️ Gestión de Salvaguardas")
-    
-    activos = get_activos_matriz(ID_EVALUACION)
-    
-    if not activos.empty:
-        # Selector de activo
-        activo_sel = st.selectbox(
-            "Seleccionar Activo para gestionar salvaguardas",
-            activos["ID_Activo"].tolist(),
-            format_func=lambda x: activos[activos["ID_Activo"] == x]["Nombre_Activo"].values[0],
-            key="salv_activo_sel"
-        )
-        
-        if activo_sel:
-            activo_info = activos[activos["ID_Activo"] == activo_sel].iloc[0]
-            
-            st.subheader(f"📦 {activo_info['Nombre_Activo']}")
-            
-            # Obtener vulnerabilidades para contexto
-            vulns = get_vulnerabilidades_activo(ID_EVALUACION, activo_sel)
-            
-            # Formulario para agregar salvaguarda manual
-            with st.expander("➕ Agregar Salvaguarda Manual", expanded=False):
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    # Seleccionar vulnerabilidad si hay
-                    if not vulns.empty:
-                        vuln_sel = st.selectbox(
-                            "Relacionar con Vulnerabilidad",
-                            ["-- Sin relación --"] + vulns["Vulnerabilidad"].tolist()
-                        )
-                        amenaza_sel = ""
-                        if vuln_sel != "-- Sin relación --":
-                            amenaza_sel = vulns[vulns["Vulnerabilidad"] == vuln_sel]["Amenaza"].values[0]
-                    else:
-                        vuln_sel = ""
-                        amenaza_sel = ""
-                    
-                    salvaguarda = st.text_area(
-                        "Salvaguarda / Control *",
-                        placeholder="Descripción detallada del control a implementar..."
-                    )
-                
-                with col2:
-                    prioridad = st.selectbox(
-                        "Prioridad",
-                        ["Alta", "Media", "Baja"]
-                    )
-                    responsable = st.text_input("Responsable")
-                    fecha_limite = st.date_input("Fecha Límite", value=None)
-                
-                if st.button("✅ Agregar Salvaguarda", type="primary", key="btn_add_salv"):
-                    if salvaguarda:
-                        agregar_salvaguarda(
-                            id_evaluacion=ID_EVALUACION,
-                            id_activo=activo_sel,
-                            nombre_activo=activo_info['Nombre_Activo'],
-                            salvaguarda=salvaguarda,
-                            vulnerabilidad=vuln_sel if vuln_sel != "-- Sin relación --" else "",
-                            amenaza=amenaza_sel,
-                            prioridad=prioridad,
-                            responsable=responsable,
-                            fecha_limite=str(fecha_limite) if fecha_limite else ""
-                        )
-                        st.success("✅ Salvaguarda agregada")
-                        st.rerun()
-                    else:
-                        st.error("❌ La salvaguarda es obligatoria")
-            
-            # Salvaguardas del activo
-            salvs = get_salvaguardas_activo(ID_EVALUACION, activo_sel)
-            
-            if not salvs.empty:
-                st.markdown(f"**Salvaguardas registradas para {activo_info['Nombre_Activo']}:**")
-                
-                for idx, salv in salvs.iterrows():
-                    estado_icon = {
-                        "Pendiente": "⏳",
-                        "En Proceso": "🔄",
-                        "Implementada": "✅"
-                    }.get(salv["Estado"], "⏳")
-                    
-                    prioridad_icon = {
-                        "Alta": "🔴",
-                        "Media": "🟡",
-                        "Baja": "🟢"
-                    }.get(salv["Prioridad"], "🟡")
-                    
-                    with st.container():
-                        col1, col2, col3 = st.columns([3, 1, 1])
-                        
-                        with col1:
-                            st.markdown(f"**{prioridad_icon} {salv['Salvaguarda']}**")
-                            if salv["Vulnerabilidad"]:
-                                st.caption(f"Vulnerabilidad: {salv['Vulnerabilidad']}")
-                            if salv["Responsable"]:
-                                st.caption(f"Responsable: {salv['Responsable']}")
-                        
-                        with col2:
-                            nuevo_estado = st.selectbox(
-                                "Estado",
-                                ["Pendiente", "En Proceso", "Implementada"],
-                                index=["Pendiente", "En Proceso", "Implementada"].index(salv["Estado"]),
-                                key=f"estado_salv_{salv['id']}"
-                            )
-                            if nuevo_estado != salv["Estado"]:
-                                actualizar_estado_salvaguarda(salv["id"], nuevo_estado)
-                                st.rerun()
-                        
-                        with col3:
-                            st.markdown(f"{estado_icon} **{salv['Estado']}**")
-                            if st.button("🗑️", key=f"del_salv_{salv['id']}"):
-                                eliminar_salvaguarda(salv["id"])
-                                st.rerun()
-                        
-                        st.markdown("---")
-            else:
-                st.info("📭 No hay salvaguardas registradas para este activo.")
-    
-    st.markdown("---")
-    
-    # ===== RESUMEN DE SALVAGUARDAS =====
-    st.subheader("📋 Resumen de Salvaguardas Registradas")
-    todas_salvs = get_salvaguardas_evaluacion(ID_EVALUACION)
-    
-    if not todas_salvs.empty:
-        # Métricas
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("Total", len(todas_salvs))
-        with col2:
-            pendientes = len(todas_salvs[todas_salvs["Estado"] == "Pendiente"])
-            st.metric("⏳ Pendientes", pendientes)
-        with col3:
-            en_proceso = len(todas_salvs[todas_salvs["Estado"] == "En Proceso"])
-            st.metric("🔄 En Proceso", en_proceso)
-        with col4:
-            implementadas = len(todas_salvs[todas_salvs["Estado"] == "Implementada"])
-            st.metric("✅ Implementadas", implementadas)
-        
-        # Gráfico de progreso
-        if len(todas_salvs) > 0:
-            fig_progreso = go.Figure(data=[
-                go.Pie(
-                    labels=["Pendiente", "En Proceso", "Implementada"],
-                    values=[pendientes, en_proceso, implementadas],
-                    hole=0.4,
-                    marker_colors=["#ffbb33", "#3498db", "#00C851"]
-                )
-            ])
-            fig_progreso.update_layout(
-                title="Estado de Implementación de Salvaguardas",
-                height=300
-            )
-            st.plotly_chart(fig_progreso, use_container_width=True)
-    else:
-        st.info("📭 No hay salvaguardas registradas en esta evaluación.")
 
 
-# ==================== TAB 9: DASHBOARDS ====================
-
-with tab9:
-    st.header("📈 Dashboards Ejecutivos")
-    st.markdown("""
-    **Propósito:** Visualizaciones ejecutivas de los activos más críticos, amenazas, vulnerabilidades y riesgos.
-    """)
-    
-    # Obtener datos
-    activos = get_activos_matriz(ID_EVALUACION)
-    riesgos = get_riesgos_evaluacion(ID_EVALUACION)
-    vulnerabilidades = get_vulnerabilidades_evaluacion(ID_EVALUACION)
-    riesgos_activos = get_riesgos_activos_evaluacion(ID_EVALUACION)
-    
-    if activos.empty:
-        st.warning("⚠️ No hay datos para mostrar. Agrega activos y completa el flujo de evaluación.")
-        st.stop()
-    
-    # ===== MÉTRICAS GENERALES =====
-    st.markdown("### 📊 Métricas Generales")
-    col1, col2, col3, col4, col5 = st.columns(5)
-    
-    with col1:
-        st.metric("📦 Activos", len(activos))
-    with col2:
-        st.metric("⚠️ Vulnerabilidades", len(vulnerabilidades) if not vulnerabilidades.empty else 0)
-    with col3:
-        st.metric("🎯 Riesgos", len(riesgos) if not riesgos.empty else 0)
-    with col4:
-        altos_dash = len(riesgos[riesgos["Riesgo"] >= 6]) if not riesgos.empty else 0
-        st.metric("🔴 Altos", altos_dash)
-    with col5:
-        promedio = riesgos["Riesgo"].mean() if not riesgos.empty else 0
-        st.metric("📈 Riesgo Prom.", f"{promedio:.2f}")
-    
-    st.markdown("---")
-    
-    # ===== SUB-TABS PARA DASHBOARDS =====
-    dash_tab1, dash_tab2, dash_tab3, dash_tab4 = st.tabs([
-        "🔥 Activos en Riesgo",
-        "⚡ Amenazas",
-        "🔓 Vulnerabilidades",
-        "📊 Riesgos"
-    ])
-    
-    # ----- Dashboard: Activos en Riesgo -----
-    with dash_tab1:
-        st.subheader("🔥 Top 10 Activos con Mayor Riesgo")
-        
-        if not riesgos_activos.empty:
-            top_activos = riesgos_activos.sort_values("Riesgo_Actual", ascending=False).head(10)
-            
-            # Gráfico de barras
-            fig = go.Figure()
-            
-            colores = ["#ff0000" if r >= 6 else "#ff8800" if r >= 4 else "#ffdd00" if r >= 2 else "#00C851" 
-                       for r in top_activos["Riesgo_Actual"]]
-            
-            fig.add_trace(go.Bar(
-                x=top_activos["Nombre_Activo"],
-                y=top_activos["Riesgo_Actual"],
-                marker_color=colores,
-                text=top_activos["Riesgo_Actual"].apply(lambda x: f"{x:.2f}"),
-                textposition="outside"
-            ))
-            
-            fig.add_hline(y=LIMITE_RIESGO, line_dash="dash", line_color="red", 
-                         annotation_text=f"Límite ({LIMITE_RIESGO})")
-            
-            fig.update_layout(
-                title="Riesgo por Activo (Top 10)",
-                xaxis_title="Activo",
-                yaxis_title="Nivel de Riesgo",
-                height=450
-            )
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Tabla resumen
-            st.dataframe(
-                top_activos[["Nombre_Activo", "Riesgo_Actual", "Riesgo_Objetivo", "Num_Amenazas"]].rename(columns={
-                    "Nombre_Activo": "Activo",
-                    "Riesgo_Actual": "Riesgo",
-                    "Riesgo_Objetivo": "Objetivo",
-                    "Num_Amenazas": "Amenazas"
-                }),
-                use_container_width=True,
-                hide_index=True
-            )
-        else:
-            st.info("Recalcula los riesgos en Tab 7 para ver los activos en riesgo.")
-    
-    # ----- Dashboard: Amenazas -----
-    with dash_tab2:
-        st.subheader("⚡ Distribución de Amenazas")
-        
-        if not riesgos.empty and "Amenaza" in riesgos.columns:
-            # Contar amenazas
-            amenazas_count = riesgos["Amenaza"].value_counts().head(15)
-            
-            # Gráfico de barras horizontales
-            fig = go.Figure(go.Bar(
-                y=amenazas_count.index,
-                x=amenazas_count.values,
-                orientation="h",
-                marker_color="#3498db"
-            ))
-            fig.update_layout(
-                title="Top 15 Amenazas Más Frecuentes",
-                xaxis_title="Frecuencia",
-                yaxis_title="Amenaza",
-                height=500
-            )
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Tipo de amenaza si está disponible
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                # Distribución por zona de riesgo de las amenazas
-                def get_zona(r):
-                    if r >= 6: return "Alto"
-                    elif r >= 4: return "Medio"
-                    elif r >= 2: return "Bajo"
-                    return "Nulo"
-                
-                riesgos["Zona"] = riesgos["Riesgo"].apply(get_zona)
-                zona_count = riesgos["Zona"].value_counts()
-                
-                fig_pie = go.Figure(data=[go.Pie(
-                    labels=zona_count.index,
-                    values=zona_count.values,
-                    marker_colors=["#ff0000", "#ff8800", "#ffdd00", "#00C851"],
-                    hole=0.3
-                )])
-                fig_pie.update_layout(title="Distribución por Zona de Riesgo", height=350)
-                st.plotly_chart(fig_pie, use_container_width=True)
-            
-            with col2:
-                # Top amenazas por riesgo promedio
-                amenaza_riesgo = riesgos.groupby("Amenaza")["Riesgo"].mean().sort_values(ascending=False).head(10)
-                
-                fig_bar = go.Figure(go.Bar(
-                    y=amenaza_riesgo.index,
-                    x=amenaza_riesgo.values,
-                    orientation="h",
-                    marker_color="#e74c3c"
-                ))
-                fig_bar.update_layout(
-                    title="Amenazas por Riesgo Promedio",
-                    xaxis_title="Riesgo Promedio",
-                    height=350
-                )
-                st.plotly_chart(fig_bar, use_container_width=True)
-        else:
-            st.info("No hay amenazas identificadas. Completa el Tab 4 (Vulnerabilidades).")
-    
-    # ----- Dashboard: Vulnerabilidades -----
-    with dash_tab3:
-        st.subheader("🔓 Análisis de Vulnerabilidades")
-        
-        if not vulnerabilidades.empty:
-            # Contar vulnerabilidades por activo
-            vuln_por_activo = vulnerabilidades.groupby("Nombre_Activo").size().sort_values(ascending=False)
-            
-            fig = go.Figure(go.Bar(
-                x=vuln_por_activo.index[:15],
-                y=vuln_por_activo.values[:15],
-                marker_color="#9b59b6"
-            ))
-            fig.update_layout(
-                title="Vulnerabilidades por Activo (Top 15)",
-                xaxis_title="Activo",
-                yaxis_title="N° Vulnerabilidades",
-                height=400
-            )
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Degradación promedio por dimensión
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                deg_d = vulnerabilidades["Degradacion_D"].mean() if "Degradacion_D" in vulnerabilidades.columns else 0
-                st.metric("📊 Degradación D", f"{deg_d:.0f}%")
-            with col2:
-                deg_i = vulnerabilidades["Degradacion_I"].mean() if "Degradacion_I" in vulnerabilidades.columns else 0
-                st.metric("🔐 Degradación I", f"{deg_i:.0f}%")
-            with col3:
-                deg_c = vulnerabilidades["Degradacion_C"].mean() if "Degradacion_C" in vulnerabilidades.columns else 0
-                st.metric("🔒 Degradación C", f"{deg_c:.0f}%")
-            
-            # Tabla de vulnerabilidades principales
-            st.markdown("#### Top Vulnerabilidades por Impacto")
-            if "Impacto" in vulnerabilidades.columns:
-                top_vuln = vulnerabilidades.sort_values("Impacto", ascending=False).head(10)
-                st.dataframe(
-                    top_vuln[["Nombre_Activo", "Amenaza", "Vulnerabilidad", "Impacto"]],
-                    use_container_width=True,
-                    hide_index=True
-                )
-        else:
-            st.info("No hay vulnerabilidades identificadas. Completa el Tab 4.")
-    
-    # ----- Dashboard: Riesgos -----
-    with dash_tab4:
-        st.subheader("📊 Panorama de Riesgos")
-        
-        if not riesgos.empty:
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                # Histograma de distribución de riesgos
-                fig = go.Figure(data=[go.Histogram(
-                    x=riesgos["Riesgo"],
-                    nbinsx=20,
-                    marker_color="#3498db"
-                )])
-                fig.update_layout(
-                    title="Distribución de Valores de Riesgo",
-                    xaxis_title="Nivel de Riesgo",
-                    yaxis_title="Frecuencia",
-                    height=350
-                )
-                st.plotly_chart(fig, use_container_width=True)
-            
-            with col2:
-                # Scatter plot Impacto vs Frecuencia
-                fig = go.Figure(data=[go.Scatter(
-                    x=riesgos["Frecuencia"],
-                    y=riesgos["Impacto"],
-                    mode="markers",
-                    marker=dict(
-                        size=10,
-                        color=riesgos["Riesgo"],
-                        colorscale="RdYlGn_r",
-                        showscale=True,
-                        colorbar=dict(title="Riesgo")
-                    ),
-                    text=riesgos["Nombre_Activo"]
-                )])
-                fig.update_layout(
-                    title="Impacto vs Frecuencia",
-                    xaxis_title="Frecuencia",
-                    yaxis_title="Impacto",
-                    height=350
-                )
-                st.plotly_chart(fig, use_container_width=True)
-            
-            # Tendencia de riesgos (si hay datos temporales)
-            st.markdown("#### 📈 Resumen Estadístico")
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("Máximo", f"{riesgos['Riesgo'].max():.2f}")
-            with col2:
-                st.metric("Mínimo", f"{riesgos['Riesgo'].min():.2f}")
-            with col3:
-                st.metric("Promedio", f"{riesgos['Riesgo'].mean():.2f}")
-            with col4:
-                st.metric("Desv. Estándar", f"{riesgos['Riesgo'].std():.2f}")
-        else:
-            st.info("No hay riesgos calculados. Completa el Tab 5 (Riesgo).")
-
-
-# ==================== TAB 10: NIVEL DE MADUREZ ====================
+# ==================== TAB 10: DASHBOARDS (STANDBY) ====================
 
 with tab10:
+    st.header("📈 Dashboards Ejecutivos")
+    st.info("""
+    🚧 **Módulo en Standby**
+    
+    Este módulo está temporalmente deshabilitado mientras se completan las mejoras en otros tabs.
+    
+    **Funcionalidades planificadas:**
+    - Visualizaciones ejecutivas de activos críticos
+    - Análisis de amenazas y vulnerabilidades
+    - Distribución de riesgos
+    - Resúmenes estadísticos
+    
+    ⏳ *Disponible próximamente...*
+    """)
+
+
+# ==================== TAB 9: NIVEL DE MADUREZ ====================
+
+with tab9:
     st.header("🎯 Nivel de Madurez de Ciberseguridad")
     st.markdown("""
     **Propósito:** Calcular el nivel de madurez organizacional basado en CMMI/ISO.
@@ -3791,524 +3384,63 @@ with tab10:
         st.info("📭 No hay datos de madurez. Haz clic en 'Calcular Nivel de Madurez' para generar el análisis.")
 
 
-# ==================== TAB 11: COMPARATIVA / REEVALUACIÓN ====================
+# ==================== TAB 11: COMPARATIVA (STANDBY) ====================
 
 with tab11:
     st.header("🔄 Comparativa entre Evaluaciones")
-    st.markdown("""
-    **Propósito:** Comparar el estado actual con una evaluación anterior para medir el progreso.
+    st.info("""
+    🚧 **Módulo en Standby**
+    
+    Este módulo está temporalmente deshabilitado mientras se completan las mejoras en otros tabs.
+    
+    **Funcionalidades planificadas:**
+    - Comparación entre evaluaciones
+    - Análisis de progreso en el tiempo
+    - Detección de mejoras y retrocesos
+    - Recomendaciones basadas en tendencias
+    
+    ⏳ *Disponible próximamente...*
     """)
-    
-    # Obtener todas las evaluaciones
-    todas_evaluaciones = get_evaluaciones()
-    
-    if len(todas_evaluaciones) < 2:
-        st.warning("⚠️ Necesitas al menos 2 evaluaciones para hacer comparativas.")
-        st.info("Crea una nueva evaluación desde la barra lateral para tener datos comparables.")
-        st.stop()
-    
-    # Selectores de evaluaciones
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("📅 Evaluación Anterior")
-        eval_1 = st.selectbox(
-            "Seleccionar evaluación base",
-            [e["id_evaluacion"] for e in todas_evaluaciones],
-            format_func=lambda x: next((e["nombre"] for e in todas_evaluaciones if e["id_evaluacion"] == x), x),
-            key="comp_eval_1"
-        )
-    
-    with col2:
-        st.subheader("📅 Evaluación Actual")
-        otras_evals = [e["id_evaluacion"] for e in todas_evaluaciones if e["id_evaluacion"] != eval_1]
-        if otras_evals:
-            eval_2 = st.selectbox(
-                "Seleccionar evaluación a comparar",
-                otras_evals,
-                format_func=lambda x: next((e["nombre"] for e in todas_evaluaciones if e["id_evaluacion"] == x), x),
-                index=len(otras_evals) - 1 if otras_evals else 0,
-                key="comp_eval_2"
-            )
-        else:
-            st.warning("Selecciona una evaluación diferente")
-            st.stop()
-    
-    if st.button("🔄 Comparar Evaluaciones", type="primary"):
-        with st.spinner("Comparando evaluaciones..."):
-            comparativa = comparar_madurez(eval_1, eval_2)
-            
-            if comparativa:
-                st.session_state.comparativa_resultado = comparativa
-                st.success("✅ Comparativa generada")
-            else:
-                st.error("❌ No se pudo generar la comparativa. Asegúrate de que ambas evaluaciones tengan datos.")
-    
-    # Mostrar resultados
-    if "comparativa_resultado" in st.session_state:
-        comp = st.session_state.comparativa_resultado
-        
-        st.markdown("---")
-        st.markdown(f"### 📊 Resultado: {comp.get('mensaje_resumen', '')}")
-        
-        # Métricas de cambio
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            delta_punt = comp.get("delta_puntuacion", 0)
-            color = "normal" if delta_punt >= 0 else "inverse"
-            st.metric(
-                "Δ Puntuación",
-                f"{comp['madurez_2']['puntuacion_total']:.1f}",
-                delta=f"{delta_punt:+.1f}",
-                delta_color=color
-            )
-        
-        with col2:
-            delta_nivel = comp.get("delta_nivel", 0)
-            color = "normal" if delta_nivel >= 0 else "inverse"
-            st.metric(
-                "Δ Nivel Madurez",
-                comp['madurez_2']['nivel_madurez'],
-                delta=f"{delta_nivel:+d}",
-                delta_color=color
-            )
-        
-        with col3:
-            delta_riesgo = comp.get("delta_riesgo_residual", 0)
-            color = "inverse" if delta_riesgo <= 0 else "normal"  # Menos riesgo es mejor
-            st.metric(
-                "Δ Riesgo Residual",
-                f"{delta_riesgo:+.2f}",
-                delta="Reducción" if delta_riesgo < 0 else "Incremento",
-                delta_color=color
-            )
-        
-        st.markdown("---")
-        
-        # Gráfico comparativo de dominios
-        st.subheader("📊 Comparativa por Dominio")
-        
-        dominios = ["Organizacional", "Personas", "Físico", "Tecnológico"]
-        madurez_1 = comp["madurez_1"]
-        madurez_2 = comp["madurez_2"]
-        
-        valores_1 = [
-            madurez_1["dominio_organizacional"],
-            madurez_1["dominio_personas"],
-            madurez_1["dominio_fisico"],
-            madurez_1["dominio_tecnologico"]
-        ]
-        valores_2 = [
-            madurez_2["dominio_organizacional"],
-            madurez_2["dominio_personas"],
-            madurez_2["dominio_fisico"],
-            madurez_2["dominio_tecnologico"]
-        ]
-        
-        fig = go.Figure()
-        fig.add_trace(go.Bar(name="Evaluación Anterior", x=dominios, y=valores_1, marker_color="#95a5a6"))
-        fig.add_trace(go.Bar(name="Evaluación Actual", x=dominios, y=valores_2, marker_color="#3498db"))
-        fig.update_layout(
-            barmode="group",
-            title="Madurez por Dominio: Antes vs Después",
-            yaxis_title="Porcentaje (%)",
-            height=400
-        )
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Mejoras y retrocesos
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("✅ Mejoras")
-            if comp.get("mejoras"):
-                for mejora in comp["mejoras"]:
-                    st.success(mejora)
-            else:
-                st.info("Sin mejoras significativas detectadas")
-        
-        with col2:
-            st.subheader("⚠️ Áreas de Atención")
-            if comp.get("retrocesos"):
-                for retroceso in comp["retrocesos"]:
-                    st.warning(retroceso)
-            else:
-                st.info("Sin retrocesos detectados")
-        
-        # Recomendaciones
-        st.markdown("---")
-        st.subheader("💡 Recomendaciones")
-        if comp.get("recomendaciones"):
-            for rec in comp["recomendaciones"]:
-                st.info(f"📌 {rec}")
 
 
-# ==================== TAB 12: MATRIZ EXCEL COMPLETA ====================
+# ==================== TAB 12: MATRIZ EXCEL (STANDBY) ====================
 
 with tab12:
     st.header("📑 Matriz Excel Completa")
-    st.markdown("""
-    **Propósito:** Visualización interactiva de toda la matriz y descarga en formato Excel.
+    st.info("""
+    🚧 **Módulo en Standby**
+    
+    Este módulo está temporalmente deshabilitado mientras se completan las mejoras en otros tabs.
+    
+    **Funcionalidades planificadas:**
+    - Visualización unificada de todas las tablas
+    - Descarga en formato Excel completo
+    - Exportación para Power BI
+    - Resumen de métricas
+    
+    ⏳ *Disponible próximamente...*
     """)
-    
-    # ===== BOTÓN DE DESCARGA PRINCIPAL =====
-    st.markdown("### 📥 Descargar Matriz Completa")
-    
-    col1, col2 = st.columns([1, 2])
-    with col1:
-        # Generar Excel directamente
-        excel_bytes = exportar_matriz_excel(ID_EVALUACION, NOMBRE_EVALUACION)
-        st.download_button(
-            "📊 Descargar Excel Completo",
-            data=excel_bytes,
-            file_name=f"Matriz_MAGERIT_{NOMBRE_EVALUACION}_{dt.date.today()}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            type="primary"
-        )
-    with col2:
-        st.caption("El archivo Excel incluye todas las hojas: Criterios, Activos, Valoración, Vulnerabilidades, Riesgos, Mapa, Salvaguardas.")
-    
-    st.markdown("---")
-    
-    # ===== VISUALIZACIÓN INTERACTIVA =====
-    st.markdown("### 📋 Vista Previa de la Matriz")
-    
-    # Sub-tabs para cada hoja
-    hoja1, hoja2, hoja3, hoja4, hoja5, hoja6 = st.tabs([
-        "📦 Activos",
-        "⚖️ Valoración",
-        "🔓 Vulnerabilidades",
-        "⚡ Riesgos",
-        "📊 Riesgos Activos",
-        "🛡️ Salvaguardas"
-    ])
-    
-    with hoja1:
-        activos = get_activos_matriz(ID_EVALUACION)
-        if not activos.empty:
-            st.dataframe(activos, use_container_width=True, height=400)
-            st.download_button(
-                "📥 Descargar Activos (CSV)",
-                data=activos.to_csv(index=False, encoding='utf-8-sig'),
-                file_name="activos.csv"
-            )
-        else:
-            st.info("No hay activos registrados.")
-    
-    with hoja2:
-        valoraciones = get_valoraciones_evaluacion(ID_EVALUACION)
-        if not valoraciones.empty:
-            st.dataframe(valoraciones, use_container_width=True, height=400)
-            st.download_button(
-                "📥 Descargar Valoraciones (CSV)",
-                data=valoraciones.to_csv(index=False, encoding='utf-8-sig'),
-                file_name="valoraciones.csv"
-            )
-        else:
-            st.info("No hay valoraciones registradas.")
-    
-    with hoja3:
-        vulns = get_vulnerabilidades_evaluacion(ID_EVALUACION)
-        if not vulns.empty:
-            st.dataframe(vulns, use_container_width=True, height=400)
-            st.download_button(
-                "📥 Descargar Vulnerabilidades (CSV)",
-                data=vulns.to_csv(index=False, encoding='utf-8-sig'),
-                file_name="vulnerabilidades.csv"
-            )
-        else:
-            st.info("No hay vulnerabilidades registradas.")
-    
-    with hoja4:
-        riesgos = get_riesgos_evaluacion(ID_EVALUACION)
-        if not riesgos.empty:
-            st.dataframe(riesgos, use_container_width=True, height=400)
-            st.download_button(
-                "📥 Descargar Riesgos (CSV)",
-                data=riesgos.to_csv(index=False, encoding='utf-8-sig'),
-                file_name="riesgos.csv"
-            )
-        else:
-            st.info("No hay riesgos calculados.")
-    
-    with hoja5:
-        riesgos_act = get_riesgos_activos_evaluacion(ID_EVALUACION)
-        if not riesgos_act.empty:
-            st.dataframe(riesgos_act, use_container_width=True, height=400)
-            st.download_button(
-                "📥 Descargar Riesgos por Activo (CSV)",
-                data=riesgos_act.to_csv(index=False, encoding='utf-8-sig'),
-                file_name="riesgos_activos.csv"
-            )
-        else:
-            st.info("No hay riesgos agregados por activo.")
-    
-    with hoja6:
-        salvs = get_salvaguardas_evaluacion(ID_EVALUACION)
-        if not salvs.empty:
-            st.dataframe(salvs, use_container_width=True, height=400)
-            st.download_button(
-                "📥 Descargar Salvaguardas (CSV)",
-                data=salvs.to_csv(index=False, encoding='utf-8-sig'),
-                file_name="salvaguardas.csv"
-            )
-        else:
-            st.info("No hay salvaguardas registradas.")
-    
-    st.markdown("---")
-    
-    # ===== DATOS PARA POWER BI =====
-    st.markdown("### 📊 Exportar para Power BI")
-    st.caption("Exporta los datos en formato optimizado para importar en Power BI.")
-    
-    if st.button("📤 Generar Dataset para Power BI"):
-        # Crear un Excel con formato plano para Power BI
-        output = io.BytesIO()
-        
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            # Hoja de hechos (fact table)
-            riesgos = get_riesgos_evaluacion(ID_EVALUACION)
-            if not riesgos.empty:
-                riesgos["Fecha_Evaluacion"] = dt.date.today().isoformat()
-                riesgos["ID_Evaluacion"] = ID_EVALUACION
-                riesgos["Nombre_Evaluacion"] = NOMBRE_EVALUACION
-                riesgos.to_excel(writer, sheet_name="FACT_RIESGOS", index=False)
-            
-            # Dimensión activos
-            activos = get_activos_matriz(ID_EVALUACION)
-            if not activos.empty:
-                activos.to_excel(writer, sheet_name="DIM_ACTIVOS", index=False)
-            
-            # Dimensión madurez
-            madurez = get_madurez_evaluacion(ID_EVALUACION)
-            if madurez:
-                pd.DataFrame([madurez]).to_excel(writer, sheet_name="DIM_MADUREZ", index=False)
-        
-        output.seek(0)
-        st.download_button(
-            "💾 Descargar Dataset Power BI",
-            data=output.getvalue(),
-            file_name=f"PowerBI_Dataset_{NOMBRE_EVALUACION}_{dt.date.today()}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
 
 
-# ==================== TAB 13: RESUMEN EJECUTIVO ====================
+# ==================== TAB 13: RESUMEN EJECUTIVO (STANDBY) ====================
 
 with tab13:
     st.header("📋 Resumen Ejecutivo")
-    st.markdown("""
-    **Propósito:** Informe ejecutivo para presentar a la alta gerencia.
+    st.info("""
+    🚧 **Módulo en Standby**
     
-    Incluye:
-    - Hallazgos principales
+    Este módulo está temporalmente deshabilitado mientras se completan las mejoras en otros tabs.
+    
+    **Funcionalidades planificadas:**
+    - Informe ejecutivo para alta gerencia
+    - Hallazgos principales automatizados
     - Activos más críticos
     - Recomendaciones prioritarias
-    - Distribución de riesgos
+    - Distribución de riesgos con gráficos
+    - Exportación a PDF/Word
+    
+    ⏳ *Disponible próximamente...*
     """)
-    
-    # ===== RESUMEN AUTOMÁTICO BASADO EN DATOS =====
-    st.markdown("### 📊 Resumen Automático (Datos Actuales)")
-    
-    # Obtener datos
-    activos_resumen = get_activos_matriz(ID_EVALUACION)
-    riesgos_resumen = get_riesgos_evaluacion(ID_EVALUACION)
-    vulns_resumen = get_vulnerabilidades_evaluacion(ID_EVALUACION)
-    
-    if not activos_resumen.empty:
-        # Métricas principales
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("📦 Activos Evaluados", len(activos_resumen))
-        with col2:
-            st.metric("⚠️ Amenazas/Vulns", len(vulns_resumen))
-        with col3:
-            st.metric("📊 Riesgos Calculados", len(riesgos_resumen))
-        with col4:
-            if not riesgos_resumen.empty:
-                riesgo_prom = riesgos_resumen["Riesgo"].mean()
-                st.metric("📈 Riesgo Promedio", f"{riesgo_prom:.2f}")
-            else:
-                st.metric("📈 Riesgo Promedio", "N/A")
-        
-        st.markdown("---")
-        
-        # Distribución de riesgos
-        if not riesgos_resumen.empty:
-            col_dist1, col_dist2 = st.columns([1, 1])
-            
-            with col_dist1:
-                st.markdown("#### 📊 Distribución de Riesgos")
-                criticos = len(riesgos_resumen[riesgos_resumen["Riesgo"] >= 6])
-                altos = len(riesgos_resumen[(riesgos_resumen["Riesgo"] >= 4) & (riesgos_resumen["Riesgo"] < 6)])
-                medios = len(riesgos_resumen[(riesgos_resumen["Riesgo"] >= 2) & (riesgos_resumen["Riesgo"] < 4)])
-                bajos = len(riesgos_resumen[riesgos_resumen["Riesgo"] < 2])
-                
-                fig_dist = go.Figure(data=[go.Pie(
-                    labels=["🔴 Alto", "🟡 Medio", "🟢 Bajo", "⚪ Nulo"],
-                    values=[criticos, altos, medios, bajos],
-                    marker_colors=["#ff0000", "#ffdd00", "#00C851", "#6c757d"],
-                    hole=0.4
-                )])
-                fig_dist.update_layout(height=300, showlegend=True)
-                st.plotly_chart(fig_dist, use_container_width=True)
-            
-            with col_dist2:
-                st.markdown("#### 🔥 Top 5 Riesgos Más Altos")
-                top5 = riesgos_resumen.nlargest(5, "Riesgo")[["Nombre_Activo", "Amenaza", "Riesgo"]]
-                st.dataframe(top5, use_container_width=True, hide_index=True)
-        
-        st.markdown("---")
-        
-        # Activos por tipo
-        st.markdown("#### 📦 Activos por Tipo")
-        if "Tipo_Activo" in activos_resumen.columns:
-            tipo_counts = activos_resumen["Tipo_Activo"].value_counts()
-            fig_tipos = go.Figure(data=[go.Bar(
-                x=tipo_counts.index.tolist(),
-                y=tipo_counts.values.tolist(),
-                marker_color="#3498db"
-            )])
-            fig_tipos.update_layout(height=300, xaxis_title="Tipo", yaxis_title="Cantidad")
-            st.plotly_chart(fig_tipos, use_container_width=True)
-        
-        st.markdown("---")
-        
-        # Generar texto del resumen para descargar
-        resumen_texto = f"""
-RESUMEN EJECUTIVO - EVALUACIÓN DE RIESGOS MAGERIT
-=================================================
-Evaluación: {NOMBRE_EVALUACION}
-Fecha: {dt.date.today()}
-Generado por: TITA - Sistema de Gestión de Riesgos
-
-MÉTRICAS PRINCIPALES
---------------------
-- Activos Evaluados: {len(activos_resumen)}
-- Amenazas/Vulnerabilidades: {len(vulns_resumen)}
-- Riesgos Calculados: {len(riesgos_resumen)}
-"""
-        if not riesgos_resumen.empty:
-            resumen_texto += f"""- Riesgo Promedio: {riesgos_resumen["Riesgo"].mean():.2f}
-- Riesgos Altos: {criticos}
-- Riesgos Medios: {altos}
-- Riesgos Bajos: {medios}
-- Riesgos Nulos: {bajos}
-
-TOP 5 RIESGOS MÁS ALTOS
---------------------------
-"""
-            for i, (_, row) in enumerate(riesgos_resumen.nlargest(5, "Riesgo").iterrows(), 1):
-                resumen_texto += f"{i}. {row['Nombre_Activo']} - {row['Amenaza']}: Riesgo {row['Riesgo']:.2f}\n"
-        
-        resumen_texto += f"""
-CONCLUSIÓN
-----------
-La evaluación de riesgos MAGERIT ha identificado {len(riesgos_resumen)} riesgos 
-en {len(activos_resumen)} activos evaluados. Se recomienda priorizar la atención 
-en los {criticos} riesgos altos identificados.
-"""
-        
-        # Botones de descarga
-        st.markdown("### 📥 Descargar Resumen")
-        col_dl1, col_dl2, col_dl3 = st.columns(3)
-        
-        with col_dl1:
-            st.download_button(
-                "📄 Descargar TXT",
-                data=resumen_texto,
-                file_name=f"Resumen_Ejecutivo_{NOMBRE_EVALUACION}.txt",
-                mime="text/plain"
-            )
-        
-        with col_dl2:
-            # JSON para Power BI
-            resumen_json = {
-                "evaluacion": NOMBRE_EVALUACION,
-                "fecha": str(dt.date.today()),
-                "metricas": {
-                    "activos": len(activos_resumen),
-                    "amenazas": len(vulns_resumen),
-                    "riesgos": len(riesgos_resumen),
-                    "riesgo_promedio": float(riesgos_resumen["Riesgo"].mean()) if not riesgos_resumen.empty else 0
-                },
-                "distribucion": {
-                    "alto": criticos if not riesgos_resumen.empty else 0,
-                    "medio": altos if not riesgos_resumen.empty else 0,
-                    "bajo": medios if not riesgos_resumen.empty else 0,
-                    "nulo": bajos if not riesgos_resumen.empty else 0
-                }
-            }
-            st.download_button(
-                "📊 Descargar JSON",
-                data=json.dumps(resumen_json, indent=2, ensure_ascii=False),
-                file_name=f"Resumen_Ejecutivo_{NOMBRE_EVALUACION}.json",
-                mime="application/json"
-            )
-        
-        with col_dl3:
-            # CSV de activos con mayor riesgo
-            if not riesgos_resumen.empty:
-                st.download_button(
-                    "📋 Top Riesgos CSV",
-                    data=riesgos_resumen.nlargest(10, "Riesgo").to_csv(index=False),
-                    file_name=f"Top_Riesgos_{NOMBRE_EVALUACION}.csv",
-                    mime="text/csv"
-                )
-    else:
-        st.warning("⚠️ No hay activos en esta evaluación. Agrega activos primero en el Tab 2.")
-    
-    st.markdown("---")
-    
-    # ===== RESUMEN CON IA (OPCIONAL) =====
-    with st.expander("🤖 Generar Resumen Avanzado con IA (Opcional)", expanded=False):
-        st.info("Requiere Ollama corriendo localmente con un modelo instalado.")
-        
-        col1, col2 = st.columns([1, 2])
-        with col1:
-            generar = st.button("🤖 Generar con IA", type="secondary")
-        with col2:
-            modelo_ia = st.selectbox(
-                "Modelo IA",
-                ["llama3.2:1b", "llama3.2:3b", "llama3:8b"],
-                index=0,
-                help="Modelos más grandes generan mejores resúmenes pero son más lentos"
-            )
-        
-        if generar:
-            with st.spinner("🔄 Generando resumen ejecutivo con IA... (puede tomar 30-60 segundos)"):
-                exito, resumen, mensaje = generar_resumen_ejecutivo(ID_EVALUACION, modelo_ia)
-                
-                if exito and resumen:
-                    st.session_state.resumen_ejecutivo = resumen
-                    st.success(mensaje)
-                else:
-                    st.error(f"Error: {mensaje}")
-        
-        # Mostrar resumen IA si existe
-        if "resumen_ejecutivo" in st.session_state:
-            resumen = st.session_state.resumen_ejecutivo
-            
-            st.markdown("---")
-            st.markdown("#### 🤖 Resumen Generado por IA")
-            
-            # Hallazgos principales
-            if hasattr(resumen, 'hallazgos_principales') and resumen.hallazgos_principales:
-                st.markdown("**🔍 Hallazgos:**")
-                for h in resumen.hallazgos_principales:
-                    st.markdown(f"- {h}")
-            
-            # Recomendaciones
-            if hasattr(resumen, 'recomendaciones_prioritarias') and resumen.recomendaciones_prioritarias:
-                st.markdown("**💡 Recomendaciones:**")
-                for r in resumen.recomendaciones_prioritarias:
-                    st.info(r)
-            
-            # Conclusión
-            if hasattr(resumen, 'conclusion') and resumen.conclusion:
-                st.markdown("**📝 Conclusión:**")
-                st.markdown(f"> {resumen.conclusion}")
 
 
 # ==================== FOOTER ====================

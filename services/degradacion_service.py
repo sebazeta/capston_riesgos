@@ -3,7 +3,7 @@ MÓDULO DE DEGRADACIÓN MAGERIT
 ==============================
 Implementa el concepto de DEGRADACIÓN según Marco Teórico MAGERIT:
 - Degradación por dimensión (D, I, C) con valores [0.0 - 1.0]
-- Captura manual y/o sugerencia IA
+- MOTOR DE CÁLCULO: Valores basados en catálogo MAGERIT v3 (ya no depende de IA)
 - Cálculo correcto: IMPACTO = CRITICIDAD × MAX(Deg_D, Deg_I, Deg_C)
 """
 import json
@@ -11,6 +11,220 @@ import datetime as dt
 from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass, asdict
 from services.database_service import get_connection
+
+
+# =============================================================================
+# MAPEO DE DEGRADACIÓN POR AMENAZA MAGERIT v3
+# =============================================================================
+# Valores de degradación D/I/C según el tipo de amenaza y su naturaleza
+# Fuente: MAGERIT v3 - Libro II: Catálogo de Elementos
+# Valores en escala 0.0 - 1.0
+
+DEGRADACION_MAGERIT = {
+    # ========== [N] DESASTRES NATURALES ==========
+    # Afectan principalmente Disponibilidad, poco I/C
+    "N.1":  {"d": 1.00, "i": 0.10, "c": 0.05, "desc": "Fuego"},
+    "N.2":  {"d": 1.00, "i": 0.10, "c": 0.05, "desc": "Daños por agua"},
+    "N.*":  {"d": 0.90, "i": 0.10, "c": 0.05, "desc": "Desastres naturales (genérico)"},
+    
+    # ========== [I] DE ORIGEN INDUSTRIAL ==========
+    # Afectan principalmente Disponibilidad
+    "I.1":  {"d": 0.90, "i": 0.15, "c": 0.05, "desc": "Fuego (industrial)"},
+    "I.2":  {"d": 0.85, "i": 0.10, "c": 0.05, "desc": "Daños por agua (industrial)"},
+    "I.3":  {"d": 0.80, "i": 0.10, "c": 0.05, "desc": "Contaminación mecánica"},
+    "I.4":  {"d": 0.80, "i": 0.10, "c": 0.05, "desc": "Contaminación electromagnética"},
+    "I.5":  {"d": 0.95, "i": 0.05, "c": 0.05, "desc": "Avería de origen físico o lógico"},
+    "I.6":  {"d": 0.85, "i": 0.05, "c": 0.05, "desc": "Corte del suministro eléctrico"},
+    "I.7":  {"d": 0.80, "i": 0.05, "c": 0.05, "desc": "Condiciones inadecuadas de temperatura/humedad"},
+    "I.8":  {"d": 0.90, "i": 0.20, "c": 0.10, "desc": "Fallo de servicios de comunicaciones"},
+    "I.9":  {"d": 0.85, "i": 0.15, "c": 0.10, "desc": "Interrupción de otros servicios"},
+    "I.10": {"d": 0.70, "i": 0.15, "c": 0.10, "desc": "Degradación de los soportes de almacenamiento"},
+    "I.11": {"d": 0.75, "i": 0.10, "c": 0.05, "desc": "Emanaciones electromagnéticas"},
+    "I.*":  {"d": 0.80, "i": 0.10, "c": 0.05, "desc": "Origen industrial (genérico)"},
+    
+    # ========== [E] ERRORES Y FALLOS NO INTENCIONADOS ==========
+    # Balance entre D/I, bajo C
+    "E.1":  {"d": 0.60, "i": 0.70, "c": 0.40, "desc": "Errores de los usuarios"},
+    "E.2":  {"d": 0.70, "i": 0.75, "c": 0.30, "desc": "Errores del administrador"},
+    "E.3":  {"d": 0.50, "i": 0.40, "c": 0.20, "desc": "Errores de monitorización (log)"},
+    "E.4":  {"d": 0.55, "i": 0.60, "c": 0.25, "desc": "Errores de configuración"},
+    "E.7":  {"d": 0.30, "i": 0.50, "c": 0.40, "desc": "Deficiencias en la organización"},
+    "E.8":  {"d": 0.65, "i": 0.75, "c": 0.35, "desc": "Difusión de software dañino"},
+    "E.9":  {"d": 0.70, "i": 0.60, "c": 0.30, "desc": "Errores de [re-]encaminamiento"},
+    "E.10": {"d": 0.55, "i": 0.50, "c": 0.40, "desc": "Errores de secuencia"},
+    "E.14": {"d": 0.20, "i": 0.30, "c": 0.80, "desc": "Escapes de información"},
+    "E.15": {"d": 0.75, "i": 0.60, "c": 0.30, "desc": "Alteración accidental de la información"},
+    "E.18": {"d": 0.90, "i": 0.20, "c": 0.15, "desc": "Destrucción de información"},
+    "E.19": {"d": 0.25, "i": 0.35, "c": 0.85, "desc": "Fugas de información"},
+    "E.20": {"d": 0.70, "i": 0.65, "c": 0.45, "desc": "Vulnerabilidades de los programas (software)"},
+    "E.21": {"d": 0.80, "i": 0.50, "c": 0.30, "desc": "Errores de mantenimiento/actualización (software)"},
+    "E.23": {"d": 0.85, "i": 0.40, "c": 0.20, "desc": "Errores de mantenimiento/actualización (hardware)"},
+    "E.24": {"d": 0.90, "i": 0.30, "c": 0.70, "desc": "Caída del sistema por agotamiento de recursos"},
+    "E.25": {"d": 0.95, "i": 0.20, "c": 0.60, "desc": "Pérdida de equipos"},
+    "E.28": {"d": 0.40, "i": 0.75, "c": 0.50, "desc": "Indisponibilidad del personal"},
+    "E.*":  {"d": 0.60, "i": 0.55, "c": 0.35, "desc": "Errores no intencionados (genérico)"},
+    
+    # ========== [A] ATAQUES INTENCIONADOS ==========
+    # Mayor impacto en I/C, variable en D
+    "A.3":  {"d": 0.20, "i": 0.80, "c": 0.95, "desc": "Manipulación de los registros de actividad (log)"},
+    "A.4":  {"d": 0.30, "i": 0.90, "c": 0.70, "desc": "Manipulación de la configuración"},
+    "A.5":  {"d": 0.40, "i": 0.85, "c": 0.90, "desc": "Suplantación de identidad del usuario"},
+    "A.6":  {"d": 0.50, "i": 0.80, "c": 0.85, "desc": "Abuso de privilegios de acceso"},
+    "A.7":  {"d": 0.60, "i": 0.75, "c": 0.80, "desc": "Uso no previsto"},
+    "A.8":  {"d": 0.65, "i": 0.70, "c": 0.40, "desc": "Difusión de software dañino"},
+    "A.9":  {"d": 0.50, "i": 0.65, "c": 0.50, "desc": "[Re-]encaminamiento de mensajes"},
+    "A.10": {"d": 0.30, "i": 0.55, "c": 0.45, "desc": "Alteración de secuencia"},
+    "A.11": {"d": 0.60, "i": 0.85, "c": 0.90, "desc": "Acceso no autorizado"},
+    "A.12": {"d": 0.20, "i": 0.30, "c": 0.90, "desc": "Análisis de tráfico"},
+    "A.13": {"d": 0.35, "i": 0.70, "c": 0.60, "desc": "Repudio"},
+    "A.14": {"d": 0.25, "i": 0.85, "c": 0.95, "desc": "Interceptación de información (escucha)"},
+    "A.15": {"d": 0.40, "i": 0.90, "c": 0.70, "desc": "Modificación deliberada de información"},
+    "A.18": {"d": 0.95, "i": 0.60, "c": 0.50, "desc": "Destrucción de información"},
+    "A.19": {"d": 0.30, "i": 0.45, "c": 0.95, "desc": "Divulgación de información"},
+    "A.22": {"d": 0.75, "i": 0.85, "c": 0.80, "desc": "Manipulación de programas"},
+    "A.23": {"d": 0.80, "i": 0.50, "c": 0.35, "desc": "Manipulación de los equipos"},
+    "A.24": {"d": 0.95, "i": 0.15, "c": 0.10, "desc": "Denegación de servicio (DoS/DDoS)"},
+    "A.25": {"d": 0.90, "i": 0.40, "c": 0.85, "desc": "Robo"},
+    "A.26": {"d": 0.70, "i": 0.80, "c": 0.90, "desc": "Ataque destructivo"},
+    "A.27": {"d": 0.50, "i": 0.45, "c": 0.40, "desc": "Ocupación enemiga"},
+    "A.28": {"d": 0.40, "i": 0.75, "c": 0.65, "desc": "Indisponibilidad del personal"},
+    "A.29": {"d": 0.55, "i": 0.70, "c": 0.85, "desc": "Extorsión"},
+    "A.30": {"d": 0.65, "i": 0.80, "c": 0.90, "desc": "Ingeniería social"},
+    "A.*":  {"d": 0.55, "i": 0.75, "c": 0.75, "desc": "Ataques intencionados (genérico)"},
+}
+
+# Ajustes por tipo de activo (multiplicadores)
+AJUSTE_TIPO_ACTIVO = {
+    # Activos físicos: mayor impacto en Disponibilidad
+    "hardware": {"d": 1.15, "i": 0.90, "c": 0.85},
+    "físico": {"d": 1.15, "i": 0.90, "c": 0.85},
+    "fisico": {"d": 1.15, "i": 0.90, "c": 0.85},
+    "infraestructura": {"d": 1.10, "i": 0.95, "c": 0.90},
+    "equipamiento": {"d": 1.10, "i": 0.95, "c": 0.90},
+    
+    # Activos de datos: mayor impacto en Confidencialidad e Integridad
+    "datos": {"d": 0.85, "i": 1.15, "c": 1.20},
+    "información": {"d": 0.85, "i": 1.15, "c": 1.20},
+    "informacion": {"d": 0.85, "i": 1.15, "c": 1.20},
+    "base de datos": {"d": 0.90, "i": 1.20, "c": 1.15},
+    "documento": {"d": 0.80, "i": 1.10, "c": 1.25},
+    
+    # Software: balance con énfasis en I
+    "software": {"d": 1.00, "i": 1.10, "c": 1.00},
+    "aplicación": {"d": 1.00, "i": 1.10, "c": 1.05},
+    "aplicacion": {"d": 1.00, "i": 1.10, "c": 1.05},
+    "sistema": {"d": 1.05, "i": 1.05, "c": 1.00},
+    
+    # Servicios: énfasis en Disponibilidad
+    "servicio": {"d": 1.15, "i": 1.00, "c": 0.95},
+    "red": {"d": 1.10, "i": 1.00, "c": 1.00},
+    "comunicaciones": {"d": 1.15, "i": 0.95, "c": 0.95},
+    
+    # Personal: balance general
+    "personal": {"d": 0.95, "i": 1.00, "c": 1.10},
+    "rrhh": {"d": 0.95, "i": 1.00, "c": 1.15},
+}
+
+
+def obtener_degradacion_motor(
+    codigo_amenaza: str,
+    tipo_activo: str = "",
+    criticidad: int = 3
+) -> Tuple[float, float, float, str]:
+    """
+    MOTOR DE CÁLCULO DE DEGRADACIÓN MAGERIT
+    ========================================
+    Calcula degradación D/I/C basándose en:
+    1. Catálogo MAGERIT v3 (valores base por código de amenaza)
+    2. Tipo de activo (ajuste multiplicador)
+    3. Criticidad del activo (factor de escala)
+    
+    Args:
+        codigo_amenaza: Código MAGERIT (ej: "A.24", "E.1", "N.1")
+        tipo_activo: Tipo del activo para ajustes
+        criticidad: Valor de criticidad 1-5 (para ajuste de severidad)
+    
+    Returns:
+        Tuple (deg_d, deg_i, deg_c, justificacion)
+        Valores normalizados entre 0.0 y 1.0
+    """
+    # 1. Obtener valores base del catálogo MAGERIT
+    if codigo_amenaza in DEGRADACION_MAGERIT:
+        base = DEGRADACION_MAGERIT[codigo_amenaza]
+    else:
+        # Buscar categoría genérica (N.*, I.*, E.*, A.*)
+        categoria = codigo_amenaza[0] + ".*" if codigo_amenaza else "E.*"
+        base = DEGRADACION_MAGERIT.get(categoria, {"d": 0.5, "i": 0.5, "c": 0.5, "desc": "Genérico"})
+    
+    deg_d = base["d"]
+    deg_i = base["i"]
+    deg_c = base["c"]
+    desc_amenaza = base["desc"]
+    
+    # 2. Aplicar ajuste por tipo de activo
+    tipo_lower = tipo_activo.lower() if tipo_activo else ""
+    ajuste = {"d": 1.0, "i": 1.0, "c": 1.0}
+    
+    for tipo_key, multiplicadores in AJUSTE_TIPO_ACTIVO.items():
+        if tipo_key in tipo_lower:
+            ajuste = multiplicadores
+            break
+    
+    deg_d = deg_d * ajuste["d"]
+    deg_i = deg_i * ajuste["i"]
+    deg_c = deg_c * ajuste["c"]
+    
+    # 3. Ajuste por criticidad (activos más críticos = degradación más severa)
+    factor_criticidad = 0.7 + (criticidad / 5) * 0.4  # Rango: 0.7 - 1.1
+    deg_d = deg_d * factor_criticidad
+    deg_i = deg_i * factor_criticidad
+    deg_c = deg_c * factor_criticidad
+    
+    # 4. Normalizar a rango [0.0, 1.0]
+    deg_d = min(1.0, max(0.0, round(deg_d, 2)))
+    deg_i = min(1.0, max(0.0, round(deg_i, 2)))
+    deg_c = min(1.0, max(0.0, round(deg_c, 2)))
+    
+    # 5. Construir justificación
+    justificacion = (
+        f"Motor MAGERIT v3: {desc_amenaza}. "
+        f"Base: D={base['d']:.0%}, I={base['i']:.0%}, C={base['c']:.0%}. "
+        f"Ajuste tipo activo '{tipo_activo}' y criticidad {criticidad}."
+    )
+    
+    return deg_d, deg_i, deg_c, justificacion
+
+
+def calcular_degradacion_amenazas(
+    amenazas: List[Dict],
+    tipo_activo: str,
+    criticidad: int
+) -> List[Dict]:
+    """
+    Calcula la degradación para una lista de amenazas usando el motor.
+    
+    Args:
+        amenazas: Lista de diccionarios con al menos 'codigo_amenaza'
+        tipo_activo: Tipo del activo
+        criticidad: Criticidad del activo (1-5)
+    
+    Returns:
+        Lista de amenazas con degradaciones actualizadas por el motor
+    """
+    for amenaza in amenazas:
+        codigo = amenaza.get("codigo_amenaza", "")
+        deg_d, deg_i, deg_c, justificacion = obtener_degradacion_motor(
+            codigo, tipo_activo, criticidad
+        )
+        
+        # Actualizar valores (en escala 0-100 para compatibilidad)
+        amenaza["degradacion_d"] = int(deg_d * 100)
+        amenaza["degradacion_i"] = int(deg_i * 100)
+        amenaza["degradacion_c"] = int(deg_c * 100)
+        amenaza["justificacion_motor"] = justificacion
+        amenaza["fuente_degradacion"] = "MOTOR_MAGERIT"
+    
+    return amenazas
 
 
 @dataclass

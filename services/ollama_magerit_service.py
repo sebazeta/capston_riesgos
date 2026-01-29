@@ -10,8 +10,8 @@ Integración con Ollama para:
 El prompt fuerza respuestas JSON estructuradas.
 La validación garantiza que solo se usen códigos del catálogo.
 
-IMPORTANTE: Este servicio usa ia_context_magerit.py para entrenar
-a la IA con los catálogos exactos de MAGERIT v3 e ISO 27002:2022
+IMPORTANTE: Las DEGRADACIONES D/I/C se calculan por MOTOR (no IA)
+usando el módulo degradacion_service.py con el catálogo MAGERIT v3.
 """
 import json
 import re
@@ -19,6 +19,13 @@ import requests
 from typing import Dict, List, Optional, Tuple
 import pandas as pd
 from services.database_service import read_table
+
+# Importar motor de degradación MAGERIT
+from services.degradacion_service import (
+    obtener_degradacion_motor,
+    calcular_degradacion_amenazas,
+    DEGRADACION_MAGERIT
+)
 
 # Importar contexto de entrenamiento MAGERIT
 from services.ia_context_magerit import (
@@ -960,6 +967,10 @@ def analizar_amenazas_por_criticidad(
     """
     modelo_usar = modelo or MODELO_DEFAULT
     
+    # Datos para el motor de degradación
+    tipo_activo = str(activo_info.get("Tipo_Activo", ""))
+    criticidad = valoracion.get("Criticidad", 3)
+    
     # Cargar catálogo de amenazas
     catalogo_amenazas = get_catalogo_amenazas()
     if not catalogo_amenazas:
@@ -974,49 +985,59 @@ def analizar_amenazas_por_criticidad(
     if not exito:
         # Usar fallback heurístico
         amenazas = generar_amenazas_heuristicas(activo_info, valoracion, catalogo_amenazas)
-        return True, amenazas, "Análisis heurístico (Ollama no disponible)"
+        # Recalcular degradaciones con MOTOR
+        amenazas = calcular_degradacion_amenazas(amenazas, tipo_activo, criticidad)
+        return True, amenazas, "Análisis heurístico + Motor MAGERIT (Ollama no disponible)"
     
     # Extraer JSON
     json_texto = extraer_json_de_respuesta(respuesta_texto)
     if not json_texto:
         amenazas = generar_amenazas_heuristicas(activo_info, valoracion, catalogo_amenazas)
-        return True, amenazas, "Análisis heurístico (respuesta IA inválida)"
+        # Recalcular degradaciones con MOTOR
+        amenazas = calcular_degradacion_amenazas(amenazas, tipo_activo, criticidad)
+        return True, amenazas, "Análisis heurístico + Motor MAGERIT (respuesta IA inválida)"
     
     try:
         respuesta_json = json.loads(json_texto)
         amenazas_raw = respuesta_json.get("amenazas_identificadas", [])
         
-        # Validar y limpiar amenazas
+        # Validar y limpiar amenazas (IA solo selecciona amenazas, MOTOR calcula degradación)
         amenazas_validas = []
         for am in amenazas_raw:
             codigo = am.get("codigo_amenaza", "")
             if codigo in catalogo_amenazas:
-                # Asegurar que degradaciones están en rango
-                deg_d = max(0, min(100, int(am.get("degradacion_d", 0))))
-                deg_i = max(0, min(100, int(am.get("degradacion_i", 0))))
-                deg_c = max(0, min(100, int(am.get("degradacion_c", 0))))
+                # MOTOR MAGERIT calcula las degradaciones (no la IA)
+                deg_d, deg_i, deg_c, justificacion = obtener_degradacion_motor(
+                    codigo, tipo_activo, criticidad
+                )
                 
                 amenazas_validas.append({
                     "codigo_amenaza": codigo,
                     "nombre_amenaza": am.get("nombre_amenaza", catalogo_amenazas[codigo]["amenaza"]),
                     "vulnerabilidad": am.get("vulnerabilidad", "Vulnerabilidad no especificada"),
-                    "degradacion_d": deg_d,
-                    "degradacion_i": deg_i,
-                    "degradacion_c": deg_c,
-                    "justificacion": am.get("justificacion", ""),
-                    "tipo_amenaza": catalogo_amenazas[codigo].get("tipo_amenaza", "")
+                    "degradacion_d": int(deg_d * 100),
+                    "degradacion_i": int(deg_i * 100),
+                    "degradacion_c": int(deg_c * 100),
+                    "justificacion": justificacion,
+                    "justificacion_ia": am.get("justificacion", ""),
+                    "tipo_amenaza": catalogo_amenazas[codigo].get("tipo_amenaza", ""),
+                    "fuente_degradacion": "MOTOR_MAGERIT"
                 })
         
         if amenazas_validas:
             resumen = respuesta_json.get("resumen_analisis", "")
-            return True, amenazas_validas, f"IA identificó {len(amenazas_validas)} amenazas. {resumen}"
+            return True, amenazas_validas, f"IA identificó {len(amenazas_validas)} amenazas. Degradación por Motor MAGERIT. {resumen}"
         else:
             amenazas = generar_amenazas_heuristicas(activo_info, valoracion, catalogo_amenazas)
-            return True, amenazas, "Análisis heurístico (ninguna amenaza válida de IA)"
+            # Recalcular degradaciones con MOTOR
+            amenazas = calcular_degradacion_amenazas(amenazas, tipo_activo, criticidad)
+            return True, amenazas, "Análisis heurístico + Motor MAGERIT (ninguna amenaza válida de IA)"
     
     except json.JSONDecodeError:
         amenazas = generar_amenazas_heuristicas(activo_info, valoracion, catalogo_amenazas)
-        return True, amenazas, "Análisis heurístico (JSON inválido)"
+        # Recalcular degradaciones con MOTOR
+        amenazas = calcular_degradacion_amenazas(amenazas, tipo_activo, criticidad)
+        return True, amenazas, "Análisis heurístico + Motor MAGERIT (JSON inválido)"
 
 
 def generar_amenazas_heuristicas(
@@ -1027,10 +1048,10 @@ def generar_amenazas_heuristicas(
     """
     Genera amenazas de forma heurística cuando la IA no está disponible.
     Basado en el tipo de activo y la criticidad.
-    MEJORADO: Usa el contexto de entrenamiento MAGERIT del módulo ia_context_magerit.py
+    NOTA: Las degradaciones se calculan posteriormente por calcular_degradacion_amenazas()
+    usando el MOTOR MAGERIT, no se calculan aquí.
     """
     tipo_activo = str(activo_info.get("Tipo_Activo", "")).lower()
-    criticidad = valoracion.get("Criticidad", 0)
     criticidad_nivel = valoracion.get("Criticidad_Nivel", "Sin valorar")
     
     # Usar mapeo de amenazas del contexto de entrenamiento
@@ -1104,48 +1125,20 @@ def generar_amenazas_heuristicas(
         # Default para cualquier activo
         amenazas_codigos = ["A.24", "A.11", "A.5", "A.8", "E.1", "E.2"]
     
-    # Calcular degradaciones según criticidad
-    if criticidad >= 3:
-        deg_base = 70
-    elif criticidad == 2:
-        deg_base = 45
-    elif criticidad == 1:
-        deg_base = 20
-    else:
-        deg_base = 10
-    
-    # Generar lista de amenazas
+    # Generar lista de amenazas (las degradaciones serán calculadas por el MOTOR después)
     amenazas = []
     for codigo in amenazas_codigos:
         if codigo in catalogo_amenazas:
             info = catalogo_amenazas[codigo]
             
-            # Variar degradaciones según dimensión afectada
-            dim_afectada = info.get("dimension_afectada", "D")
-            if "D" in str(dim_afectada):
-                deg_d = min(100, deg_base + 15)
-                deg_i = max(0, deg_base - 20)
-                deg_c = max(0, deg_base - 25)
-            elif "I" in str(dim_afectada):
-                deg_d = max(0, deg_base - 20)
-                deg_i = min(100, deg_base + 15)
-                deg_c = max(0, deg_base - 10)
-            elif "C" in str(dim_afectada):
-                deg_d = max(0, deg_base - 25)
-                deg_i = max(0, deg_base - 15)
-                deg_c = min(100, deg_base + 20)
-            else:
-                deg_d = deg_base
-                deg_i = deg_base
-                deg_c = deg_base
-            
+            # Valores placeholder - serán sobrescritos por calcular_degradacion_amenazas()
             amenazas.append({
                 "codigo_amenaza": codigo,
                 "nombre_amenaza": info["amenaza"],
                 "vulnerabilidad": VULNERABILIDADES.get(codigo, f"Vulnerabilidad asociada a {info['amenaza']}"),
-                "degradacion_d": deg_d,
-                "degradacion_i": deg_i,
-                "degradacion_c": deg_c,
+                "degradacion_d": 0,  # Será calculado por MOTOR
+                "degradacion_i": 0,  # Será calculado por MOTOR
+                "degradacion_c": 0,  # Será calculado por MOTOR
                 "justificacion": f"Amenaza típica para {tipo_activo} con criticidad {criticidad_nivel}",
                 "tipo_amenaza": info.get("tipo_amenaza", "")
             })

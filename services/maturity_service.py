@@ -232,11 +232,14 @@ def determinar_nivel_implementacion(valor_respuesta: int) -> Tuple[str, float]:
     """
     Determina el nivel de implementación de un control basado en respuesta.
     
-    Los cuestionarios típicamente tienen 4 opciones:
-    1 = No implementado / No existe
-    2 = Parcial / Ad-hoc
+    IMPORTANTE: Solo respuestas >= 3 indican implementación real.
+    Las respuestas del cuestionario típicamente significan:
+    1 = No implementado / No existe / No aplica
+    2 = Parcial / Ad-hoc / En proceso
     3 = Implementado / Documentado
     4 = Implementado y medido / Optimizado
+    
+    CORRECCIÓN: No contar como "implementado" las respuestas básicas (1-2)
     
     Returns:
         (nivel_texto, efectividad 0-1)
@@ -244,9 +247,9 @@ def determinar_nivel_implementacion(valor_respuesta: int) -> Tuple[str, float]:
     if valor_respuesta <= 1:
         return "No implementado", 0.0
     elif valor_respuesta == 2:
-        return "Parcial", 0.33
+        return "Parcial", 0.25  # Reducido de 0.33 a 0.25
     elif valor_respuesta == 3:
-        return "Implementado", 0.66
+        return "Implementado", 0.75  # Ajustado de 0.66 a 0.75
     else:  # valor >= 4
         return "Implementado y medido", 1.0
 
@@ -384,11 +387,12 @@ def calcular_madurez_evaluacion(eval_id: str) -> Optional[ResultadoMadurez]:
         activos_evaluados = len(resultados_magerit)
         
         # 5. Calcular métricas
-        # % controles implementados (incluye parciales con peso reducido)
+        # % controles implementados (SOLO los que realmente están implementados, efectividad >= 0.75)
+        # CORRECCIÓN: No contar parciales como implementados
         if metricas["total"] > 0:
-            pct_implementados = (
-                (metricas["implementados"] + metricas["parciales"] * 0.5) / metricas["total"]
-            ) * 100
+            # Solo contar controles con efectividad >= 0.75 (realmente implementados)
+            controles_realmente_impl = sum(1 for c in controles.values() if c["efectividad"] >= 0.75)
+            pct_implementados = (controles_realmente_impl / metricas["total"]) * 100
         else:
             pct_implementados = 0
         
@@ -397,6 +401,7 @@ def calcular_madurez_evaluacion(eval_id: str) -> Optional[ResultadoMadurez]:
         pct_medidos = (controles_medidos / metricas["total"] * 100) if metricas["total"] > 0 else 0
         
         # % riesgos críticos/altos mitigados
+        # CORRECCIÓN: Si no hay riesgos críticos, NO asumir 100%, sino 0%
         riesgos_criticos_mitigados = 0
         total_riesgos_criticos = 0
         
@@ -413,13 +418,14 @@ def calcular_madurez_evaluacion(eval_id: str) -> Optional[ResultadoMadurez]:
         
         pct_criticos_mitigados = (
             (riesgos_criticos_mitigados / total_riesgos_criticos * 100) 
-            if total_riesgos_criticos > 0 else 100
+            if total_riesgos_criticos > 0 else 0  # CORRECCIÓN: 0% si no hay riesgos críticos (no 100%)
         )
         
         # % activos evaluados
         pct_evaluados = (activos_evaluados / total_activos * 100) if total_activos > 0 else 0
         
         # 6. Calcular puntuación total ponderada
+        # NOTA: La puntuación máxima será baja si no hay controles implementados realmente
         puntuacion = (
             pct_implementados * 0.30 +
             pct_medidos * 0.25 +
@@ -428,6 +434,7 @@ def calcular_madurez_evaluacion(eval_id: str) -> Optional[ResultadoMadurez]:
         )
         
         # 7. Determinar nivel de madurez
+        # CORRECCIÓN: Ajustar umbrales para ser más estrictos
         if puntuacion >= 80:
             nivel = 5
             nombre_nivel = "Optimizado"
@@ -457,10 +464,16 @@ def calcular_madurez_evaluacion(eval_id: str) -> Optional[ResultadoMadurez]:
         impl_por_dominio = analisis_controles["por_dominio"]
         
         def pct_dominio(dominio):
+            # CORRECCIÓN: Solo contar controles realmente implementados (efectividad >= 0.75)
             impl = len([c for c in impl_por_dominio.get(dominio, []) 
-                       if controles.get(c, {}).get("efectividad", 0) >= 0.5])
+                       if controles.get(c, {}).get("efectividad", 0) >= 0.75])
             total = total_por_dominio.get(dominio, 1)
             return (impl / total * 100) if total > 0 else 0
+        
+        # CORRECCIÓN: Recalcular métricas reales
+        controles_impl_real = sum(1 for c in controles.values() if c["efectividad"] >= 0.75)
+        controles_parcial_real = sum(1 for c in controles.values() if 0 < c["efectividad"] < 0.75)
+        controles_no_impl_real = sum(1 for c in controles.values() if c["efectividad"] == 0)
         
         # 9. Crear resultado
         return ResultadoMadurez(
@@ -477,9 +490,9 @@ def calcular_madurez_evaluacion(eval_id: str) -> Optional[ResultadoMadurez]:
             pct_riesgos_criticos_mitigados=round(pct_criticos_mitigados, 1),
             pct_activos_evaluados=round(pct_evaluados, 1),
             total_controles_posibles=93,  # Total ISO 27002:2022
-            controles_implementados=metricas["implementados"],
-            controles_parciales=metricas["parciales"],
-            controles_no_implementados=metricas["no_implementados"]
+            controles_implementados=controles_impl_real,
+            controles_parciales=controles_parcial_real,
+            controles_no_implementados=controles_no_impl_real
         )
     
     except Exception as e:

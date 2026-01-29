@@ -631,6 +631,7 @@ def get_riesgos_evaluacion(id_evaluacion: str) -> pd.DataFrame:
         SELECT 
             r.*,
             va.Vulnerabilidad,
+            va.Cod_Amenaza,
             va.Degradacion_D,
             va.Degradacion_I,
             va.Degradacion_C,
