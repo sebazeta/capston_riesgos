@@ -394,6 +394,7 @@ with tab1:
                 data_amenazas.append({
                     "Código": codigo,
                     "Amenaza": info.get("amenaza", ""),
+                    "Descripción": info.get("descripcion", info.get("tipo_amenaza", "")),
                     "Tipo": tipo_nombre
                 })
             
@@ -889,43 +890,80 @@ with tab1:
         
         st.markdown("---")
         
-        # Filtro por nivel
-        nivel_filtro = st.multiselect(
-            "Filtrar por nivel de riesgo:",
-            ["Alto", "Medio", "Bajo", "Nulo"],
-            default=["Alto", "Medio", "Bajo", "Nulo"],
-            key="filtro_nivel_vuln"
-        )
+        # Filtros
+        col_f1, col_f2 = st.columns(2)
         
-        # Mostrar vulnerabilidades por categoría
+        with col_f1:
+            nivel_filtro = st.multiselect(
+                "Filtrar por nivel de riesgo:",
+                ["Alto", "Medio", "Bajo", "Nulo"],
+                default=["Alto", "Medio", "Bajo", "Nulo"],
+                key="filtro_nivel_vuln"
+            )
+        
+        with col_f2:
+            tipos_activos = list(vulnerabilidades_catalogo.keys())
+            tipo_filtro = st.multiselect(
+                "Filtrar por tipo de activo:",
+                tipos_activos,
+                default=tipos_activos,
+                format_func=lambda x: f"{vulnerabilidades_catalogo[x]['icono']} {vulnerabilidades_catalogo[x]['nombre']}",
+                key="filtro_tipo_activo_vuln"
+            )
+        
+        # Construir tabla unificada
+        data_vulns_todas = []
         for codigo_cat, info_cat in vulnerabilidades_catalogo.items():
-            vulns_filtradas = [v for v in info_cat["vulnerabilidades"] if v["nivel"] in nivel_filtro]
+            if codigo_cat not in tipo_filtro:
+                continue
+                
+            for vuln in info_cat["vulnerabilidades"]:
+                if vuln["nivel"] not in nivel_filtro:
+                    continue
+                
+                # Color según nivel
+                if vuln["nivel"] == "Alto":
+                    nivel_emoji = "🔴"
+                elif vuln["nivel"] == "Medio":
+                    nivel_emoji = "🟡"
+                elif vuln["nivel"] == "Bajo":
+                    nivel_emoji = "🟢"
+                else:
+                    nivel_emoji = "⚪"
+                
+                data_vulns_todas.append({
+                    "Tipo_Activo": f"{info_cat['icono']} {info_cat['nombre']}",
+                    "Código": vuln["codigo"],
+                    "Vulnerabilidad": vuln["nombre"],
+                    "Descripción": vuln["descripcion"],
+                    "Nivel": f"{nivel_emoji} {vuln['nivel']}"
+                })
+        
+        if data_vulns_todas:
+            df_vulns_todas = pd.DataFrame(data_vulns_todas)
             
-            if vulns_filtradas:
-                with st.expander(f"{info_cat['icono']} **[{codigo_cat}]** {info_cat['nombre']} ({len(vulns_filtradas)} vulnerabilidades)", expanded=False):
-                    
-                    # Tabla de vulnerabilidades
-                    data_vulns = []
-                    for vuln in vulns_filtradas:
-                        # Color según nivel
-                        if vuln["nivel"] == "Alto":
-                            nivel_emoji = "🔴"
-                        elif vuln["nivel"] == "Medio":
-                            nivel_emoji = "🟡"
-                        elif vuln["nivel"] == "Bajo":
-                            nivel_emoji = "🟢"
-                        else:
-                            nivel_emoji = "⚪"
-                        
-                        data_vulns.append({
-                            "Código": vuln["codigo"],
-                            "Vulnerabilidad": vuln["nombre"],
-                            "Descripción": vuln["descripcion"],
-                            "Nivel": f"{nivel_emoji} {vuln['nivel']}"
-                        })
-                    
-                    df_vulns = pd.DataFrame(data_vulns)
-                    st.dataframe(df_vulns, use_container_width=True, hide_index=True)
+            # Buscador de texto
+            buscar_vuln = st.text_input("🔍 Buscar vulnerabilidad:", placeholder="Buscar por código, nombre o descripción", key="buscar_vuln_cat")
+            
+            if buscar_vuln:
+                mask = (
+                    df_vulns_todas["Código"].str.contains(buscar_vuln, case=False, na=False) |
+                    df_vulns_todas["Vulnerabilidad"].str.contains(buscar_vuln, case=False, na=False) |
+                    df_vulns_todas["Descripción"].str.contains(buscar_vuln, case=False, na=False)
+                )
+                df_vulns_todas = df_vulns_todas[mask]
+            
+            # Mostrar tabla
+            st.dataframe(
+                df_vulns_todas,
+                use_container_width=True,
+                hide_index=True,
+                height=500
+            )
+            
+            st.caption(f"📊 Mostrando {len(df_vulns_todas)} vulnerabilidades")
+        else:
+            st.info("No hay vulnerabilidades que coincidan con los filtros seleccionados.")
         
         st.markdown("---")
         
@@ -2023,6 +2061,7 @@ with tab4:
                 text-decoration: none;
                 border-bottom: 1px dotted #0068c9;
                 cursor: help;
+                position: relative;
             }}
             .tooltip-link:hover {{
                 color: #0054a3;
@@ -2055,16 +2094,19 @@ with tab4:
             amenaza_nombre = escape_html(row.get("Amenaza", "Sin descripción"))
             
             # Tooltip enriquecido para amenaza: nombre + descripción del catálogo
-            amenaza_tooltip = amenaza_nombre
+            amenaza_tooltip_nombre = amenaza_nombre
+            amenaza_tooltip_desc = ""
             if cod and catalogo_amenazas_tab4.get(cod):
                 info_amenaza = catalogo_amenazas_tab4[cod]
-                amenaza_tooltip = f"{info_amenaza.get('amenaza', amenaza_nombre)} | Tipo: {info_amenaza.get('tipo_amenaza', 'N/A')} | Dimensión: {info_amenaza.get('dimension_afectada', 'N/A')}"
+                amenaza_tooltip_nombre = escape_html(info_amenaza.get('amenaza', amenaza_nombre))
+                amenaza_tooltip_desc = escape_html(info_amenaza.get('descripcion', info_amenaza.get('tipo_amenaza', '')))
             
-            # Tooltip para vulnerabilidad: nombre corto + descripción completa
-            vuln_full = escape_html(row.get("Vulnerabilidad", "Sin descripción"))
+            # Tooltip para vulnerabilidad - simple como amenaza
+            vuln_texto = row.get("Vulnerabilidad", "Sin descripción")
+            vuln_tooltip = escape_html(vuln_texto)
+            
             # Generar código de vulnerabilidad basado en índice
             cod_vuln = f"V{idx+1:03d}"
-            vuln_tooltip = vuln_full
             
             deg_d = f"{row.get('Degradacion_D', 0)*100:.0f}%"
             deg_i = f"{row.get('Degradacion_I', 0)*100:.0f}%"
@@ -2075,7 +2117,7 @@ with tab4:
                 <tr>
                     <td>{nombre}</td>
                     <td>{crit}</td>
-                    <td><span class="tooltip-link" title="{amenaza_tooltip}">{cod}</span></td>
+                    <td><span class="tooltip-link" title="{amenaza_tooltip_nombre} - {amenaza_tooltip_desc}">{cod}</span></td>
                     <td><span class="tooltip-link" title="{vuln_tooltip}">{cod_vuln}</span></td>
                     <td>{deg_d}</td>
                     <td>{deg_i}</td>
@@ -2287,11 +2329,13 @@ with tab5:
             cod_amenaza = escape_html(row.get("Cod_Amenaza", "N/A"))
             amenaza_nombre = escape_html(row.get("Amenaza", "Sin descripción"))
             
-            # Tooltip enriquecido: nombre + descripción del catálogo
+            # Tooltip enriquecido: nombre + descripción del catálogo (sin dimensión)
             amenaza_tooltip = amenaza_nombre
             if cod_amenaza and catalogo_amenazas_tab5.get(cod_amenaza):
                 info_am = catalogo_amenazas_tab5[cod_amenaza]
-                amenaza_tooltip = f"{info_am.get('amenaza', amenaza_nombre)} | Tipo: {info_am.get('tipo_amenaza', 'N/A')} | Dimensión afectada: {info_am.get('dimension_afectada', 'N/A')}"
+                nombre_am = escape_html(info_am.get('amenaza', amenaza_nombre))
+                desc_am = escape_html(info_am.get('descripcion', info_am.get('tipo_amenaza', '')))
+                amenaza_tooltip = f"{nombre_am} - {desc_am}"
             
             freq = row.get("Frecuencia", 0)
             impacto = row.get("Impacto", 0)
@@ -3043,167 +3087,98 @@ with tab8:
         riesgos["Generado_IA"] = "🔧"
         df_display = riesgos
     
-    # ===== CONSTRUIR TABLA HTML CON TOOLTIPS =====
-    tabla_rows_salv = []
+    # ===== CONSTRUIR DATAFRAME PARA MOSTRAR =====
+    df_display_salv = []
     for idx, row in df_display.iterrows():
         riesgo_val = row.get("Riesgo", 0)
         if riesgo_val >= 6:
             prioridad = "🔴 Alta"
-            prioridad_class = "alto"
         elif riesgo_val >= 4:
             prioridad = "🟡 Media"
-            prioridad_class = "medio"
         elif riesgo_val >= 2:
             prioridad = "🟢 Baja"
-            prioridad_class = "bajo"
         else:
             prioridad = "⚪ Baja"
-            prioridad_class = "nulo"
         
-        # Obtener datos para tooltips
-        cod_amenaza = row.get("Cod_Amenaza", "")
-        amenaza_texto = row.get("Amenaza", "")
-        amenaza_desc = ""
-        if cod_amenaza and catalogo_amenazas.get(cod_amenaza):
-            amenaza_info = catalogo_amenazas[cod_amenaza]
-            amenaza_desc = f"{amenaza_info.get('amenaza', '')} - Tipo: {amenaza_info.get('tipo_amenaza', '')} - Dimensión: {amenaza_info.get('dimension_afectada', '')}"
+        # Generar código de vulnerabilidad
+        cod_vuln = f"V{idx+1:03d}"
         
-        vuln_texto = row.get("Vulnerabilidad", "")
-        vuln_corto = vuln_texto[:40] + "..." if len(str(vuln_texto)) > 40 else vuln_texto
+        # Extraer código de control ISO (solo el código, ej: "5.1")
+        control_iso_full = row.get("Control_ISO", "")
+        control_codigo = control_iso_full.split(" - ")[0].strip() if " - " in control_iso_full else control_iso_full.split(" ")[0] if control_iso_full else ""
         
-        salvaguarda = row.get("Salvaguarda_Sugerida", "")
-        salvaguarda_corto = salvaguarda[:50] + "..." if len(str(salvaguarda)) > 50 else salvaguarda
-        
-        control_iso = row.get("Control_ISO", "")
-        control_desc = ""
-        # Extraer código del control (ej: "5.1 - Nombre" -> "5.1")
-        control_codigo = control_iso.split(" - ")[0].strip() if " - " in control_iso else control_iso.split(" ")[0] if control_iso else ""
-        if control_codigo and catalogo_controles.get(control_codigo):
-            control_info = catalogo_controles[control_codigo]
-            control_desc = f"{control_info.get('nombre', '')} - Categoría: {control_info.get('categoria', '')}"
-        
-        tabla_rows_salv.append({
-            "nombre_activo": row.get("Nombre_Activo", ""),
-            "riesgo": round(riesgo_val, 2),
-            "vuln_corto": vuln_corto,
-            "vuln_full": vuln_texto,
-            "amenaza_codigo": cod_amenaza,
-            "amenaza_texto": amenaza_texto,
-            "amenaza_desc": amenaza_desc,
-            "salvaguarda_corto": salvaguarda_corto,
-            "salvaguarda_full": salvaguarda,
-            "control_iso": control_iso,
-            "control_desc": control_desc,
-            "prioridad": prioridad,
-            "prioridad_class": prioridad_class,
-            "ia_icon": row.get("Generado_IA", "🔧")
+        df_display_salv.append({
+            "Activo": row.get("Nombre_Activo", ""),
+            "Amenaza": f"{row.get('Cod_Amenaza', '')}",
+            "Cod_Vuln": cod_vuln,
+            "Riesgo": f"{riesgo_val:.2f}",
+            "Salvaguarda": str(row.get("Salvaguarda_Sugerida", ""))[:80] + "..." if len(str(row.get("Salvaguarda_Sugerida", ""))) > 80 else str(row.get("Salvaguarda_Sugerida", "")),
+            "Control_ISO": control_codigo,
+            "Prioridad": prioridad,
+            "IA": row.get("Generado_IA", "🔧"),
+            # Guardar datos completos para tooltip/referencia
+            "_vuln_full": str(row.get("Vulnerabilidad", "")),
+            "_control_full": control_iso_full,
+            "_amenaza_full": row.get("Amenaza", "")
         })
     
-    # Generar HTML
-    html_salvaguardas = """
-    <style>
-        .salv-table-container {
-            max-height: 500px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-        }
-        .salv-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-            background: white;
-        }
-        .salv-table th {
-            background: #f8f9fa;
-            color: #333;
-            padding: 10px 8px;
-            text-align: left;
-            font-weight: 600;
-            position: sticky;
-            top: 0;
-            border-bottom: 2px solid #dee2e6;
-        }
-        .salv-table td {
-            padding: 8px;
-            border-bottom: 1px solid #eee;
-            vertical-align: top;
-        }
-        .salv-table tr:hover {
-            background: #f5f5f5;
-        }
-        .tooltip-link-salv {
-            color: #0066cc;
-            text-decoration: none;
-            border-bottom: 1px dotted #0066cc;
-            cursor: help;
-        }
-        .tooltip-link-salv:hover {
-            background: #e6f2ff;
-        }
-        .nivel-alto { background: #ffe0e0; }
-        .nivel-medio { background: #fff3cd; }
-        .nivel-bajo { background: #d4edda; }
-        .nivel-nulo { background: #f8f9fa; }
-        .riesgo-badge {
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-weight: bold;
-        }
-    </style>
-    <div class="salv-table-container">
-    <table class="salv-table">
-        <thead>
-            <tr>
-                <th>Activo</th>
-                <th>Riesgo</th>
-                <th>Vulnerabilidad</th>
-                <th>Amenaza</th>
-                <th>Salvaguarda Sugerida</th>
-                <th>Control ISO 27002</th>
-                <th>Prioridad</th>
-            </tr>
-        </thead>
-        <tbody>
-    """
+    df_salvaguardas = pd.DataFrame(df_display_salv)
     
-    for row in tabla_rows_salv:
-        # Clase de nivel según riesgo
-        nivel_class = f"nivel-{row['prioridad_class']}"
+    # Mostrar tabla
+    st.dataframe(
+        df_salvaguardas[["Activo", "Amenaza", "Cod_Vuln", "Riesgo", "Salvaguarda", "Control_ISO", "Prioridad", "IA"]],
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Activo": st.column_config.TextColumn("Activo", width="medium"),
+            "Amenaza": st.column_config.TextColumn("Cod_Amenaza", width="small"),
+            "Cod_Vuln": st.column_config.TextColumn("Cod_Vuln", width="small"),
+            "Riesgo": st.column_config.TextColumn("Riesgo", width="small"),
+            "Salvaguarda": st.column_config.TextColumn("Salvaguarda Sugerida", width="large"),
+            "Control_ISO": st.column_config.TextColumn("Control ISO", width="small"),
+            "Prioridad": st.column_config.TextColumn("Prioridad", width="small"),
+            "IA": st.column_config.TextColumn("IA", width="small")
+        }
+    )
+    
+    st.caption("✅ = Generado por IA | 🔧 = Generado heurísticamente | 💡 Códigos de vulnerabilidad (V001, V002...) y controles ISO (5.1, 8.2...) para referencia rápida")
+    
+    # Tabla de referencia expandible con tooltips
+    with st.expander("📋 Ver Detalles Completos de Vulnerabilidades y Controles"):
+        st.markdown("**Códigos de Vulnerabilidad:**")
+        for idx, row_data in enumerate(df_display_salv):
+            st.markdown(f"- **{row_data['Cod_Vuln']}**: {row_data['_vuln_full']}")
         
-        html_salvaguardas += f"""
-        <tr class="{nivel_class}">
-            <td>{row['nombre_activo']}</td>
-            <td><span class="riesgo-badge">{row['riesgo']}</span></td>
-            <td><span class="tooltip-link-salv" title="{row['vuln_full']}">{row['vuln_corto']}</span></td>
-            <td><span class="tooltip-link-salv" title="{row['amenaza_desc'] or row['amenaza_texto']}">{row['amenaza_codigo'] or row['amenaza_texto'][:20]}</span></td>
-            <td><span class="tooltip-link-salv" title="{row['salvaguarda_full']}">{row['salvaguarda_corto']}</span></td>
-            <td><span class="tooltip-link-salv" title="{row['control_desc'] or row['control_iso']}">{row['control_iso'][:30] if len(row['control_iso']) > 30 else row['control_iso']}</span></td>
-            <td>{row['prioridad']} {row['ia_icon']}</td>
-        </tr>
-        """
-    
-    html_salvaguardas += """
-        </tbody>
-    </table>
-    </div>
-    """
-    
-    components.html(html_salvaguardas, height=550, scrolling=True)
-    
-    # Leyenda
-    st.caption("✅ = Generado por IA | 🔧 = Generado heurísticamente | 💡 Pasa el mouse sobre las celdas para ver más detalles")
+        st.markdown("---")
+        st.markdown("**Códigos de Amenazas:**")
+        amenazas_unicas = {}
+        for row_data in df_display_salv:
+            cod = row_data['Amenaza']
+            if cod and cod not in amenazas_unicas:
+                amenazas_unicas[cod] = row_data['_amenaza_full']
+        for cod, desc in amenazas_unicas.items():
+            st.markdown(f"- **{cod}**: {desc}")
+        
+        st.markdown("---")
+        st.markdown("**Códigos de Controles ISO 27002:**")
+        controles_unicos = {}
+        for row_data in df_display_salv:
+            cod = row_data['Control_ISO']
+            if cod and cod not in controles_unicos:
+                controles_unicos[cod] = row_data['_control_full']
+        for cod, desc in controles_unicos.items():
+            st.markdown(f"- **{cod}**: {desc}")
     
     # Preparar DataFrame para descarga
-    df_download_salv = pd.DataFrame([{
-        "Activo": r["nombre_activo"],
-        "Riesgo": r["riesgo"],
-        "Vulnerabilidad": r["vuln_full"],
-        "Amenaza": f"{r['amenaza_codigo']} - {r['amenaza_texto']}",
-        "Salvaguarda": r["salvaguarda_full"],
-        "Control ISO": r["control_iso"],
-        "Prioridad": r["prioridad"]
-    } for r in tabla_rows_salv])
+    df_download_salv = df_display.copy()
+    df_download_salv = df_download_salv[[
+        "Nombre_Activo", "Cod_Amenaza", "Amenaza", "Vulnerabilidad", 
+        "Riesgo", "Salvaguarda_Sugerida", "Control_ISO"
+    ]]
+    df_download_salv.columns = [
+        "Activo", "Codigo_Amenaza", "Amenaza", "Vulnerabilidad",
+        "Riesgo", "Salvaguarda", "Control ISO"
+    ]
     
     # Botón de descarga
     st.download_button(

@@ -138,7 +138,8 @@ def get_catalogo_amenazas() -> Dict[str, Dict]:
             catalogo[codigo] = {
                 "amenaza": row["amenaza"],
                 "tipo_amenaza": row["tipo_amenaza"],
-                "dimension_afectada": row.get("dimension_afectada", "D")
+                "dimension_afectada": row.get("dimension_afectada", "D"),
+                "descripcion": row.get("descripcion", "")
             }
         return catalogo
     except:

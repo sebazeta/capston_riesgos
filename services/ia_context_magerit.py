@@ -263,6 +263,107 @@ AMENAZAS_POR_TIPO_ACTIVO = {
 }
 
 
+# ==================== CATÁLOGO DE VULNERABILIDADES POR TIPO DE ACTIVO ====================
+
+VULNERABILIDADES_CATALOGO = {
+    "SW": {
+        "nombre": "Software / Aplicaciones",
+        "vulnerabilidades": [
+            {"codigo": "SW-V01", "nombre": "Software desactualizado", "descripcion": "Falta de parches de seguridad en aplicaciones", "nivel": "Alto"},
+            {"codigo": "SW-V02", "nombre": "Configuración por defecto", "descripcion": "Uso de credenciales y configuraciones predeterminadas", "nivel": "Alto"},
+            {"codigo": "SW-V03", "nombre": "Inyección SQL", "descripcion": "Vulnerabilidad a inyección de código en consultas SQL", "nivel": "Alto"},
+            {"codigo": "SW-V04", "nombre": "Cross-Site Scripting (XSS)", "descripcion": "Ejecución de scripts maliciosos en navegador", "nivel": "Alto"},
+            {"codigo": "SW-V05", "nombre": "Autenticación débil", "descripcion": "Mecanismos de autenticación insuficientes", "nivel": "Alto"},
+            {"codigo": "SW-V06", "nombre": "Falta de cifrado", "descripcion": "Datos sensibles sin encriptar", "nivel": "Alto"},
+            {"codigo": "SW-V07", "nombre": "Gestión insegura de sesiones", "descripcion": "Tokens de sesión predecibles o expuestos", "nivel": "Alto"},
+            {"codigo": "SW-V08", "nombre": "APIs expuestas", "descripcion": "Interfaces de programación sin autenticación adecuada", "nivel": "Alto"},
+            {"codigo": "SW-V09", "nombre": "Falta de validación de entrada", "descripcion": "No se validan datos de usuario", "nivel": "Alto"},
+            {"codigo": "SW-V10", "nombre": "Dependencias vulnerables", "descripcion": "Uso de librerías con vulnerabilidades conocidas", "nivel": "Medio"}
+        ]
+    },
+    "HW": {
+        "nombre": "Hardware / Equipos",
+        "vulnerabilidades": [
+            {"codigo": "HW-V01", "nombre": "Firmware desactualizado", "descripcion": "BIOS/UEFI sin actualizaciones de seguridad", "nivel": "Alto"},
+            {"codigo": "HW-V02", "nombre": "Puertos USB habilitados", "descripcion": "Acceso físico a puertos sin control", "nivel": "Medio"},
+            {"codigo": "HW-V03", "nombre": "Falta de TPM", "descripcion": "Sin módulo de plataforma segura para cifrado", "nivel": "Medio"},
+            {"codigo": "HW-V04", "nombre": "Discos sin cifrar", "descripcion": "Almacenamiento local sin encriptación", "nivel": "Alto"},
+            {"codigo": "HW-V05", "nombre": "BIOS sin contraseña", "descripcion": "Configuración de hardware accesible", "nivel": "Medio"},
+            {"codigo": "HW-V06", "nombre": "Hardware obsoleto", "descripcion": "Equipos sin soporte del fabricante", "nivel": "Alto"},
+            {"codigo": "HW-V07", "nombre": "Sin protección física", "descripcion": "Equipos sin cerraduras o cables de seguridad", "nivel": "Bajo"}
+        ]
+    },
+    "COM": {
+        "nombre": "Comunicaciones / Red",
+        "vulnerabilidades": [
+            {"codigo": "COM-V01", "nombre": "Red sin segmentar", "descripcion": "Toda la red en un mismo segmento sin VLANs", "nivel": "Alto"},
+            {"codigo": "COM-V02", "nombre": "WiFi con WEP/WPA", "descripcion": "Protocolos de red inalámbrica obsoletos", "nivel": "Alto"},
+            {"codigo": "COM-V03", "nombre": "Puertos innecesarios abiertos", "descripcion": "Servicios expuestos sin necesidad", "nivel": "Alto"},
+            {"codigo": "COM-V04", "nombre": "Sin firewall", "descripcion": "Falta de control de tráfico perimetral", "nivel": "Alto"},
+            {"codigo": "COM-V05", "nombre": "Protocolos inseguros", "descripcion": "Uso de FTP, Telnet, HTTP sin cifrar", "nivel": "Alto"},
+            {"codigo": "COM-V06", "nombre": "DNS sin protección", "descripcion": "Vulnerable a DNS spoofing/poisoning", "nivel": "Medio"},
+            {"codigo": "COM-V07", "nombre": "Sin IDS/IPS", "descripcion": "Falta de detección de intrusiones", "nivel": "Medio"},
+            {"codigo": "COM-V08", "nombre": "VPN débil", "descripcion": "Uso de protocolos VPN obsoletos (PPTP)", "nivel": "Alto"}
+        ]
+    },
+    "D": {
+        "nombre": "Datos / Información",
+        "vulnerabilidades": [
+            {"codigo": "D-V01", "nombre": "Datos sin clasificar", "descripcion": "Información sin etiquetas de confidencialidad", "nivel": "Medio"},
+            {"codigo": "D-V02", "nombre": "Backups sin cifrar", "descripcion": "Copias de seguridad en texto plano", "nivel": "Alto"},
+            {"codigo": "D-V03", "nombre": "Retención indefinida", "descripcion": "Datos que deberían eliminarse aún disponibles", "nivel": "Medio"},
+            {"codigo": "D-V04", "nombre": "Sin control de acceso", "descripcion": "Datos accesibles sin autorización", "nivel": "Alto"},
+            {"codigo": "D-V05", "nombre": "Transmisión sin cifrar", "descripcion": "Datos enviados en texto plano", "nivel": "Alto"},
+            {"codigo": "D-V06", "nombre": "Sin respaldo", "descripcion": "Información importante sin backup", "nivel": "Alto"},
+            {"codigo": "D-V07", "nombre": "Logs insuficientes", "descripcion": "Sin trazabilidad de acceso a datos", "nivel": "Medio"}
+        ]
+    },
+    "S": {
+        "nombre": "Servicios",
+        "vulnerabilidades": [
+            {"codigo": "S-V01", "nombre": "Sin redundancia", "descripcion": "Servicio con punto único de fallo", "nivel": "Alto"},
+            {"codigo": "S-V02", "nombre": "Sin SLA definido", "descripcion": "Falta de compromisos de disponibilidad", "nivel": "Medio"},
+            {"codigo": "S-V03", "nombre": "Sin monitoreo", "descripcion": "Servicio sin vigilancia de estado", "nivel": "Alto"},
+            {"codigo": "S-V04", "nombre": "Dependencia de terceros", "descripcion": "Servicio crítico dependiente de proveedor externo", "nivel": "Medio"},
+            {"codigo": "S-V05", "nombre": "Sin plan de recuperación", "descripcion": "Falta de DRP para el servicio", "nivel": "Alto"},
+            {"codigo": "S-V06", "nombre": "Capacidad insuficiente", "descripcion": "Sin escalabilidad ante picos de demanda", "nivel": "Medio"}
+        ]
+    },
+    "PS": {
+        "nombre": "Personal",
+        "vulnerabilidades": [
+            {"codigo": "PS-V01", "nombre": "Falta de formación", "descripcion": "Personal sin capacitación en seguridad", "nivel": "Alto"},
+            {"codigo": "PS-V02", "nombre": "Susceptibilidad a phishing", "descripcion": "Usuarios que caen en ingeniería social", "nivel": "Alto"},
+            {"codigo": "PS-V03", "nombre": "Contraseñas débiles", "descripcion": "Uso de contraseñas fáciles de adivinar", "nivel": "Alto"},
+            {"codigo": "PS-V04", "nombre": "Sin acuerdos de confidencialidad", "descripcion": "Personal sin NDA firmado", "nivel": "Medio"},
+            {"codigo": "PS-V05", "nombre": "Privilegios excesivos", "descripcion": "Usuarios con más permisos de los necesarios", "nivel": "Alto"},
+            {"codigo": "PS-V06", "nombre": "Rotación sin control", "descripcion": "Accesos no revocados al salir", "nivel": "Alto"}
+        ]
+    },
+    "L": {
+        "nombre": "Instalaciones",
+        "vulnerabilidades": [
+            {"codigo": "L-V01", "nombre": "Acceso físico no controlado", "descripcion": "Cualquiera puede entrar a áreas sensibles", "nivel": "Alto"},
+            {"codigo": "L-V02", "nombre": "Sin CCTV", "descripcion": "Falta de videovigilancia", "nivel": "Medio"},
+            {"codigo": "L-V03", "nombre": "Sin detección de incendios", "descripcion": "Falta de alarmas y extintores", "nivel": "Alto"},
+            {"codigo": "L-V04", "nombre": "Climatización inadecuada", "descripcion": "Datacenter sin control de temperatura", "nivel": "Alto"},
+            {"codigo": "L-V05", "nombre": "Sin protección eléctrica", "descripcion": "Falta de UPS y reguladores", "nivel": "Alto"},
+            {"codigo": "L-V06", "nombre": "Ubicación vulnerable", "descripcion": "Zona propensa a inundaciones o sismos", "nivel": "Medio"}
+        ]
+    },
+    "AUX": {
+        "nombre": "Servicios Auxiliares",
+        "vulnerabilidades": [
+            {"codigo": "AUX-V01", "nombre": "Sin UPS", "descripcion": "Equipos sin alimentación ininterrumpida", "nivel": "Alto"},
+            {"codigo": "AUX-V02", "nombre": "Sin generador", "descripcion": "Falta de respaldo eléctrico prolongado", "nivel": "Medio"},
+            {"codigo": "AUX-V03", "nombre": "Aire acondicionado único", "descripcion": "Sin redundancia de climatización", "nivel": "Medio"},
+            {"codigo": "AUX-V04", "nombre": "Cableado desordenado", "descripcion": "Infraestructura física sin organizar", "nivel": "Bajo"},
+            {"codigo": "AUX-V05", "nombre": "Conexión a internet única", "descripcion": "Sin ISP de respaldo", "nivel": "Alto"}
+        ]
+    }
+}
+
+
 # ==================== DEGRADACIÓN POR TIPO DE AMENAZA ====================
 
 DEGRADACION_TIPICA = {
@@ -321,6 +422,15 @@ def get_contexto_completo_ia() -> str:
             for _, row in controles_cat.iterrows():
                 controles_texto += f"- **{row['codigo']}**: {row['nombre']}\n"
     
+    # Construir catálogo de vulnerabilidades
+    vulnerabilidades_texto = "\n## CATÁLOGO DE VULNERABILIDADES POR TIPO DE ACTIVO:\n"
+    vulnerabilidades_texto += "Usa estas vulnerabilidades como referencia para identificar debilidades:\n\n"
+    
+    for codigo_cat, info_cat in VULNERABILIDADES_CATALOGO.items():
+        vulnerabilidades_texto += f"\n### [{codigo_cat}] {info_cat['nombre']}:\n"
+        for vuln in info_cat["vulnerabilidades"][:5]:  # Top 5 por categoría
+            vulnerabilidades_texto += f"- **{vuln['codigo']}** - {vuln['nombre']}: {vuln['descripcion']}\n"
+    
     # Combinar todo
     contexto = f"""
 {CONTEXTO_MAGERIT}
@@ -331,14 +441,19 @@ def get_contexto_completo_ia() -> str:
 
 {controles_texto}
 
+{vulnerabilidades_texto}
+
 ## REGLAS CRÍTICAS PARA LA IA:
 1. SOLO usa códigos de amenaza del catálogo anterior (N.1, N.2, I.1, ... A.30)
 2. SOLO usa códigos de control del catálogo anterior (5.1, 5.2, ... 8.34)
-3. NO inventes códigos nuevos
-4. Siempre justifica por qué una amenaza aplica al activo específico
-5. Relaciona controles con amenazas de forma lógica
-6. Usa el mapeo AMENAZA → CONTROL proporcionado
-7. Considera el tipo de activo para seleccionar amenazas relevantes
+3. Describe vulnerabilidades ESPECÍFICAS usando el catálogo como referencia
+4. NO inventes códigos nuevos
+5. Siempre justifica por qué una amenaza aplica al activo específico
+6. Relaciona amenazas con vulnerabilidades concretas del catálogo
+7. Relaciona controles con amenazas de forma lógica
+8. Usa el mapeo AMENAZA → CONTROL proporcionado
+9. Considera el tipo de activo para seleccionar amenazas relevantes
+10. Las vulnerabilidades deben ser técnicas y específicas, no genéricas
 """
     
     return contexto
@@ -384,6 +499,79 @@ def get_degradacion_tipica(codigo_amenaza: str) -> Dict[str, int]:
     return DEGRADACION_TIPICA.get(categoria, {"D": 50, "I": 50, "C": 50})
 
 
+def get_vulnerabilidades_por_tipo(tipo_activo: str) -> List[Dict]:
+    """
+    Obtiene las vulnerabilidades más relevantes para un tipo de activo.
+    Mapea tipos de activo MAGERIT a categorías del catálogo.
+    """
+    # Mapeo de tipos de activo a categorías de vulnerabilidades
+    mapeo = {
+        "sw": "SW",
+        "aplicacion": "SW",
+        "software": "SW",
+        "app": "SW",
+        "hw": "HW",
+        "hardware": "HW",
+        "equipo": "HW",
+        "servidor": "HW",
+        "com": "COM",
+        "red": "COM",
+        "comunicacion": "COM",
+        "network": "COM",
+        "d": "D",
+        "datos": "D",
+        "data": "D",
+        "informacion": "D",
+        "s": "S",
+        "servicio": "S",
+        "service": "S",
+        "ps": "PS",
+        "personal": "PS",
+        "persona": "PS",
+        "l": "L",
+        "instalacion": "L",
+        "location": "L",
+        "aux": "AUX",
+        "auxiliar": "AUX"
+    }
+    
+    tipo_lower = tipo_activo.lower()
+    categoria = None
+    
+    # Buscar categoría
+    for key, cat in mapeo.items():
+        if key in tipo_lower:
+            categoria = cat
+            break
+    
+    # Si no encontramos categoría, retornar vulnerabilidades generales
+    if not categoria or categoria not in VULNERABILIDADES_CATALOGO:
+        return [
+            {"codigo": "SW-V01", "nombre": "Software desactualizado", "descripcion": "Falta de parches de seguridad", "nivel": "Alto"},
+            {"codigo": "SW-V05", "nombre": "Autenticación débil", "descripcion": "Mecanismos de autenticación insuficientes", "nivel": "Alto"},
+            {"codigo": "PS-V01", "nombre": "Falta de formación", "descripcion": "Personal sin capacitación en seguridad", "nivel": "Alto"}
+        ]
+    
+    return VULNERABILIDADES_CATALOGO[categoria]["vulnerabilidades"]
+
+
+def construir_contexto_vulnerabilidades(tipo_activo: str) -> str:
+    """
+    Construye el contexto de vulnerabilidades para la IA.
+    """
+    vulns = get_vulnerabilidades_por_tipo(tipo_activo)
+    
+    contexto = "\n## VULNERABILIDADES TÍPICAS PARA ESTE TIPO DE ACTIVO:\n"
+    contexto += "Considera estas vulnerabilidades al analizar el activo:\n\n"
+    
+    for vuln in vulns[:10]:  # Limitar a 10 vulnerabilidades más relevantes
+        contexto += f"- **{vuln['codigo']}** - {vuln['nombre']}: {vuln['descripcion']} [Nivel: {vuln['nivel']}]\n"
+    
+    contexto += "\n💡 Usa estas vulnerabilidades como referencia para identificar debilidades específicas del activo.\n"
+    
+    return contexto
+
+
 # ==================== PROMPT MEJORADO PARA IA ====================
 
 def construir_prompt_experto(
@@ -395,7 +583,7 @@ def construir_prompt_experto(
     valoracion_c: int
 ) -> str:
     """
-    Construye un prompt optimizado para que la IA identifique amenazas.
+    Construye un prompt optimizado para que la IA identifique amenazas y vulnerabilidades.
     """
     # Obtener amenazas sugeridas para el tipo
     amenazas_sugeridas = get_amenazas_para_tipo_activo(activo_tipo)
@@ -408,6 +596,9 @@ def construir_prompt_experto(
     if not amenazas_df.empty:
         for _, row in amenazas_df.iterrows():
             lista_amenazas += f"- {row['codigo']}: {row['amenaza']}\n"
+    
+    # Obtener contexto de vulnerabilidades
+    contexto_vulns = construir_contexto_vulnerabilidades(activo_tipo)
     
     prompt = f"""Eres un experto certificado en MAGERIT v3 e ISO 27002:2022.
 
@@ -423,10 +614,14 @@ def construir_prompt_experto(
 ## CATÁLOGO COMPLETO DE AMENAZAS (USA SOLO ESTOS CÓDIGOS):
 {lista_amenazas}
 
+{contexto_vulns}
+
 ## TU TAREA:
 1. Selecciona 4-6 amenazas RELEVANTES para este activo específico
-2. Para cada amenaza, calcula la degradación D/I/C (0-100%)
-3. Considera: tipo de activo, criticidad, y dimensión más valorada
+2. Para cada amenaza, identifica la vulnerabilidad específica que la hace posible
+3. Usa el catálogo de vulnerabilidades como referencia para describir debilidades concretas
+4. Calcula la degradación D/I/C (0-100%) considerando la vulnerabilidad
+5. Considera: tipo de activo, criticidad, y dimensión más valorada
 
 ## FORMATO DE RESPUESTA (JSON VÁLIDO):
 ```json
@@ -435,21 +630,23 @@ def construir_prompt_experto(
     {{
       "codigo_amenaza": "A.5",
       "nombre_amenaza": "Suplantación de identidad",
-      "vulnerabilidad": "Descripción de la vulnerabilidad asociada",
+      "vulnerabilidad": "Autenticación débil con credenciales predeterminadas y sin autenticación multifactor",
       "degradacion_d": 30,
       "degradacion_i": 60,
       "degradacion_c": 80,
-      "justificacion": "Por qué esta amenaza aplica a este activo"
+      "justificacion": "El sistema permite acceso con credenciales débiles, facilitando suplantación de identidad"
     }}
   ]
 }}
 ```
 
 ## REGLAS:
-1. USA SOLO códigos del catálogo proporcionado
-2. Degradaciones: 0-100, siendo 100 destrucción total
-3. Ajusta degradación según la criticidad ({criticidad}/4)
-4. Prioriza dimensión con mayor valoración
+1. USA SOLO códigos de amenaza del catálogo proporcionado
+2. Describe vulnerabilidades ESPECÍFICAS y TÉCNICAS (no genéricas)
+3. Degradaciones: 0-100, siendo 100 destrucción total
+4. Ajusta degradación según la criticidad ({criticidad}/4)
+5. Prioriza dimensión con mayor valoración
+6. Relaciona amenazas con vulnerabilidades concretas del catálogo
 
 Responde SOLO con el JSON, sin explicaciones adicionales:"""
 
