@@ -1,0 +1,109 @@
+{
+  "respuestas_cuestionario": [
+    {
+      "nombre_activo": "Servidor Físico Dell PowerEdge R750",
+      "respuestas": {
+        "SF-D1": "4",
+        "SF-D2": "5",
+        "SF-D3": "4",
+        "SF-D4": "4", 
+        "SF-D5": "5",
+        "SF-I1": "4",
+        "SF-I2": "3",
+        "SF-I3": "4",
+        "SF-I4": "3",
+        "SF-I5": "4",
+        "SF-C1": "5",
+        "SF-C2": "4",
+        "SF-C3": "5",
+        "SF-C4": "4",
+        "SF-C5": "4"
+      },
+      "justificacion": "Servidor físico crítico que hospeda múltiples VMs de producción. Su falla afectaría servicios esenciales. Alto valor por hardware especializado y licencias VMware."
+    },
+    {
+      "nombre_activo": "VM-DB-ORACLE-PROD-01",
+      "respuestas": {
+        "SF-D1": "5",
+        "SF-D2": "5", 
+        "SF-D3": "5",
+        "SF-D4": "4",
+        "SF-D5": "4",
+        "SF-I1": "4",
+        "SF-I2": "5",
+        "SF-I3": "4",
+        "SF-I4": "4",
+        "SF-I5": "3",
+        "SF-C1": "5",
+        "SF-C2": "5",
+        "SF-C3": "4",
+        "SF-C4": "5",
+        "SF-C5": "4"
+      },
+      "justificacion": "Base de datos Oracle con información financiera crítica. Contiene datos sensibles de nómina, contabilidad y estados financieros. Disponibilidad 24/7 requerida."
+    },
+    {
+      "nombre_activo": "VM-WEB-NGINX-PROD-02",
+      "respuestas": {
+        "SF-D1": "4",
+        "SF-D2": "3",
+        "SF-D3": "3", 
+        "SF-D4": "3",
+        "SF-D5": "3",
+        "SF-I1": "3",
+        "SF-I2": "3",
+        "SF-I3": "4",
+        "SF-I4": "3",
+        "SF-I5": "2",
+        "SF-C1": "4",
+        "SF-C2": "4",
+        "SF-C3": "4",
+        "SF-C4": "3",
+        "SF-C5": "3"
+      },
+      "justificacion": "Servidor web que maneja portal estudiantil. Importante para operaciones diarias pero tiene redundancia y balanceado de carga. Datos menos críticos."
+    },
+    {
+      "nombre_activo": "Rack Primario A-03 42U",
+      "respuestas": {
+        "SF-D1": "5",
+        "SF-D2": "4",
+        "SF-D3": "4",
+        "SF-D4": "5",
+        "SF-D5": "4",
+        "SF-I1": "4",
+        "SF-I2": "3",
+        "SF-I3": "3",
+        "SF-I4": "4",
+        "SF-I5": "4",
+        "SF-C1": "4",
+        "SF-C2": "5",
+        "SF-C3": "5",
+        "SF-C4": "4",
+        "SF-C5": "5"
+      },
+      "justificacion": "Infraestructura física crítica que soporta múltiples servidores de producción. Su falla (eléctrica, refrigeración, red) impactaría severamente las operaciones."
+    },
+    {
+      "nombre_activo": "DB-POSTGRESQL-ACAD-01",
+      "respuestas": {
+        "SF-D1": "4",
+        "SF-D2": "4",
+        "SF-D3": "4",
+        "SF-D4": "3",
+        "SF-D5": "4",
+        "SF-I1": "3",
+        "SF-I2": "4",
+        "SF-I3": "3",
+        "SF-I4": "3",
+        "SF-I5": "3",
+        "SF-C1": "4",
+        "SF-C2": "4",
+        "SF-C3": "3",
+        "SF-C4": "4",
+        "SF-C5": "3"
+      },
+      "justificacion": "Base de datos académica con información de estudiantes y docentes. Crítica para operación académica diaria pero con menor impacto financiero que sistemas ERP."
+    }
+  ]
+}

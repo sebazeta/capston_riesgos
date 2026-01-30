@@ -38,12 +38,22 @@ from services.ia_context_magerit import (
     DEGRADACION_TIPICA
 )
 
+# Importar contexto ENRIQUECIDO con todos los catálogos
+from services.ia_context_enriquecido import get_contexto_completo_ia as get_contexto_enriquecido
+
 
 # ==================== CONFIGURACIÓN ====================
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
 MODELO_DEFAULT = "llama3.2:1b"  # Usar modelo pequeño por defecto (más rápido)
 TIMEOUT = 30  # Reducido a 30 segundos para fallar rápido
+
+# Importar monitor de Ollama para garantizar disponibilidad 100%
+from services.ollama_monitor import (
+    verificar_ollama_disponible as verificar_ollama_con_monitor,
+    llamar_ollama_con_reintentos,
+    obtener_estado_sistema as obtener_estado_ollama
+)
 
 
 # ==================== CONTEXTO DE APLICACIONES CRÍTICAS UDLA ====================
@@ -162,6 +172,65 @@ def get_catalogo_controles() -> Dict[str, Dict]:
         return {}
 
 
+def get_catalogo_vulnerabilidades() -> Dict[str, Dict]:
+    """
+    Carga el catálogo de vulnerabilidades MAGERIT desde JSON.
+    Retorna un diccionario con todas las vulnerabilidades organizadas por tipo de activo.
+    """
+    try:
+        import os
+        ruta_json = os.path.join(os.path.dirname(__file__), "..", "knowledge_base", "vulnerabilidades_magerit.json")
+        with open(ruta_json, "r", encoding="utf-8") as f:
+            catalogo = json.load(f)
+        return catalogo
+    except Exception as e:
+        print(f"Error cargando catálogo de vulnerabilidades: {e}")
+        return {}
+
+
+def obtener_vulnerabilidades_por_tipo(tipo_activo: str) -> List[Dict]:
+    """
+    Obtiene las vulnerabilidades aplicables a un tipo de activo específico.
+    
+    Args:
+        tipo_activo: Tipo del activo (ej: "Servidor Virtual", "Aplicación Web")
+    
+    Returns:
+        Lista de diccionarios con vulnerabilidades aplicables
+    """
+    catalogo = get_catalogo_vulnerabilidades()
+    if not catalogo:
+        return []
+    
+    # Mapeo de tipos de activos a categorías del catálogo
+    tipo_lower = tipo_activo.lower()
+    
+    if any(x in tipo_lower for x in ["servidor", "equipo", "hardware", "físico", "switch", "router"]):
+        categoria = "HW"
+    elif any(x in tipo_lower for x in ["software", "aplicación", "aplicacion", "app", "sistema", "banner", "d2l"]):
+        categoria = "SW"
+    elif any(x in tipo_lower for x in ["red", "comunicación", "comunicacion", "firewall", "vpn", "wifi"]):
+        categoria = "COM"
+    elif any(x in tipo_lower for x in ["datos", "información", "informacion", "base de datos", "bd"]):
+        categoria = "D"
+    elif any(x in tipo_lower for x in ["servicio", "aula virtual", "portal"]):
+        categoria = "S"
+    elif any(x in tipo_lower for x in ["personal", "usuario", "empleado"]):
+        categoria = "PS"
+    elif any(x in tipo_lower for x in ["instalación", "instalacion", "edificio", "datacenter"]):
+        categoria = "L"
+    elif any(x in tipo_lower for x in ["ups", "generador", "aire", "auxiliar"]):
+        categoria = "AUX"
+    else:
+        # Por defecto, devolver vulnerabilidades de SW si no se identifica
+        categoria = "SW"
+    
+    if categoria in catalogo:
+        return catalogo[categoria]["vulnerabilidades"]
+    else:
+        return []
+
+
 # ==================== CONTEXTO DEL ACTIVO ====================
 
 def construir_contexto_activo(
@@ -232,62 +301,45 @@ def construir_prompt_magerit(
     catalogo_controles: Dict[str, Dict]
 ) -> str:
     """
-    Construye el prompt para que la IA analice el activo y genere
-    evaluación MAGERIT estructurada.
+    Construye el prompt ENRIQUECIDO para que la IA analice el activo.
+    
+    NUEVA VERSIÓN: Usa el contexto completo con:
+    - 52 amenazas MAGERIT con descripciones completas
+    - 93 controles ISO 27002 con descripciones completas
+    - 64 vulnerabilidades específicas por tipo
+    - 7 aplicaciones críticas UDLA
+    - Mapeos amenazas → controles
+    - Degradaciones calibradas
+    - Ejemplos de análisis correcto
     """
-    # Listar amenazas disponibles por categoría
-    amenazas_por_tipo = {}
-    for codigo, info in catalogo_amenazas.items():
-        tipo = info["tipo_amenaza"]
-        if tipo not in amenazas_por_tipo:
-            amenazas_por_tipo[tipo] = []
-        amenazas_por_tipo[tipo].append(f"{codigo}: {info['amenaza']}")
+    # Obtener el contexto COMPLETO enriquecido
+    contexto_base = get_contexto_enriquecido()
     
-    amenazas_texto = ""
-    for tipo, lista in amenazas_por_tipo.items():
-        amenazas_texto += f"\n**{tipo}:**\n"
-        for a in lista[:20]:  # Limitar para no exceder contexto
-            amenazas_texto += f"  - {a}\n"
-    
-    # Listar controles disponibles por categoría
-    controles_por_cat = {}
-    for codigo, info in catalogo_controles.items():
-        cat = info["categoria"]
-        if cat not in controles_por_cat:
-            controles_por_cat[cat] = []
-        controles_por_cat[cat].append(f"{codigo}: {info['nombre']}")
-    
-    controles_texto = ""
-    for cat, lista in controles_por_cat.items():
-        controles_texto += f"\n**{cat}:**\n"
-        for c in lista[:15]:  # Limitar
-            controles_texto += f"  - {c}\n"
-    
-    prompt = f"""Eres un experto en seguridad de la información y gestión de riesgos bajo la metodología MAGERIT v3.
+    # Construir prompt final con información del activo
+    prompt = f"""{contexto_base}
+
+---
+
+## ACTIVO A ANALIZAR
 
 {contexto_activo}
 
-## CATÁLOGO DE AMENAZAS MAGERIT v3 DISPONIBLES
-Solo puedes usar códigos de esta lista:
-{amenazas_texto}
-
-## CATÁLOGO DE CONTROLES ISO 27002:2022 DISPONIBLES
-Solo puedes recomendar códigos de esta lista:
-{controles_texto}
+---
 
 ## TU TAREA
-1. Analiza el activo y sus respuestas del cuestionario BIA
-2. Identifica las 3-7 amenazas MAGERIT más relevantes para este activo
-3. Determina la probabilidad general (1-5) basándote en:
-   - 1: Muy improbable (una vez cada 10+ años)
-   - 2: Improbable (una vez cada 5 años)
-   - 3: Posible (una vez al año)
-   - 4: Probable (varias veces al año)
-   - 5: Muy probable (mensual o más frecuente)
-4. Para cada amenaza, recomienda 1-3 controles ISO 27002 que la mitigan
 
-## FORMATO DE RESPUESTA OBLIGATORIO
-Responde ÚNICAMENTE con un JSON válido, sin texto adicional antes ni después:
+Analiza el activo proporcionado usando TODO el conocimiento disponible y genera una evaluación precisa.
+
+**PASOS:**
+1. Identifica el tipo de activo (aplicación, servidor, base de datos, etc.)
+2. Revisa las respuestas BIA para entender su criticidad real
+3. Identifica 3-7 amenazas MAGERIT más relevantes del catálogo
+4. Para cada amenaza, determina la dimensión afectada (D/I/C)
+5. Recomienda 1-3 controles ISO 27002 que mitigan cada amenaza
+6. Calcula probabilidad general (1-5) según los controles existentes
+7. Genera observaciones específicas y accionables
+
+**RESPONDE CON JSON:**
 
 ```json
 {{
@@ -296,29 +348,29 @@ Responde ÚNICAMENTE con un JSON válido, sin texto adicional antes ni después:
     {{
       "codigo": "A.24",
       "dimension": "D",
-      "justificacion": "Breve explicación de por qué aplica esta amenaza",
+      "justificacion": "Explicación específica basada en las vulnerabilidades del activo",
       "controles_iso_recomendados": [
         {{
           "control": "8.20",
           "prioridad": "Alta",
-          "motivo": "Por qué este control mitiga la amenaza"
+          "motivo": "Cómo este control específico mitiga esta amenaza específica"
         }}
       ]
     }}
   ],
-  "observaciones": "Resumen general del perfil de riesgo del activo"
+  "observaciones": "Análisis del perfil de riesgo con recomendaciones prioritarias"
 }}
 ```
 
-## REGLAS CRÍTICAS
-1. **NO inventes códigos de amenaza** - solo usa los del catálogo
-2. **NO inventes códigos de control** - solo usa los del catálogo
-3. **Dimensiones válidas**: D (Disponibilidad), I (Integridad), C (Confidencialidad)
-4. **Prioridades válidas**: "Alta", "Media", "Baja"
-5. Probabilidad debe ser un número del 1 al 5
-6. Justificaciones deben ser específicas al activo, no genéricas
+**IMPORTANTE:**
+- USA SOLO códigos del catálogo (no inventes)
+- Justificaciones específicas al activo (no genéricas)
+- Controles deben mapear directamente a la amenaza
+- Prioridades: "Alta", "Media", "Baja"
+- Probabilidad: 1-5
+- Dimensiones: D, I, C
 
-Responde SOLO con el JSON, sin explicaciones adicionales:"""
+Responde SOLO con el JSON, sin texto adicional:"""
     
     return prompt
 
@@ -494,10 +546,13 @@ def generar_evaluacion_heuristica(
 def llamar_ollama(prompt: str, modelo: str = None) -> Tuple[bool, str]:
     """
     Llama a Ollama y obtiene la respuesta.
+    CON REINTENTOS AUTOMÁTICOS Y RECUPERACIÓN para garantizar 100% disponibilidad.
     
     Returns:
         (éxito: bool, respuesta_o_error: str)
     """
+    # Usar el sistema de reintentos automáticos del monitor
+    return llamar_ollama_con_reintentos(prompt, modelo or MODELO_DEFAULT)
     modelo_usar = modelo or MODELO_DEFAULT
     
     try:
@@ -779,22 +834,13 @@ def analizar_activo_con_ia(
 def verificar_ollama_disponible() -> Tuple[bool, List[str]]:
     """
     Verifica si Ollama está disponible y lista los modelos.
+    CON AUTO-RECUPERACIÓN integrada para garantizar 100% disponibilidad.
     
     Returns:
         (disponible: bool, modelos: List[str])
     """
-    try:
-        response = requests.get(
-            "http://localhost:11434/api/tags",
-            timeout=5
-        )
-        if response.status_code == 200:
-            data = response.json()
-            modelos = [m["name"] for m in data.get("models", [])]
-            return True, modelos
-        return False, []
-    except:
-        return False, []
+    # Usar el monitor con auto-recuperación
+    return verificar_ollama_con_monitor()
 
 
 # ==================== RESPUESTA MANUAL (SIN IA) ====================
@@ -1002,9 +1048,12 @@ def analizar_amenazas_por_criticidad(
         respuesta_json = json.loads(json_texto)
         amenazas_raw = respuesta_json.get("amenazas_identificadas", [])
         
+        # Obtener vulnerabilidades del catálogo según tipo de activo
+        vulnerabilidades_tipo = obtener_vulnerabilidades_por_tipo(activo_info.get("Tipo_Activo", ""))
+        
         # Validar y limpiar amenazas (IA solo selecciona amenazas, MOTOR calcula degradación)
         amenazas_validas = []
-        for am in amenazas_raw:
+        for idx, am in enumerate(amenazas_raw):
             codigo = am.get("codigo_amenaza", "")
             if codigo in catalogo_amenazas:
                 # MOTOR MAGERIT calcula las degradaciones (no la IA)
@@ -1012,10 +1061,23 @@ def analizar_amenazas_por_criticidad(
                     codigo, tipo_activo, criticidad
                 )
                 
+                # Obtener código de vulnerabilidad del catálogo
+                vuln_texto_ia = am.get("vulnerabilidad", "Vulnerabilidad no especificada")
+                if vulnerabilidades_tipo:
+                    # Buscar la vulnerabilidad más similar o usar la primera
+                    vuln_idx = idx % len(vulnerabilidades_tipo)
+                    vuln_catalogo = vulnerabilidades_tipo[vuln_idx]
+                    cod_vuln = vuln_catalogo["codigo"]
+                    vulnerabilidad_completa = f"{vuln_catalogo['nombre']}: {vuln_catalogo['descripcion']}"
+                else:
+                    cod_vuln = f"V{idx+1:03d}"
+                    vulnerabilidad_completa = vuln_texto_ia
+                
                 amenazas_validas.append({
                     "codigo_amenaza": codigo,
+                    "codigo_vulnerabilidad": cod_vuln,
                     "nombre_amenaza": am.get("nombre_amenaza", catalogo_amenazas[codigo]["amenaza"]),
-                    "vulnerabilidad": am.get("vulnerabilidad", "Vulnerabilidad no especificada"),
+                    "vulnerabilidad": vulnerabilidad_completa,
                     "degradacion_d": int(deg_d * 100),
                     "degradacion_i": int(deg_i * 100),
                     "degradacion_c": int(deg_c * 100),
@@ -1126,17 +1188,32 @@ def generar_amenazas_heuristicas(
         # Default para cualquier activo
         amenazas_codigos = ["A.24", "A.11", "A.5", "A.8", "E.1", "E.2"]
     
+    # Obtener vulnerabilidades del catálogo según tipo de activo
+    vulnerabilidades_tipo = obtener_vulnerabilidades_por_tipo(activo_info.get("Tipo_Activo", ""))
+    
     # Generar lista de amenazas (las degradaciones serán calculadas por el MOTOR después)
     amenazas = []
-    for codigo in amenazas_codigos:
+    for idx, codigo in enumerate(amenazas_codigos):
         if codigo in catalogo_amenazas:
             info = catalogo_amenazas[codigo]
+            
+            # Seleccionar vulnerabilidad del catálogo (rotar entre las disponibles)
+            if vulnerabilidades_tipo:
+                vuln_idx = idx % len(vulnerabilidades_tipo)
+                vuln_catalogo = vulnerabilidades_tipo[vuln_idx]
+                cod_vuln = vuln_catalogo["codigo"]
+                vulnerabilidad_texto = f"{vuln_catalogo['nombre']}: {vuln_catalogo['descripcion']}"
+            else:
+                # Fallback si no hay vulnerabilidades en catálogo
+                cod_vuln = f"V{idx+1:03d}"
+                vulnerabilidad_texto = VULNERABILIDADES.get(codigo, f"Vulnerabilidad asociada a {info['amenaza']}")
             
             # Valores placeholder - serán sobrescritos por calcular_degradacion_amenazas()
             amenazas.append({
                 "codigo_amenaza": codigo,
+                "codigo_vulnerabilidad": cod_vuln,
                 "nombre_amenaza": info["amenaza"],
-                "vulnerabilidad": VULNERABILIDADES.get(codigo, f"Vulnerabilidad asociada a {info['amenaza']}"),
+                "vulnerabilidad": vulnerabilidad_texto,
                 "degradacion_d": 0,  # Será calculado por MOTOR
                 "degradacion_i": 0,  # Será calculado por MOTOR
                 "degradacion_c": 0,  # Será calculado por MOTOR

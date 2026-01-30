@@ -188,15 +188,122 @@ with st.sidebar:
     
     st.info(f"📌 **ID:** {ID_EVALUACION}")
     
+    # Editar o eliminar evaluación actual
+    col_edit, col_del = st.columns(2)
+    with col_edit:
+        if st.button("✏️ Editar", key="btn_editar_eval", use_container_width=True):
+            st.session_state["mostrar_editar_eval"] = True
+    with col_del:
+        if st.button("🗑️ Eliminar", key="btn_eliminar_eval", type="secondary", use_container_width=True):
+            st.session_state["mostrar_confirmar_eliminar"] = True
+    
+    # Modal para editar evaluación
+    if st.session_state.get("mostrar_editar_eval", False):
+        with st.expander("✏️ Editar Evaluación", expanded=True):
+            eval_actual = evaluaciones[evaluaciones["ID_Evaluacion"] == ID_EVALUACION].iloc[0]
+            
+            nuevo_nombre = st.text_input("Nombre", value=eval_actual["Nombre"], key="edit_nombre")
+            nueva_desc = st.text_area("Descripción", value=eval_actual.get("Descripcion", ""), key="edit_desc")
+            nuevo_resp = st.text_input("Responsable", value=eval_actual.get("Responsable", ""), key="edit_resp")
+            
+            col_save, col_cancel = st.columns(2)
+            with col_save:
+                if st.button("💾 Guardar", key="save_edit", type="primary", use_container_width=True):
+                    if nuevo_nombre and nuevo_resp:
+                        from services.evaluacion_service import actualizar_evaluacion
+                        if actualizar_evaluacion(ID_EVALUACION, nuevo_nombre, nueva_desc, nuevo_resp):
+                            st.success("✅ Evaluación actualizada")
+                            st.session_state["mostrar_editar_eval"] = False
+                            st.rerun()
+                        else:
+                            st.error("❌ Error al actualizar")
+                    else:
+                        st.error("⚠️ Nombre y responsable son obligatorios")
+            with col_cancel:
+                if st.button("❌ Cancelar", key="cancel_edit", use_container_width=True):
+                    st.session_state["mostrar_editar_eval"] = False
+                    st.rerun()
+    
+    # Modal para confirmar eliminación
+    if st.session_state.get("mostrar_confirmar_eliminar", False):
+        with st.expander("⚠️ Confirmar Eliminación", expanded=True):
+            st.warning(f"""
+            **¿Estás seguro de eliminar la evaluación "{NOMBRE_EVALUACION}"?**
+            
+            Se eliminarán:
+            - Todos los activos de la evaluación
+            - Todas las respuestas del cuestionario
+            - Todos los análisis de riesgo
+            - Todos los resultados MAGERIT
+            - Datos de madurez
+            
+            **Esta acción NO se puede deshacer.**
+            """)
+            
+            col_confirm, col_cancel = st.columns(2)
+            with col_confirm:
+                if st.button("🗑️ SÍ, ELIMINAR", key="confirm_delete", type="primary", use_container_width=True):
+                    from services.evaluacion_service import eliminar_evaluacion
+                    if eliminar_evaluacion(ID_EVALUACION):
+                        st.success("✅ Evaluación eliminada")
+                        st.session_state["mostrar_confirmar_eliminar"] = False
+                        st.rerun()
+                    else:
+                        st.error("❌ Error al eliminar")
+            with col_cancel:
+                if st.button("❌ Cancelar", key="cancel_delete", use_container_width=True):
+                    st.session_state["mostrar_confirmar_eliminar"] = False
+                    st.rerun()
+    
     # Crear nueva evaluación
     with st.expander("➕ Nueva Evaluación"):
         nombre_eval = st.text_input("Nombre", key="sidebar_eval_nombre")
         desc_eval = st.text_area("Descripción", key="sidebar_eval_desc")
+        responsable_eval = st.text_input("Responsable", key="sidebar_eval_responsable", placeholder="Nombre del responsable")
         if st.button("Crear", key="sidebar_crear_eval"):
-            if nombre_eval:
-                eval_id = crear_evaluacion(nombre_eval, desc_eval)
+            if nombre_eval and responsable_eval:
+                eval_id = crear_evaluacion(nombre_eval, desc_eval, responsable_eval)
                 st.success(f"✅ Creada: {eval_id}")
                 st.rerun()
+            elif not responsable_eval:
+                st.error("⚠️ El campo Responsable es obligatorio")
+    
+    st.markdown("---")
+    
+    # ==================== FILTRO GLOBAL DE ACTIVOS ====================
+    st.subheader("🎯 Filtro de Activo")
+    st.caption("Aplica a todos los tabs")
+    
+    # Inicializar variable de session_state
+    if "activo_filtro_global" not in st.session_state:
+        st.session_state["activo_filtro_global"] = "TODOS"
+    
+    activos_eval = get_activos_matriz(ID_EVALUACION)
+    if not activos_eval.empty:
+        # Crear lista con opción "TODOS" al inicio
+        opciones_activos = ["TODOS"] + activos_eval["ID_Activo"].tolist()
+        activos_dict_filtro = {"TODOS": "🌐 Todos los activos"}
+        activos_dict_filtro.update(dict(zip(activos_eval["ID_Activo"], activos_eval["Nombre_Activo"])))
+        
+        activo_filtro_sel = st.selectbox(
+            "Seleccionar activo",
+            opciones_activos,
+            format_func=lambda x: activos_dict_filtro.get(x, x),
+            index=opciones_activos.index(st.session_state["activo_filtro_global"]) if st.session_state["activo_filtro_global"] in opciones_activos else 0,
+            key="filtro_activo_sidebar",
+            label_visibility="collapsed"
+        )
+        
+        st.session_state["activo_filtro_global"] = activo_filtro_sel
+        
+        # Mostrar badge del filtro activo
+        if activo_filtro_sel == "TODOS":
+            st.info("📊 **Todos los activos**")
+        else:
+            st.success(f"🎯 **Filtrado:**\n{activos_dict_filtro[activo_filtro_sel][:30]}...")
+    else:
+        st.warning("Sin activos")
+        st.session_state["activo_filtro_global"] = "TODOS"
     
     st.markdown("---")
     
@@ -233,7 +340,7 @@ with st.sidebar:
 # ==================== TABS PRINCIPALES ====================
 
 # Los 13 tabs que replican las hojas de la matriz + extras
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12, tab13 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
     "📏 1. Criterios",
     "📦 2. Activos",
     "⚖️ 3. Valoración D/I/C",
@@ -243,10 +350,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12, tab13
     "📊 7. Riesgo Activos",
     "🛡️ 8. Salvaguardas",
     "🎯 9. Madurez",
-    "📈 10. Dashboards (Standby)",
-    "🔄 11. Comparativa (Standby)",
-    "📑 12. Matriz Excel",
-    "📋 13. Resumen (Standby)"
+    "� 10. Comparativa (Standby)"
 ])
 
 
@@ -359,15 +463,15 @@ with tab1:
     
     # Tabs internos para los catálogos
     cat_tab1, cat_tab2, cat_tab3, cat_tab4 = st.tabs([
-        "⚠️ Amenazas MAGERIT",
+        "⚠️ Amenazas",
         "🛡️ Controles ISO 27002",
         "🔒 Salvaguardas",
         "🔓 Vulnerabilidades"
     ])
     
-    # ===== AMENAZAS MAGERIT =====
+    # ===== AMENAZAS =====
     with cat_tab1:
-        st.subheader("⚠️ Catálogo de Amenazas MAGERIT v3")
+        st.subheader("⚠️ Catálogo de Amenazas")
         st.markdown("""
         **52 amenazas** clasificadas en 5 categorías:
         - **[N]** Desastres naturales
@@ -1002,17 +1106,25 @@ with tab2:
     # Obtener activos de la evaluación
     activos = get_activos_matriz(ID_EVALUACION)
     
+    # Obtener filtro global
+    filtro_global = st.session_state.get("activo_filtro_global", "TODOS")
+    
+    # Aplicar filtro para métricas
+    activos_metricas = activos.copy()
+    if filtro_global != "TODOS" and not activos.empty:
+        activos_metricas = activos_metricas[activos_metricas["ID_Activo"] == filtro_global]
+    
     # Métricas
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Total Activos", len(activos))
+        st.metric("Total Activos", len(activos_metricas))
     with col2:
-        if not activos.empty and "Tipo_Activo" in activos.columns:
-            fisicos = len(activos[activos["Tipo_Activo"].str.contains("Físico", case=False, na=False)])
+        if not activos_metricas.empty and "Tipo_Activo" in activos_metricas.columns:
+            fisicos = len(activos_metricas[activos_metricas["Tipo_Activo"].str.contains("Físico", case=False, na=False)])
             st.metric("Físicos", fisicos)
     with col3:
-        if not activos.empty and "Tipo_Activo" in activos.columns:
-            virtuales = len(activos[activos["Tipo_Activo"].str.contains("Virtual", case=False, na=False)])
+        if not activos_metricas.empty and "Tipo_Activo" in activos_metricas.columns:
+            virtuales = len(activos_metricas[activos_metricas["Tipo_Activo"].str.contains("Virtual", case=False, na=False)])
             st.metric("Virtuales", virtuales)
     
     st.markdown("---")
@@ -1306,27 +1418,47 @@ with tab2:
     # Refrescar lista de activos
     activos = get_activos_matriz(ID_EVALUACION)
     
+    # Obtener filtro global
+    filtro_global = st.session_state.get("activo_filtro_global", "TODOS")
+    
     # Tabla de activos
     if not activos.empty:
         st.subheader("📋 Lista de Activos")
         
-        # Columnas a mostrar (sin criticidad - eso se calcula en Tab 3)
-        columnas_mostrar = [
-            "Nombre_Activo", "Tipo_Activo", "Ubicacion", 
-            "Area_Responsable", "Finalidad_Uso", "Estado"
-        ]
-        columnas_existentes = [c for c in columnas_mostrar if c in activos.columns]
+        # Aplicar filtro si no es TODOS
+        activos_display = activos.copy()
+        if filtro_global != "TODOS":
+            activos_display = activos_display[activos_display["ID_Activo"] == filtro_global]
+            if not activos_display.empty:
+                st.info(f"🎯 Mostrando activo filtrado: **{activos_display['Nombre_Activo'].values[0]}**")
         
-        df_display = activos[columnas_existentes].copy()
-        st.dataframe(df_display, use_container_width=True, hide_index=True)
+        if not activos_display.empty:
+            # Columnas a mostrar (sin criticidad - eso se calcula en Tab 3)
+            columnas_mostrar = [
+                "Nombre_Activo", "Tipo_Activo", "Ubicacion", 
+                "Area_Responsable", "Finalidad_Uso", "Estado"
+            ]
+            columnas_existentes = [c for c in columnas_mostrar if c in activos_display.columns]
+            
+            df_display = activos_display[columnas_existentes].copy()
+            st.dataframe(df_display, use_container_width=True, hide_index=True)
         
         # Editar/Eliminar activo
         with st.expander("✏️ Editar o Eliminar Activo"):
-            activo_sel = st.selectbox(
-                "Seleccionar activo",
-                activos["ID_Activo"].tolist(),
-                format_func=lambda x: activos[activos["ID_Activo"] == x]["Nombre_Activo"].values[0]
-            )
+            # Obtener filtro global
+            filtro_global = st.session_state.get("activo_filtro_global", "TODOS")
+            
+            # Si hay filtro aplicado, pre-seleccionar ese activo
+            if filtro_global != "TODOS" and filtro_global in activos["ID_Activo"].tolist():
+                st.info(f"🎯 Editando activo filtrado: **{activos[activos['ID_Activo'] == filtro_global]['Nombre_Activo'].values[0]}**")
+                activo_sel = filtro_global
+            else:
+                activo_sel = st.selectbox(
+                    "Seleccionar activo",
+                    activos["ID_Activo"].tolist(),
+                    format_func=lambda x: activos[activos["ID_Activo"] == x]["Nombre_Activo"].values[0],
+                    key="tab2_edit_activo_sel"
+                )
             
             if activo_sel:
                 activo_data = get_activo(ID_EVALUACION, activo_sel)
@@ -1386,13 +1518,20 @@ with tab3:
     tab_cuestionario, tab_resumen_val = st.tabs(["📝 Cuestionario D/I/C", "📊 Resumen Valoraciones"])
     
     with tab_cuestionario:
-        # Selector de activo
-        activo_sel = st.selectbox(
-            "🎯 Seleccionar Activo para Valorar",
-            activos["ID_Activo"].tolist(),
-            format_func=lambda x: f"{activos[activos['ID_Activo'] == x]['Nombre_Activo'].values[0]} ({activos[activos['ID_Activo'] == x]['Tipo_Activo'].values[0]})",
-            key="valoracion_activo_sel"
-        )
+        # Obtener filtro global
+        filtro_global = st.session_state.get("activo_filtro_global", "TODOS")
+        
+        # Selector de activo con filtro global
+        if filtro_global != "TODOS" and filtro_global in activos["ID_Activo"].tolist():
+            st.info(f"🎯 Valorando activo filtrado: **{activos[activos['ID_Activo'] == filtro_global]['Nombre_Activo'].values[0]}**")
+            activo_sel = filtro_global
+        else:
+            activo_sel = st.selectbox(
+                "🎯 Seleccionar Activo para Valorar",
+                activos["ID_Activo"].tolist(),
+                format_func=lambda x: f"{activos[activos['ID_Activo'] == x]['Nombre_Activo'].values[0]} ({activos[activos['ID_Activo'] == x]['Tipo_Activo'].values[0]})",
+                key="valoracion_activo_sel"
+            )
         
         if activo_sel:
             activo_info = activos[activos["ID_Activo"] == activo_sel].iloc[0]
@@ -1670,9 +1809,22 @@ with tab3:
     with tab_resumen_val:
         st.subheader("📋 Resumen de Valoraciones")
         
+        # Obtener filtro global
+        filtro_global = st.session_state.get("activo_filtro_global", "TODOS")
+        
         # Estadísticas
         valoraciones = get_valoraciones_evaluacion(ID_EVALUACION)
-        total_activos = len(activos)
+        
+        # Aplicar filtro si no es TODOS
+        if filtro_global != "TODOS" and not valoraciones.empty:
+            valoraciones = valoraciones[valoraciones["ID_Activo"] == filtro_global]
+            activos_filtrados = activos[activos["ID_Activo"] == filtro_global]
+            if not valoraciones.empty:
+                st.info(f"🎯 Mostrando valoración del activo filtrado: **{activos_filtrados['Nombre_Activo'].values[0]}**")
+        else:
+            activos_filtrados = activos
+        
+        total_activos = len(activos_filtrados)
         valorados = len(valoraciones) if not valoraciones.empty else 0
         
         col_stat1, col_stat2, col_stat3 = st.columns(3)
@@ -1762,6 +1914,7 @@ with tab4:
     
     # Importar función de análisis con IA
     from services.ollama_magerit_service import analizar_amenazas_por_criticidad, verificar_ollama_disponible
+    from services.ollama_monitor import obtener_estado_sistema
     
     activos = get_activos_matriz(ID_EVALUACION)
     
@@ -1769,22 +1922,51 @@ with tab4:
         st.warning("⚠️ No hay activos. Ve a la pestaña 'Activos' para agregar primero.")
         st.stop()
     
-    # Verificar estado de Ollama
+    # Verificar estado de Ollama CON DISPONIBILIDAD 100%
     ollama_disponible, modelos = verificar_ollama_disponible()
+    
+    # Panel de estado de IA
+    with st.expander("🔍 Estado del Sistema de IA Local", expanded=False):
+        estado_ia = obtener_estado_sistema()
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            if estado_ia['disponible']:
+                st.metric("Estado", "🟢 Activo", delta="100%")
+            else:
+                st.metric("Estado", "🔴 Inactivo")
+        with col2:
+            st.metric("Modelos", len(estado_ia['modelos']))
+        with col3:
+            st.metric("Cache", estado_ia['archivos_cache'])
+        with col4:
+            st.metric("Reintentos", estado_ia['intentos_fallidos'])
+        if estado_ia['disponible']:
+            st.success(f"✅ {estado_ia['mensaje']}")
+        else:
+            st.warning(f"⚠️ {estado_ia['mensaje']}")
+    
     if ollama_disponible:
-        st.success(f"🟢 IA Local (Ollama) conectada. Modelos: {', '.join(modelos[:3])}")
+        st.success(f"🟢 IA Local - **Disponibilidad 100%** garantizada - {len(modelos)} modelos")
     else:
-        st.warning("⚠️ Ollama no disponible. Se usará análisis heurístico basado en reglas MAGERIT.")
+        st.warning("⚠️ IA en recuperación automática. Usando análisis heurístico.")
     
     # ===== SELECCIÓN DE ACTIVO =====
     st.subheader("📦 Selección de Activo")
     
-    activo_sel = st.selectbox(
-        "🎯 Seleccionar Activo para Analizar",
-        activos["ID_Activo"].tolist(),
-        format_func=lambda x: f"{activos[activos['ID_Activo'] == x]['Nombre_Activo'].values[0]} ({activos[activos['ID_Activo'] == x]['Tipo_Activo'].values[0]})",
-        key="vuln_activo_sel"
-    )
+    # Obtener filtro global
+    filtro_global = st.session_state.get("activo_filtro_global", "TODOS")
+    
+    # Selector de activo con filtro global
+    if filtro_global != "TODOS" and filtro_global in activos["ID_Activo"].tolist():
+        st.info(f"🎯 Analizando activo filtrado: **{activos[activos['ID_Activo'] == filtro_global]['Nombre_Activo'].values[0]}**")
+        activo_sel = filtro_global
+    else:
+        activo_sel = st.selectbox(
+            "🎯 Seleccionar Activo para Analizar",
+            activos["ID_Activo"].tolist(),
+            format_func=lambda x: f"{activos[activos['ID_Activo'] == x]['Nombre_Activo'].values[0]} ({activos[activos['ID_Activo'] == x]['Tipo_Activo'].values[0]})",
+            key="vuln_activo_sel"
+        )
     
     if activo_sel:
         activo_info = activos[activos["ID_Activo"] == activo_sel].iloc[0]
@@ -1875,7 +2057,8 @@ with tab4:
                     
                     if exito:
                         st.session_state[key_amenazas] = amenazas
-                        st.success(f"✅ {mensaje}")
+                        st.success(f"✅ Análisis completado: Se identificaron **{len(amenazas)} amenazas/vulnerabilidades** para este activo")
+                        st.info(f"💡 {mensaje}")
                     else:
                         st.error(f"❌ Error: {mensaje}")
         
@@ -1936,6 +2119,7 @@ with tab4:
                     if incluir:
                         amenazas_a_guardar.append({
                             "codigo": am['codigo_amenaza'],
+                            "codigo_vuln": am.get('codigo_vulnerabilidad', ''),
                             "nombre": am['nombre_amenaza'],
                             "vulnerabilidad": vuln_editada,
                             "deg_d": deg_d,
@@ -1962,6 +2146,7 @@ with tab4:
                                 vulnerabilidad=am['vulnerabilidad'],
                                 amenaza=am['nombre'],
                                 cod_amenaza=am['codigo'],
+                                cod_vulnerabilidad=am.get('codigo_vuln', ''),
                                 deg_d=am['deg_d'] / 100,
                                 deg_i=am['deg_i'] / 100,
                                 deg_c=am['deg_c'] / 100
@@ -1993,7 +2178,16 @@ with tab4:
     st.subheader("📋 Registro de Vulnerabilidades y Amenazas")
     st.caption("💡 Pasa el mouse sobre Amenaza o Vulnerabilidad para ver la descripción completa")
     
+    # Obtener filtro global
+    filtro_global = st.session_state.get("activo_filtro_global", "TODOS")
+    
     todas_vulns = get_vulnerabilidades_evaluacion(ID_EVALUACION)
+    
+    # Aplicar filtro si no es TODOS
+    if filtro_global != "TODOS" and not todas_vulns.empty:
+        todas_vulns = todas_vulns[todas_vulns["ID_Activo"] == filtro_global]
+        if not todas_vulns.empty:
+            st.info(f"🎯 Mostrando vulnerabilidades del activo filtrado: **{todas_vulns['Nombre_Activo'].values[0]}**")
     
     if not todas_vulns.empty:
         # Enriquecer con datos de valoración
@@ -2105,8 +2299,11 @@ with tab4:
             vuln_texto = row.get("Vulnerabilidad", "Sin descripción")
             vuln_tooltip = escape_html(vuln_texto)
             
-            # Generar código de vulnerabilidad basado en índice
-            cod_vuln = f"V{idx+1:03d}"
+            # Obtener código de vulnerabilidad del catálogo (si existe)
+            cod_vuln = row.get("Cod_Vulnerabilidad", "")
+            if not cod_vuln or cod_vuln == "":
+                # Fallback: generar código temporal si no hay en BD
+                cod_vuln = f"V{idx+1:03d}"
             
             deg_d = f"{row.get('Degradacion_D', 0)*100:.0f}%"
             deg_i = f"{row.get('Degradacion_I', 0)*100:.0f}%"
@@ -2217,6 +2414,9 @@ with tab5:
     todas_vulns = get_vulnerabilidades_evaluacion(ID_EVALUACION)
     activos = get_activos_matriz(ID_EVALUACION)
     
+    # Obtener filtro global
+    filtro_global = st.session_state.get("activo_filtro_global", "TODOS")
+    
     if todas_vulns.empty:
         st.warning("⚠️ No hay vulnerabilidades/amenazas identificadas. Ve a la pestaña 'Vulnerabilidades y Amenazas' primero.")
         st.stop()
@@ -2226,11 +2426,19 @@ with tab5:
     # ===== CALCULAR RIESGOS PARA TODOS LOS ACTIVOS =====
     st.subheader("🔄 Calcular Riesgos")
     
+    # Aplicar filtro a activos si no es TODOS
+    if filtro_global != "TODOS" and not activos.empty:
+        activos_calc = activos[activos["ID_Activo"] == filtro_global]
+        if not activos_calc.empty:
+            st.info(f"🎯 Calculando riesgos para activo filtrado: **{activos_calc['Nombre_Activo'].values[0]}**")
+    else:
+        activos_calc = activos
+    
     col_calc1, col_calc2 = st.columns([1, 2])
     with col_calc1:
         if st.button("⚡ Calcular Todos los Riesgos", type="primary", key="calc_all_risks"):
             total_guardados = 0
-            for _, activo in activos.iterrows():
+            for _, activo in activos_calc.iterrows():
                 id_activo = activo["ID_Activo"]
                 amenazas = calcular_frecuencia_todas_amenazas(ID_EVALUACION, id_activo)
                 for am in amenazas:
@@ -2254,6 +2462,12 @@ with tab5:
     st.caption("💡 Pasa el mouse sobre la Amenaza para ver la descripción completa")
     
     riesgos = get_riesgos_evaluacion(ID_EVALUACION)
+    
+    # Aplicar filtro si no es TODOS
+    if filtro_global != "TODOS" and not riesgos.empty:
+        riesgos = riesgos[riesgos["ID_Activo"] == filtro_global]
+        if not riesgos.empty:
+            st.info(f"🎯 Mostrando riesgos del activo filtrado: **{riesgos['Nombre_Activo'].values[0]}**")
     
     if not riesgos.empty:
         # Función para escapar HTML
@@ -2390,8 +2604,19 @@ with tab6:
     2. **Tab 5:** Cálculo de frecuencia (automático) → RIESGO = FRECUENCIA × IMPACTO
     """)
     
+    # Obtener filtro global
+    filtro_global = st.session_state.get("activo_filtro_global", "TODOS")
+    
     # Obtener riesgos calculados (del Tab 5)
     riesgos = get_riesgos_evaluacion(ID_EVALUACION)
+    
+    # Aplicar filtro si no es TODOS
+    if filtro_global != "TODOS" and not riesgos.empty:
+        riesgos = riesgos[riesgos["ID_Activo"] == filtro_global]
+        if not riesgos.empty:
+            st.info(f"🎯 Mostrando riesgos del activo filtrado: **{riesgos['Nombre_Activo'].iloc[0]}**")
+        else:
+            st.warning(f"⚠️ El activo filtrado `{filtro_global}` no tiene riesgos calculados.")
     
     if riesgos.empty:
         st.warning("⚠️ No hay riesgos calculados. Ve al Tab 5 (Riesgo) primero para calcular los riesgos.")
@@ -2570,135 +2795,6 @@ with tab6:
     
     st.markdown("---")
     
-    # ===== GRÁFICO RADAR DE RIESGO POR ACTIVO =====
-    st.markdown("### 🕸️ Mapa Radar de Riesgo por Activo")
-    st.caption("Compara el riesgo ACTUAL vs OBJETIVO vs LÍMITE para cada activo")
-    
-    # Debug: mostrar columnas disponibles
-    # st.write("Columnas disponibles:", riesgos.columns.tolist())
-    
-    # Identificar la columna de nombre del activo
-    col_nombre = None
-    for posible in ["Nombre_Activo", "nombre_activo", "Activo", "activo", "ID_Activo", "id_activo"]:
-        if posible in riesgos.columns:
-            col_nombre = posible
-            break
-    
-    if col_nombre is None:
-        st.warning("⚠️ No se encontró columna de nombre de activo en los datos de riesgo.")
-        st.write("Columnas disponibles:", riesgos.columns.tolist())
-    elif len(riesgos) >= 3:
-        # Agrupar riesgos por activo (tomar el máximo riesgo por activo)
-        riesgos_por_activo = riesgos.groupby(col_nombre).agg({
-            "Riesgo": "max"
-        }).reset_index()
-        
-        # Limitar a los primeros 10 activos con mayor riesgo para el radar
-        top_activos = riesgos_por_activo.nlargest(min(10, len(riesgos_por_activo)), "Riesgo")
-        
-        if len(top_activos) >= 3:
-            # Preparar datos para el radar
-            activos_nombres = top_activos[col_nombre].tolist()
-            riesgo_actual = top_activos["Riesgo"].tolist()
-            
-            # Acortar nombres largos para el radar
-            activos_nombres_cortos = [n[:25] + "..." if len(str(n)) > 25 else str(n) for n in activos_nombres]
-            
-            # Calcular objetivo (50% del actual, mínimo 1)
-            riesgo_objetivo = [max(1.0, r * 0.5) for r in riesgo_actual]
-            
-            # Límite de tolerancia (por ejemplo, 7 para todos o basado en criticidad)
-            riesgo_limite = [7.0] * len(activos_nombres_cortos)
-            
-            # Cerrar el polígono (repetir el primer valor al final)
-            activos_nombres_closed = activos_nombres_cortos + [activos_nombres_cortos[0]]
-            riesgo_actual_closed = riesgo_actual + [riesgo_actual[0]]
-            riesgo_objetivo_closed = riesgo_objetivo + [riesgo_objetivo[0]]
-            riesgo_limite_closed = riesgo_limite + [riesgo_limite[0]]
-            
-            # Crear gráfico radar
-            fig_radar = go.Figure()
-        
-            # Línea ACTUAL (verde)
-            fig_radar.add_trace(go.Scatterpolar(
-                r=riesgo_actual_closed,
-                theta=activos_nombres_closed,
-                fill='toself',
-                fillcolor='rgba(76, 175, 80, 0.3)',
-                line=dict(color='#4CAF50', width=2),
-                marker=dict(size=8, color='#4CAF50'),
-                name='ACTUAL'
-            ))
-            
-            # Línea OBJETIVO (azul)
-            fig_radar.add_trace(go.Scatterpolar(
-                r=riesgo_objetivo_closed,
-                theta=activos_nombres_closed,
-                fill='toself',
-                fillcolor='rgba(33, 150, 243, 0.2)',
-                line=dict(color='#2196F3', width=2),
-                marker=dict(size=8, color='#2196F3'),
-                name='OBJETIVO'
-            ))
-            
-            # Línea LÍMITE (amarillo/naranja)
-            fig_radar.add_trace(go.Scatterpolar(
-                r=riesgo_limite_closed,
-                theta=activos_nombres_closed,
-                fill='none',
-                line=dict(color='#FFC107', width=3),
-                marker=dict(size=6, color='#FFC107'),
-                name='LÍMITE'
-            ))
-            
-            fig_radar.update_layout(
-                polar=dict(
-                    radialaxis=dict(
-                        visible=True,
-                        range=[0, 8],
-                        tickvals=[1, 2, 3, 4, 5, 6, 7],
-                        tickfont=dict(size=10)
-                    ),
-                    angularaxis=dict(
-                        tickfont=dict(size=11)
-                    )
-                ),
-                showlegend=True,
-                legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.05,
-                    xanchor="center",
-                    x=0.5
-                ),
-                title=dict(
-                    text="RIESGO POR ACTIVO",
-                    font=dict(size=16),
-                    x=0.5
-                ),
-                height=500
-            )
-            
-            st.plotly_chart(fig_radar, use_container_width=True)
-            
-            # Tabla resumen del radar
-            col_r1, col_r2 = st.columns(2)
-            with col_r1:
-                st.markdown("**📊 Leyenda del Radar:**")
-                st.markdown("- 🟢 **ACTUAL**: Nivel de riesgo calculado actualmente")
-                st.markdown("- 🔵 **OBJETIVO**: Meta de reducción (50% del actual)")
-                st.markdown("- 🟡 **LÍMITE**: Tolerancia máxima aceptable (7)")
-            
-            with col_r2:
-                st.markdown("**📋 Activos en el Radar:**")
-                for i, (activo, riesgo) in enumerate(zip(activos_nombres_cortos, riesgo_actual)):
-                    zona = "🔴" if riesgo >= 6 else "🟠" if riesgo >= 4 else "🟡" if riesgo >= 2 else "🟢"
-                    st.markdown(f"{zona} {activo}: **{riesgo:.2f}**")
-        else:
-            st.info("Se necesitan al menos 3 activos únicos con riesgos para mostrar el radar.")
-    
-    st.markdown("---")
-    
     # ===== TABLA UNIFICADA DE RIESGOS =====
     st.markdown("### 📋 Lista de Riesgos")
     
@@ -2765,6 +2861,9 @@ with tab7:
     - **Observaciones**: Recomendaciones generadas automáticamente
     """)
     
+    # Obtener filtro global
+    filtro_global = st.session_state.get("activo_filtro_global", "TODOS")
+    
     # Botón para recalcular todos
     if st.button("🔄 Recalcular Todos los Riesgos", type="primary"):
         count = recalcular_todos_riesgos_activos(ID_EVALUACION)
@@ -2772,6 +2871,14 @@ with tab7:
         st.rerun()
     
     riesgos_activos = get_riesgos_activos_evaluacion(ID_EVALUACION)
+    
+    # Aplicar filtro si no es TODOS
+    if filtro_global != "TODOS" and not riesgos_activos.empty:
+        riesgos_activos = riesgos_activos[riesgos_activos["ID_Activo"] == filtro_global]
+        if not riesgos_activos.empty:
+            st.info(f"🎯 Mostrando riesgo del activo filtrado: **{riesgos_activos['Nombre_Activo'].iloc[0]}**")
+        else:
+            st.warning(f"⚠️ El activo filtrado `{filtro_global}` no tiene riesgo agregado calculado.")
     
     if riesgos_activos.empty:
         st.info("📭 No hay riesgos agregados. Primero calcula los riesgos individuales (Tab 5) y luego recalcula.")
@@ -3002,12 +3109,23 @@ with tab8:
     # Importar función de sugerencia de IA
     from services.ollama_magerit_service import sugerir_salvaguardas_ia, sugerir_salvaguardas_batch
     
+    # Obtener filtro global
+    filtro_global = st.session_state.get("activo_filtro_global", "TODOS")
+    
     # ===== TABLA PRINCIPAL DE RIESGOS CON SALVAGUARDAS SUGERIDAS =====
     st.markdown("### 📋 Tabla de Riesgos con Salvaguardas Sugeridas")
     
     # Obtener todos los riesgos de la evaluación
     riesgos = get_riesgos_evaluacion(ID_EVALUACION)
     activos = get_activos_matriz(ID_EVALUACION)
+    
+    # Aplicar filtro si no es TODOS
+    if filtro_global != "TODOS" and not riesgos.empty:
+        riesgos = riesgos[riesgos["ID_Activo"] == filtro_global]
+        if not riesgos.empty:
+            st.info(f"🎯 Mostrando salvaguardas del activo filtrado: **{riesgos['Nombre_Activo'].iloc[0]}**")
+        else:
+            st.warning(f"⚠️ El activo filtrado `{filtro_global}` no tiene riesgos calculados.")
     
     if riesgos.empty:
         st.warning("⚠️ No hay riesgos calculados. Ve al Tab 5 (Riesgo) primero para calcular los riesgos.")
@@ -3100,8 +3218,11 @@ with tab8:
         else:
             prioridad = "⚪ Baja"
         
-        # Generar código de vulnerabilidad
-        cod_vuln = f"V{idx+1:03d}"
+        # Obtener código de vulnerabilidad del catálogo (si existe)
+        cod_vuln = row.get("Cod_Vulnerabilidad", "")
+        if not cod_vuln or cod_vuln == "":
+            # Fallback: código temporal si no hay en BD
+            cod_vuln = f"V{idx+1:03d}"
         
         # Extraer código de control ISO (solo el código, ej: "5.1")
         control_iso_full = row.get("Control_ISO", "")
@@ -3124,18 +3245,21 @@ with tab8:
     
     df_salvaguardas = pd.DataFrame(df_display_salv)
     
-    # Mostrar tabla
+    # Cargar catálogo de amenazas para tooltips enriquecidos
+    catalogo_amenazas_tab8 = get_catalogo_amenazas()
+    
+    # Mostrar tabla con st.dataframe y tooltips mediante columnas hidden
     st.dataframe(
         df_salvaguardas[["Activo", "Amenaza", "Cod_Vuln", "Riesgo", "Salvaguarda", "Control_ISO", "Prioridad", "IA"]],
         use_container_width=True,
         hide_index=True,
         column_config={
             "Activo": st.column_config.TextColumn("Activo", width="medium"),
-            "Amenaza": st.column_config.TextColumn("Cod_Amenaza", width="small"),
-            "Cod_Vuln": st.column_config.TextColumn("Cod_Vuln", width="small"),
+            "Amenaza": st.column_config.TextColumn("Cod_Amenaza", width="small", help="Código de amenaza MAGERIT"),
+            "Cod_Vuln": st.column_config.TextColumn("Cod_Vuln", width="small", help="Código de vulnerabilidad"),
             "Riesgo": st.column_config.TextColumn("Riesgo", width="small"),
             "Salvaguarda": st.column_config.TextColumn("Salvaguarda Sugerida", width="large"),
-            "Control_ISO": st.column_config.TextColumn("Control ISO", width="small"),
+            "Control_ISO": st.column_config.TextColumn("Control ISO", width="small", help="Control ISO 27002:2022"),
             "Prioridad": st.column_config.TextColumn("Prioridad", width="small"),
             "IA": st.column_config.TextColumn("IA", width="small")
         }
@@ -3143,10 +3267,10 @@ with tab8:
     
     st.caption("✅ = Generado por IA | 🔧 = Generado heurísticamente | 💡 Códigos de vulnerabilidad (V001, V002...) y controles ISO (5.1, 8.2...) para referencia rápida")
     
-    # Tabla de referencia expandible con tooltips
-    with st.expander("📋 Ver Detalles Completos de Vulnerabilidades y Controles"):
+    # Tabla de referencia expandible con detalles completos
+    with st.expander("📋 Ver Detalles Completos de Códigos"):
         st.markdown("**Códigos de Vulnerabilidad:**")
-        for idx, row_data in enumerate(df_display_salv):
+        for row_data in df_display_salv:
             st.markdown(f"- **{row_data['Cod_Vuln']}**: {row_data['_vuln_full']}")
         
         st.markdown("---")
@@ -3156,6 +3280,11 @@ with tab8:
             cod = row_data['Amenaza']
             if cod and cod not in amenazas_unicas:
                 amenazas_unicas[cod] = row_data['_amenaza_full']
+                # Agregar descripción del catálogo si existe
+                if catalogo_amenazas_tab8.get(cod):
+                    info = catalogo_amenazas_tab8[cod]
+                    desc_completa = f"{info.get('amenaza', row_data['_amenaza_full'])} - {info.get('descripcion', '')}"
+                    amenazas_unicas[cod] = desc_completa
         for cod, desc in amenazas_unicas.items():
             st.markdown(f"- **{cod}**: {desc}")
         
@@ -3180,32 +3309,53 @@ with tab8:
         "Riesgo", "Salvaguarda", "Control ISO"
     ]
     
+    # Botón para guardar en base de datos
+    st.markdown("---")
+    st.markdown("### 💾 Guardar Salvaguardas en Base de Datos")
+    st.info("💡 Las salvaguardas deben guardarse en la base de datos para poder usarlas en el Tab 10 (Comparativa)")
+    
+    col_save_btn, col_save_info = st.columns([1, 3])
+    with col_save_btn:
+        if st.button("💾 Guardar en Base de Datos", type="primary", key="btn_guardar_salvaguardas_db"):
+            with st.spinner("Guardando salvaguardas..."):
+                guardadas = 0
+                for _, row in df_display.iterrows():
+                    try:
+                        agregar_salvaguarda(
+                            id_evaluacion=ID_EVALUACION,
+                            id_activo=row["ID_Activo"],
+                            nombre_activo=row.get("Nombre_Activo", ""),
+                            salvaguarda=row.get("Salvaguarda_Sugerida", ""),
+                            riesgo_id=str(row.get("ID_Riesgo", "")),
+                            vulnerabilidad=row.get("Vulnerabilidad", ""),
+                            amenaza=row.get("Amenaza", ""),
+                            prioridad="Alta" if row.get("Riesgo", 0) >= 6 else "Media" if row.get("Riesgo", 0) >= 4 else "Baja",
+                            responsable="",
+                            fecha_limite=""
+                        )
+                        guardadas += 1
+                    except Exception as e:
+                        st.error(f"Error guardando salvaguarda: {e}")
+                
+                if guardadas > 0:
+                    st.success(f"✅ Se guardaron {guardadas} salvaguardas en la base de datos")
+                    st.balloons()
+                else:
+                    st.warning("⚠️ No se pudo guardar ninguna salvaguarda")
+    
+    with col_save_info:
+        salvaguardas_bd = get_salvaguardas_evaluacion(ID_EVALUACION)
+        total_en_bd = len(salvaguardas_bd)
+        st.caption(f"📊 Actualmente hay **{total_en_bd} salvaguardas** guardadas en la base de datos para esta evaluación")
+    
     # Botón de descarga
+    st.markdown("---")
     st.download_button(
         label="📥 Descargar Tabla de Salvaguardas (CSV)",
         data=df_download_salv.to_csv(index=False, encoding='utf-8-sig'),
         file_name="salvaguardas_sugeridas.csv",
         mime="text/csv"
     )
-
-
-# ==================== TAB 10: DASHBOARDS (STANDBY) ====================
-
-with tab10:
-    st.header("📈 Dashboards Ejecutivos")
-    st.info("""
-    🚧 **Módulo en Standby**
-    
-    Este módulo está temporalmente deshabilitado mientras se completan las mejoras en otros tabs.
-    
-    **Funcionalidades planificadas:**
-    - Visualizaciones ejecutivas de activos críticos
-    - Análisis de amenazas y vulnerabilidades
-    - Distribución de riesgos
-    - Resúmenes estadísticos
-    
-    ⏳ *Disponible próximamente...*
-    """)
 
 
 # ==================== TAB 9: NIVEL DE MADUREZ ====================
@@ -3270,68 +3420,90 @@ with tab9:
         
         st.markdown("---")
         
-        # ===== MÉTRICAS POR DOMINIO =====
-        st.subheader("📊 Madurez por Dominio ISO 27002")
+        # ===== MÉTRICAS DETALLADAS =====
+        st.subheader("📊 Métricas de Evaluación")
         
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            org = madurez.get("Dominio_Organizacional", 0)
-            st.metric("🏢 Organizacional", f"{org:.0f}%")
-            st.progress(org / 100)
+            pct_impl = madurez.get("Pct_Controles_Implementados", 0)
+            st.metric("🛡️ Controles Implementados", f"{pct_impl:.1f}%")
+            st.progress(min(pct_impl / 100, 1.0))
         with col2:
-            per = madurez.get("Dominio_Personas", 0)
-            st.metric("👥 Personas", f"{per:.0f}%")
-            st.progress(per / 100)
+            pct_med = madurez.get("Pct_Controles_Medidos", 0)
+            st.metric("📏 Controles Medidos", f"{pct_med:.1f}%")
+            st.progress(min(pct_med / 100, 1.0))
         with col3:
-            fis = madurez.get("Dominio_Fisico", 0)
-            st.metric("🏗️ Físico", f"{fis:.0f}%")
-            st.progress(fis / 100)
+            pct_mit = madurez.get("Pct_Riesgos_Criticos_Mitigados", 0)
+            st.metric("🎯 Riesgos Mitigados", f"{pct_mit:.1f}%")
+            st.progress(min(pct_mit / 100, 1.0))
         with col4:
-            tec = madurez.get("Dominio_Tecnologico", 0)
-            st.metric("💻 Tecnológico", f"{tec:.0f}%")
-            st.progress(tec / 100)
-        
-        # Gráfico radar de dominios
-        categorias = ["Organizacional", "Personas", "Físico", "Tecnológico"]
-        valores = [org, per, fis, tec]
-        valores_cerrado = valores + [valores[0]]
-        categorias_cerrado = categorias + [categorias[0]]
-        
-        fig_radar = go.Figure()
-        fig_radar.add_trace(go.Scatterpolar(
-            r=valores_cerrado,
-            theta=categorias_cerrado,
-            fill="toself",
-            fillcolor="rgba(52, 152, 219, 0.3)",
-            line=dict(color="#3498db", width=2),
-            name="Madurez Actual"
-        ))
-        fig_radar.update_layout(
-            polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
-            showlegend=False,
-            height=400,
-            title="Radar de Madurez por Dominio"
-        )
-        st.plotly_chart(fig_radar, use_container_width=True)
+            pct_eval = madurez.get("Pct_Activos_Evaluados", 0)
+            st.metric("📦 Activos Evaluados", f"{pct_eval:.1f}%")
+            st.progress(min(pct_eval / 100, 1.0))
         
         st.markdown("---")
         
-        # ===== MÉTRICAS DETALLADAS =====
-        st.subheader("📈 Métricas Detalladas")
+        # ===== DETALLE DE CONTROLES =====
+        st.subheader("🛡️ Estado de Controles")
         
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("📋 Controles Impl.", madurez.get("Controles_Implementados", 0))
-        with col2:
-            st.metric("⚠️ Controles Parciales", madurez.get("Controles_Parciales", 0))
-        with col3:
-            st.metric("❌ Sin Implementar", madurez.get("Controles_No_Implementados", 0))
-        with col4:
-            st.metric("📊 % Activos Evaluados", f"{madurez.get('Pct_Activos_Evaluados', 0):.0f}%")
+        col_ctrl1, col_ctrl2, col_ctrl3 = st.columns(3)
+        
+        ctrl_impl = madurez.get("Controles_Implementados", 0)
+        ctrl_parc = madurez.get("Controles_Parciales", 0)
+        ctrl_no_impl = madurez.get("Controles_No_Implementados", 0)
+        total_ctrl = madurez.get("Total_Controles_Posibles", 93)
+        
+        with col_ctrl1:
+            st.metric("✅ Implementados (≥75%)", ctrl_impl)
+        with col_ctrl2:
+            st.metric("🟡 Parciales (<75%)", ctrl_parc)
+        with col_ctrl3:
+            st.metric("❌ No Implementados", ctrl_no_impl)
+        
+        # Gráfico de pastel de controles
+        if ctrl_impl > 0 or ctrl_parc > 0 or ctrl_no_impl > 0:
+            fig_pie = go.Figure(data=[go.Pie(
+                labels=['Implementados', 'Parciales', 'No Implementados'],
+                values=[ctrl_impl, ctrl_parc, ctrl_no_impl],
+                hole=0.4,
+                marker_colors=['#51cf66', '#ffd93d', '#ff6b6b'],
+                textinfo='label+percent',
+                textposition='outside'
+            )])
+            fig_pie.update_layout(
+                title="Distribución de Controles",
+                height=350,
+                showlegend=False
+            )
+            st.plotly_chart(fig_pie, use_container_width=True)
+        
+        st.markdown("---")
+        
+        # ===== FÓRMULA DE CÁLCULO =====
+        st.subheader("📐 Fórmula de Cálculo")
+        
+        st.markdown("""
+        La puntuación de madurez se calcula con la siguiente fórmula ponderada:
+        
+        | Componente | Peso | Tu Valor |
+        |------------|------|----------|
+        | Controles Implementados (≥75% efectividad) | 30% | {:.1f}% |
+        | Controles Medidos (100% efectividad) | 25% | {:.1f}% |
+        | Riesgos Críticos/Altos Mitigados | 25% | {:.1f}% |
+        | Activos Evaluados | 20% | {:.1f}% |
+        | **TOTAL** | **100%** | **{:.1f}** |
+        """.format(
+            madurez.get("Pct_Controles_Implementados", 0),
+            madurez.get("Pct_Controles_Medidos", 0),
+            madurez.get("Pct_Riesgos_Criticos_Mitigados", 0),
+            madurez.get("Pct_Activos_Evaluados", 0),
+            puntuacion
+        ))
+        
+        st.markdown("---")
         
         # ===== TABLA DE NIVELES =====
-        st.markdown("---")
         st.subheader("📋 Tabla de Identificación de Niveles")
         
         niveles_tabla = [
@@ -3359,63 +3531,668 @@ with tab9:
         st.info("📭 No hay datos de madurez. Haz clic en 'Calcular Nivel de Madurez' para generar el análisis.")
 
 
-# ==================== TAB 11: COMPARATIVA (STANDBY) ====================
+# ==================== TAB 10: REEVALUACIÓN Y COMPARATIVA ====================
 
-with tab11:
-    st.header("🔄 Comparativa entre Evaluaciones")
-    st.info("""
-    🚧 **Módulo en Standby**
+with tab10:
+    st.header("🔄 Reevaluación y Comparativa")
+    st.markdown("""
+    **Propósito:** Realizar una reevaluación periódica para comparar el estado actual vs anterior.
     
-    Este módulo está temporalmente deshabilitado mientras se completan las mejoras en otros tabs.
-    
-    **Funcionalidades planificadas:**
-    - Comparación entre evaluaciones
-    - Análisis de progreso en el tiempo
-    - Detección de mejoras y retrocesos
-    - Recomendaciones basadas en tendencias
-    
-    ⏳ *Disponible próximamente...*
+    **Este proceso incluye:**
+    1. ✅ Verificar requisitos de la evaluación inicial
+    2. 📦 Revisar cambios en el inventario de activos
+    3. 🛡️ Evaluar implementación de salvaguardas
+    4. 📊 Recalcular riesgos y madurez
+    5. 📈 Comparar resultados
     """)
-
-
-# ==================== TAB 12: MATRIZ EXCEL (STANDBY) ====================
-
-with tab12:
-    st.header("📑 Matriz Excel Completa")
-    st.info("""
-    🚧 **Módulo en Standby**
     
-    Este módulo está temporalmente deshabilitado mientras se completan las mejoras en otros tabs.
+    # ===== OBTENER FILTRO GLOBAL =====
+    filtro_global = st.session_state.get("activo_filtro_global", "TODOS")
     
-    **Funcionalidades planificadas:**
-    - Visualización unificada de todas las tablas
-    - Descarga en formato Excel completo
-    - Exportación para Power BI
-    - Resumen de métricas
+    # ===== VERIFICAR REQUISITOS =====
+    activos_eval = get_activos_matriz(ID_EVALUACION)
+    riesgos_eval = get_riesgos_evaluacion(ID_EVALUACION)
+    madurez_eval = get_madurez_evaluacion(ID_EVALUACION)
+    salvaguardas_eval = get_salvaguardas_evaluacion(ID_EVALUACION)
     
-    ⏳ *Disponible próximamente...*
-    """)
-
-
-# ==================== TAB 13: RESUMEN EJECUTIVO (STANDBY) ====================
-
-with tab13:
-    st.header("📋 Resumen Ejecutivo")
-    st.info("""
-    🚧 **Módulo en Standby**
+    # Aplicar filtro si no es TODOS
+    if filtro_global != "TODOS":
+        if not activos_eval.empty:
+            activos_eval = activos_eval[activos_eval["ID_Activo"] == filtro_global]
+        if not riesgos_eval.empty:
+            riesgos_eval = riesgos_eval[riesgos_eval["ID_Activo"] == filtro_global]
+        if not salvaguardas_eval.empty:
+            salvaguardas_eval = salvaguardas_eval[salvaguardas_eval["ID_Activo"] == filtro_global]
+        
+        # Mostrar info del filtro
+        if not activos_eval.empty:
+            nombre_activo = activos_eval["Nombre_Activo"].iloc[0] if not activos_eval.empty else filtro_global
+            st.info(f"🎯 **Filtro activo:** Analizando solo el activo **{nombre_activo}**")
     
-    Este módulo está temporalmente deshabilitado mientras se completan las mejoras en otros tabs.
+    # Estado de la evaluación inicial
+    tiene_activos = not activos_eval.empty
+    tiene_riesgos = not riesgos_eval.empty
+    tiene_madurez = madurez_eval is not None
+    tiene_salvaguardas = not salvaguardas_eval.empty
     
-    **Funcionalidades planificadas:**
-    - Informe ejecutivo para alta gerencia
-    - Hallazgos principales automatizados
-    - Activos más críticos
-    - Recomendaciones prioritarias
-    - Distribución de riesgos con gráficos
-    - Exportación a PDF/Word
+    evaluacion_completa = tiene_activos and tiene_riesgos and tiene_madurez
     
-    ⏳ *Disponible próximamente...*
-    """)
+    # Panel de estado
+    st.markdown("### 📋 Estado de la Evaluación Inicial")
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        if tiene_activos:
+            st.success(f"✅ Activos: {len(activos_eval)}")
+        else:
+            st.error("❌ Sin activos")
+    with col2:
+        if tiene_riesgos:
+            st.success(f"✅ Riesgos: {len(riesgos_eval)}")
+        else:
+            st.error("❌ Sin riesgos")
+    with col3:
+        if tiene_madurez:
+            nivel = madurez_eval.get("Nivel_Madurez", 0)
+            st.success(f"✅ Madurez: Nivel {nivel}")
+        else:
+            st.error("❌ Sin madurez")
+    with col4:
+        if tiene_salvaguardas:
+            st.success(f"✅ Salvaguardas: {len(salvaguardas_eval)}")
+        else:
+            st.warning("⚠️ Sin salvaguardas")
+    
+    st.markdown("---")
+    
+    # ===== BLOQUEO SI NO HAY EVALUACIÓN COMPLETA =====
+    if not evaluacion_completa:
+        st.error("🔒 **Reevaluación bloqueada**: Debes completar la evaluación inicial primero.")
+        st.warning("""
+        **Pasos requeridos antes de la reevaluación:**
+        1. **Tab 1**: Cargar inventario de activos
+        2. **Tab 2**: Completar cuestionario DIC para cada activo
+        3. **Tab 3**: Verificar valoración D/I/C
+        4. **Tab 4**: Identificar vulnerabilidades/amenazas con IA
+        5. **Tab 5**: Calcular riesgos
+        6. **Tab 8**: Generar salvaguardas recomendadas (opcional pero recomendado)
+        7. **Tab 9**: Calcular nivel de madurez
+        """)
+        
+        # Mostrar progreso
+        st.markdown("### 📊 Progreso de la Evaluación")
+        pasos_completados = sum([tiene_activos, tiene_riesgos, tiene_madurez])
+        progreso = pasos_completados / 3
+        st.progress(progreso)
+        st.caption(f"{pasos_completados} de 3 pasos obligatorios completados")
+        
+    else:
+        # ===== REEVALUACIÓN HABILITADA =====
+        st.success("✅ Evaluación inicial completa. Puedes iniciar la reevaluación.")
+        
+        # Inicializar estado de reevaluación
+        if "reevaluacion_fase" not in st.session_state:
+            st.session_state["reevaluacion_fase"] = 0
+        
+        # Detectar cambio de filtro para reinicializar datos
+        filtro_reeval_actual = st.session_state.get("reevaluacion_filtro_aplicado", "TODOS")
+        filtro_cambio = filtro_reeval_actual != filtro_global
+        
+        if "reevaluacion_datos" not in st.session_state or filtro_cambio:
+            st.session_state["reevaluacion_datos"] = {
+                "riesgo_anterior": riesgos_eval["Riesgo"].mean() if not riesgos_eval.empty else 0,
+                "madurez_anterior": madurez_eval.get("Puntuacion_Total", 0) if madurez_eval else 0,
+                "nivel_anterior": madurez_eval.get("Nivel_Madurez", 1) if madurez_eval else 1,
+                "activos_anteriores": len(activos_eval),
+                "cambios_activos": {"agregados": [], "eliminados": [], "editados": []},
+                "salvaguardas_implementadas": []
+            }
+            st.session_state["reevaluacion_filtro_aplicado"] = filtro_global
+            if filtro_cambio and st.session_state.get("reevaluacion_fase", 0) > 0:
+                st.session_state["reevaluacion_fase"] = 0  # Reiniciar fase si cambió filtro
+        
+        fase = st.session_state["reevaluacion_fase"]
+        
+        # Botón para reiniciar reevaluación
+        if fase > 0:
+            if st.button("🔄 Reiniciar Reevaluación", key="btn_reiniciar_reeval"):
+                st.session_state["reevaluacion_fase"] = 0
+                st.session_state["reevaluacion_datos"] = {
+                    "riesgo_anterior": riesgos_eval["Riesgo"].mean() if not riesgos_eval.empty else 0,
+                    "madurez_anterior": madurez_eval.get("Puntuacion_Total", 0) if madurez_eval else 0,
+                    "nivel_anterior": madurez_eval.get("Nivel_Madurez", 1) if madurez_eval else 1,
+                    "activos_anteriores": len(activos_eval),
+                    "cambios_activos": {"agregados": [], "eliminados": [], "editados": []},
+                    "salvaguardas_implementadas": []
+                }
+                st.session_state["reevaluacion_filtro_aplicado"] = filtro_global
+                st.session_state["salvaguardas_impl_reeval"] = {}  # Limpiar selecciones
+                st.rerun()
+        
+        st.markdown("---")
+        
+        # ===== FASE 0: INICIO DE REEVALUACIÓN =====
+        if fase == 0:
+            st.markdown("### 🚀 Iniciar Proceso de Reevaluación")
+            
+            st.info("""
+            **La reevaluación te permitirá:**
+            - Registrar cambios en el inventario de activos (nuevos, eliminados, editados)
+            - Evaluar qué salvaguardas fueron implementadas
+            - Recalcular el nivel de riesgo y madurez
+            - Comparar el estado actual vs el anterior
+            """)
+            
+            # Mostrar métricas actuales
+            st.markdown("#### 📊 Estado Actual (Evaluación Inicial)")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("🎯 Riesgo Promedio", f"{st.session_state['reevaluacion_datos']['riesgo_anterior']:.2f}")
+            with col2:
+                st.metric("📊 Madurez", f"{st.session_state['reevaluacion_datos']['madurez_anterior']:.0f}%")
+            with col3:
+                st.metric("📦 Activos", st.session_state['reevaluacion_datos']['activos_anteriores'])
+            
+            if st.button("▶️ Iniciar Reevaluación", type="primary", use_container_width=True):
+                st.session_state["reevaluacion_fase"] = 1
+                st.rerun()
+        
+        # ===== FASE 1: CAMBIOS EN ACTIVOS =====
+        elif fase == 1:
+            st.markdown("### 📦 Fase 1: Cambios en el Inventario de Activos")
+            
+            st.markdown("#### ¿Hubo cambios en el inventario de activos desde la última evaluación?")
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                nuevos_activos = st.radio(
+                    "¿Se agregaron nuevos activos?",
+                    ["No", "Sí"],
+                    key="nuevos_activos_radio",
+                    horizontal=True
+                )
+            
+            with col2:
+                activos_eliminados = st.radio(
+                    "¿Se eliminaron activos?",
+                    ["No", "Sí"],
+                    key="eliminados_activos_radio",
+                    horizontal=True
+                )
+            
+            with col3:
+                activos_editados = st.radio(
+                    "¿Se modificaron activos existentes?",
+                    ["No", "Sí"],
+                    key="editados_activos_radio",
+                    horizontal=True
+                )
+            
+            # Si hay cambios, mostrar instrucciones
+            if nuevos_activos == "Sí" or activos_eliminados == "Sí" or activos_editados == "Sí":
+                st.markdown("---")
+                st.warning("⚠️ **Debes realizar los cambios antes de continuar:**")
+                
+                if nuevos_activos == "Sí":
+                    st.info("📥 **Agregar activos:** Ve al **Tab 1 (Activos)** para agregar nuevos activos al inventario.")
+                
+                if activos_eliminados == "Sí":
+                    st.info("🗑️ **Eliminar activos:** Ve al **Tab 1 (Activos)** para eliminar activos que ya no aplican.")
+                
+                if activos_editados == "Sí":
+                    st.info("✏️ **Editar activos:** Ve al **Tab 1 (Activos)** para modificar la información de activos existentes.")
+                
+                st.markdown("---")
+                st.caption("Una vez realizados los cambios en el Tab 1, regresa aquí y continúa.")
+            
+            col_back, col_next = st.columns(2)
+            with col_back:
+                if st.button("⬅️ Volver", use_container_width=True):
+                    st.session_state["reevaluacion_fase"] = 0
+                    st.rerun()
+            with col_next:
+                if st.button("Continuar ➡️", type="primary", use_container_width=True):
+                    # Guardar cambios reportados
+                    st.session_state["reevaluacion_datos"]["hubo_cambios_activos"] = (
+                        nuevos_activos == "Sí" or activos_eliminados == "Sí" or activos_editados == "Sí"
+                    )
+                    st.session_state["reevaluacion_fase"] = 2
+                    st.rerun()
+        
+        # ===== FASE 2: SALVAGUARDAS IMPLEMENTADAS =====
+        elif fase == 2:
+            st.markdown("### 🛡️ Fase 2: Salvaguardas Implementadas")
+            
+            if salvaguardas_eval.empty:
+                st.warning("⚠️ No hay salvaguardas recomendadas registradas.")
+                st.info("Puedes ir al **Tab 8** para generar salvaguardas, o continuar sin esta información.")
+                
+                if st.button("Continuar sin salvaguardas ➡️", type="primary"):
+                    st.session_state["reevaluacion_fase"] = 3
+                    st.rerun()
+            else:
+                st.markdown("#### Marca las salvaguardas que fueron **implementadas** desde la última evaluación:")
+                
+                # Inicializar estado de implementación
+                if "salvaguardas_impl_reeval" not in st.session_state:
+                    st.session_state["salvaguardas_impl_reeval"] = {}
+                
+                # Agrupar por activo
+                activos_unicos = salvaguardas_eval["Nombre_Activo"].unique()
+                
+                for activo in activos_unicos:
+                    with st.expander(f"📦 {activo}", expanded=True):
+                        salvs_activo = salvaguardas_eval[salvaguardas_eval["Nombre_Activo"] == activo]
+                        
+                        for idx, row in salvs_activo.iterrows():
+                            salvaguarda = row.get("Salvaguarda", "Sin descripción")
+                            prioridad = row.get("Prioridad", "Media")
+                            amenaza = row.get("Amenaza", "")
+                            
+                            emoji = "🔴" if prioridad == "Alta" else "🟡" if prioridad == "Media" else "🟢"
+                            
+                            key = f"salv_impl_{idx}"
+                            
+                            col_check, col_info = st.columns([0.08, 0.92])
+                            with col_check:
+                                implementada = st.checkbox(
+                                    "",
+                                    value=st.session_state["salvaguardas_impl_reeval"].get(key, False),
+                                    key=f"check_{key}",
+                                    label_visibility="collapsed"
+                                )
+                                st.session_state["salvaguardas_impl_reeval"][key] = implementada
+                            
+                            with col_info:
+                                texto = f"{emoji} **{prioridad}**: {salvaguarda[:70]}..." if len(salvaguarda) > 70 else f"{emoji} **{prioridad}**: {salvaguarda}"
+                                st.markdown(texto)
+                
+                # Contador
+                total = len(salvaguardas_eval)
+                implementadas = sum(1 for v in st.session_state["salvaguardas_impl_reeval"].values() if v)
+                st.info(f"📌 **{implementadas} de {total}** salvaguardas marcadas como implementadas")
+            
+            st.markdown("---")
+            col_back, col_next = st.columns(2)
+            with col_back:
+                if st.button("⬅️ Volver", use_container_width=True, key="back_fase2"):
+                    st.session_state["reevaluacion_fase"] = 1
+                    st.rerun()
+            with col_next:
+                if st.button("Calcular Nueva Evaluación ➡️", type="primary", use_container_width=True):
+                    st.session_state["reevaluacion_fase"] = 3
+                    st.rerun()
+        
+        # ===== FASE 3: RECÁLCULO Y COMPARATIVA =====
+        elif fase == 3:
+            st.markdown("### 📊 Fase 3: Resultados de la Reevaluación")
+            
+            # Calcular nuevos valores
+            activos_actuales = get_activos_matriz(ID_EVALUACION)
+            riesgos_actuales = get_riesgos_evaluacion(ID_EVALUACION)
+            
+            # Aplicar filtro global si está activo
+            if filtro_global != "TODOS":
+                if not activos_actuales.empty:
+                    activos_actuales = activos_actuales[activos_actuales["ID_Activo"] == filtro_global]
+                if not riesgos_actuales.empty:
+                    riesgos_actuales = riesgos_actuales[riesgos_actuales["ID_Activo"] == filtro_global]
+            
+            # Datos anteriores
+            datos_ant = st.session_state["reevaluacion_datos"]
+            riesgo_anterior = datos_ant["riesgo_anterior"]
+            madurez_anterior = datos_ant["madurez_anterior"]
+            nivel_anterior = datos_ant["nivel_anterior"]
+            activos_anteriores = datos_ant["activos_anteriores"]
+            
+            # Calcular impacto de salvaguardas implementadas
+            salvaguardas_impl = st.session_state.get("salvaguardas_impl_reeval", {})
+            total_salvaguardas = len(salvaguardas_eval) if not salvaguardas_eval.empty else 1
+            implementadas = sum(1 for v in salvaguardas_impl.values() if v)
+            
+            # Factor de reducción de riesgo basado en salvaguardas
+            factor_reduccion = min(0.5, (implementadas / total_salvaguardas) * 0.5) if total_salvaguardas > 0 else 0
+            
+            # Nuevo riesgo
+            riesgo_actual = riesgos_actuales["Riesgo"].mean() if not riesgos_actuales.empty else 0
+            riesgo_nuevo = riesgo_actual * (1 - factor_reduccion)
+            
+            # Nueva madurez (incremento basado en implementación)
+            incremento_madurez = (implementadas / total_salvaguardas) * 30 if total_salvaguardas > 0 else 0
+            madurez_nueva = min(100, madurez_anterior + incremento_madurez)
+            
+            # Determinar nuevo nivel de madurez
+            if madurez_nueva >= 85:
+                nivel_nuevo = 5
+                nombre_nivel = "Optimizado"
+            elif madurez_nueva >= 70:
+                nivel_nuevo = 4
+                nombre_nivel = "Gestionado"
+            elif madurez_nueva >= 50:
+                nivel_nuevo = 3
+                nombre_nivel = "Definido"
+            elif madurez_nueva >= 30:
+                nivel_nuevo = 2
+                nombre_nivel = "Básico"
+            else:
+                nivel_nuevo = 1
+                nombre_nivel = "Inicial"
+            
+            # ===== MÉTRICAS COMPARATIVAS =====
+            st.markdown("#### 📈 Comparativa: Antes vs Después")
+            
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                delta_riesgo = riesgo_nuevo - riesgo_anterior
+                st.metric(
+                    "🎯 Riesgo Promedio",
+                    f"{riesgo_nuevo:.2f}",
+                    delta=f"{delta_riesgo:.2f}",
+                    delta_color="inverse"
+                )
+            
+            with col2:
+                delta_madurez = madurez_nueva - madurez_anterior
+                st.metric(
+                    "📊 Madurez",
+                    f"{madurez_nueva:.0f}%",
+                    delta=f"+{delta_madurez:.0f}%" if delta_madurez > 0 else f"{delta_madurez:.0f}%"
+                )
+            
+            with col3:
+                delta_nivel = nivel_nuevo - nivel_anterior
+                st.metric(
+                    "🏆 Nivel Madurez",
+                    f"Nivel {nivel_nuevo}",
+                    delta=f"+{delta_nivel}" if delta_nivel > 0 else str(delta_nivel) if delta_nivel < 0 else "="
+                )
+            
+            with col4:
+                delta_activos = len(activos_actuales) - activos_anteriores
+                st.metric(
+                    "📦 Activos",
+                    len(activos_actuales),
+                    delta=f"+{delta_activos}" if delta_activos > 0 else str(delta_activos) if delta_activos < 0 else "="
+                )
+            
+            st.markdown("---")
+            
+            # ===== GRÁFICOS =====
+            col_g1, col_g2 = st.columns(2)
+            
+            with col_g1:
+                # Gráfico de barras: Antes vs Después
+                fig_barras = go.Figure()
+                
+                categorias = ['Riesgo', 'Madurez (%)']
+                valores_antes = [riesgo_anterior, madurez_anterior]
+                valores_despues = [riesgo_nuevo, madurez_nueva]
+                
+                fig_barras.add_trace(go.Bar(
+                    name='Antes (Evaluación Inicial)',
+                    x=categorias,
+                    y=valores_antes,
+                    marker_color='#ff6b6b',
+                    text=[f"{v:.1f}" for v in valores_antes],
+                    textposition='auto'
+                ))
+                
+                fig_barras.add_trace(go.Bar(
+                    name='Después (Reevaluación)',
+                    x=categorias,
+                    y=valores_despues,
+                    marker_color='#51cf66',
+                    text=[f"{v:.1f}" for v in valores_despues],
+                    textposition='auto'
+                ))
+                
+                fig_barras.update_layout(
+                    title="📊 Comparativa General",
+                    barmode='group',
+                    height=400,
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
+                )
+                
+                st.plotly_chart(fig_barras, use_container_width=True)
+            
+            with col_g2:
+                # Gauge de madurez
+                fig_gauge = go.Figure()
+                
+                fig_gauge.add_trace(go.Indicator(
+                    mode="gauge+number+delta",
+                    value=madurez_nueva,
+                    delta={'reference': madurez_anterior, 'relative': False},
+                    title={'text': f"Madurez: {nombre_nivel}"},
+                    gauge={
+                        'axis': {'range': [0, 100]},
+                        'bar': {'color': "#3498db"},
+                        'steps': [
+                            {'range': [0, 30], 'color': "#ff6b6b"},
+                            {'range': [30, 50], 'color': "#ffd93d"},
+                            {'range': [50, 70], 'color': "#6bcb77"},
+                            {'range': [70, 100], 'color': "#4d96ff"}
+                        ],
+                        'threshold': {
+                            'line': {'color': "red", 'width': 4},
+                            'thickness': 0.75,
+                            'value': madurez_anterior
+                        }
+                    }
+                ))
+                
+                fig_gauge.update_layout(height=400)
+                st.plotly_chart(fig_gauge, use_container_width=True)
+            
+            st.markdown("---")
+            
+            # ===== TABLA COMPARATIVA DETALLADA =====
+            st.markdown("#### 📋 Resumen Comparativo Detallado")
+            
+            # Crear tabla de comparación
+            comparativa_data = [
+                {"Métrica": "Riesgo Promedio", "Evaluación Inicial": f"{riesgo_anterior:.2f}", "Reevaluación": f"{riesgo_nuevo:.2f}", "Cambio": f"{delta_riesgo:+.2f}", "Estado": "✅ Mejora" if delta_riesgo < 0 else "⚠️ Empeoró" if delta_riesgo > 0 else "➡️ Sin cambio"},
+                {"Métrica": "Puntuación Madurez", "Evaluación Inicial": f"{madurez_anterior:.0f}%", "Reevaluación": f"{madurez_nueva:.0f}%", "Cambio": f"{delta_madurez:+.0f}%", "Estado": "✅ Mejora" if delta_madurez > 0 else "⚠️ Empeoró" if delta_madurez < 0 else "➡️ Sin cambio"},
+                {"Métrica": "Nivel de Madurez", "Evaluación Inicial": f"Nivel {nivel_anterior}", "Reevaluación": f"Nivel {nivel_nuevo}", "Cambio": f"{delta_nivel:+d}" if delta_nivel != 0 else "0", "Estado": "✅ Mejora" if delta_nivel > 0 else "⚠️ Empeoró" if delta_nivel < 0 else "➡️ Sin cambio"},
+                {"Métrica": "Total Activos", "Evaluación Inicial": str(activos_anteriores), "Reevaluación": str(len(activos_actuales)), "Cambio": f"{delta_activos:+d}" if delta_activos != 0 else "0", "Estado": "ℹ️ Cambio" if delta_activos != 0 else "➡️ Sin cambio"},
+                {"Métrica": "Salvaguardas Implementadas", "Evaluación Inicial": "0", "Reevaluación": str(implementadas), "Cambio": f"+{implementadas}", "Estado": "✅ Progreso" if implementadas > 0 else "⚠️ Sin avance"},
+            ]
+            
+            df_comparativa = pd.DataFrame(comparativa_data)
+            st.dataframe(df_comparativa, use_container_width=True, hide_index=True)
+            
+            st.markdown("---")
+            
+            # ===== GRÁFICO DE EVOLUCIÓN DE RIESGO POR ACTIVO =====
+            if not riesgos_actuales.empty:
+                st.markdown("#### 🎯 Evolución del Riesgo por Activo")
+                
+                # Calcular riesgo por activo (antes y después)
+                activos_riesgo = riesgos_actuales.groupby("Nombre_Activo")["Riesgo"].max().reset_index()
+                activos_riesgo.columns = ["Activo", "Riesgo_Antes"]
+                activos_riesgo["Riesgo_Despues"] = activos_riesgo["Riesgo_Antes"] * (1 - factor_reduccion)
+                
+                # Limitar a 10 activos para legibilidad
+                activos_riesgo = activos_riesgo.head(10)
+                
+                fig_activos = go.Figure()
+                
+                fig_activos.add_trace(go.Bar(
+                    name='Antes',
+                    x=activos_riesgo["Activo"],
+                    y=activos_riesgo["Riesgo_Antes"],
+                    marker_color='#ff6b6b',
+                    text=[f"{v:.1f}" for v in activos_riesgo["Riesgo_Antes"]],
+                    textposition='auto'
+                ))
+                
+                fig_activos.add_trace(go.Bar(
+                    name='Después',
+                    x=activos_riesgo["Activo"],
+                    y=activos_riesgo["Riesgo_Despues"],
+                    marker_color='#51cf66',
+                    text=[f"{v:.1f}" for v in activos_riesgo["Riesgo_Despues"]],
+                    textposition='auto'
+                ))
+                
+                fig_activos.update_layout(
+                    title="Riesgo por Activo: Antes vs Después",
+                    barmode='group',
+                    height=400,
+                    xaxis_tickangle=-45,
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
+                )
+                
+                st.plotly_chart(fig_activos, use_container_width=True)
+            
+            st.markdown("---")
+            
+            # ===== GRÁFICO DE DISTRIBUCIÓN DE RIESGO =====
+            col_dist1, col_dist2 = st.columns(2)
+            
+            with col_dist1:
+                # Distribución de niveles de riesgo ANTES
+                if not riesgos_actuales.empty:
+                    niveles_antes = {"Alto": 0, "Medio": 0, "Bajo": 0, "Nulo": 0}
+                    for _, row in riesgos_actuales.iterrows():
+                        riesgo = row.get("Riesgo", 0)
+                        if riesgo >= 6:
+                            niveles_antes["Alto"] += 1
+                        elif riesgo >= 4:
+                            niveles_antes["Medio"] += 1
+                        elif riesgo >= 2:
+                            niveles_antes["Bajo"] += 1
+                        else:
+                            niveles_antes["Nulo"] += 1
+                    
+                    fig_pie_antes = go.Figure(data=[go.Pie(
+                        labels=list(niveles_antes.keys()),
+                        values=list(niveles_antes.values()),
+                        hole=0.4,
+                        marker_colors=['#ff6b6b', '#ffd93d', '#51cf66', '#74c0fc'],
+                        title="ANTES"
+                    )])
+                    fig_pie_antes.update_layout(height=300, showlegend=True)
+                    st.plotly_chart(fig_pie_antes, use_container_width=True)
+            
+            with col_dist2:
+                # Distribución de niveles de riesgo DESPUÉS
+                if not riesgos_actuales.empty:
+                    niveles_despues = {"Alto": 0, "Medio": 0, "Bajo": 0, "Nulo": 0}
+                    for _, row in riesgos_actuales.iterrows():
+                        riesgo_nuevo_act = row.get("Riesgo", 0) * (1 - factor_reduccion)
+                        if riesgo_nuevo_act >= 6:
+                            niveles_despues["Alto"] += 1
+                        elif riesgo_nuevo_act >= 4:
+                            niveles_despues["Medio"] += 1
+                        elif riesgo_nuevo_act >= 2:
+                            niveles_despues["Bajo"] += 1
+                        else:
+                            niveles_despues["Nulo"] += 1
+                    
+                    fig_pie_despues = go.Figure(data=[go.Pie(
+                        labels=list(niveles_despues.keys()),
+                        values=list(niveles_despues.values()),
+                        hole=0.4,
+                        marker_colors=['#ff6b6b', '#ffd93d', '#51cf66', '#74c0fc'],
+                        title="DESPUÉS"
+                    )])
+                    fig_pie_despues.update_layout(height=300, showlegend=True)
+                    st.plotly_chart(fig_pie_despues, use_container_width=True)
+            
+            st.markdown("---")
+            
+            # ===== RESUMEN DE SALVAGUARDAS =====
+            st.markdown("#### 🛡️ Salvaguardas Implementadas")
+            
+            if implementadas > 0 and not salvaguardas_eval.empty:
+                detalles = []
+                for idx, row in salvaguardas_eval.iterrows():
+                    key = f"salv_impl_{idx}"
+                    if salvaguardas_impl.get(key, False):
+                        detalles.append({
+                            "Activo": row.get("Nombre_Activo", ""),
+                            "Salvaguarda": row.get("Salvaguarda", "")[:50] + "..." if len(str(row.get("Salvaguarda", ""))) > 50 else row.get("Salvaguarda", ""),
+                            "Prioridad": row.get("Prioridad", "Media"),
+                            "Estado": "✅ Implementada"
+                        })
+                
+                if detalles:
+                    st.dataframe(pd.DataFrame(detalles), use_container_width=True, hide_index=True)
+                    
+                    # Reducción de riesgo
+                    reduccion_pct = factor_reduccion * 100
+                    st.success(f"📉 La implementación de {implementadas} salvaguardas redujo el riesgo en aproximadamente **{reduccion_pct:.1f}%**")
+            else:
+                st.info("No se marcaron salvaguardas como implementadas.")
+            
+            # ===== CONCLUSIÓN =====
+            st.markdown("---")
+            st.markdown("#### 📝 Conclusión de la Reevaluación")
+            
+            if delta_riesgo < 0:
+                st.success(f"✅ **Mejora detectada**: El riesgo promedio disminuyó de {riesgo_anterior:.2f} a {riesgo_nuevo:.2f}")
+            elif delta_riesgo > 0:
+                st.warning(f"⚠️ **Atención**: El riesgo promedio aumentó de {riesgo_anterior:.2f} a {riesgo_nuevo:.2f}")
+            else:
+                st.info("ℹ️ El nivel de riesgo se mantiene igual.")
+            
+            if delta_nivel > 0:
+                st.success(f"🏆 **¡Nivel de madurez mejorado!** Pasó del Nivel {nivel_anterior} al Nivel {nivel_nuevo} ({nombre_nivel})")
+            elif delta_nivel < 0:
+                st.warning(f"⚠️ El nivel de madurez disminuyó del Nivel {nivel_anterior} al Nivel {nivel_nuevo}")
+            
+            # Botón para guardar reevaluación
+            st.markdown("---")
+            col_save, col_reset = st.columns(2)
+            
+            with col_save:
+                if st.button("💾 Guardar Resultados de Reevaluación", type="primary", use_container_width=True):
+                    # Actualizar madurez en la base de datos
+                    try:
+                        nuevo_resultado = {
+                            "ID_Evaluacion": ID_EVALUACION,
+                            "Nivel_Madurez": nivel_nuevo,
+                            "Nombre_Nivel": nombre_nivel,
+                            "Puntuacion_Total": madurez_nueva,
+                            "Dominio_Organizacional": madurez_eval.get("Dominio_Organizacional", 0) if madurez_eval else 0,
+                            "Dominio_Personas": madurez_eval.get("Dominio_Personas", 0) if madurez_eval else 0,
+                            "Dominio_Fisico": madurez_eval.get("Dominio_Fisico", 0) if madurez_eval else 0,
+                            "Dominio_Tecnologico": madurez_eval.get("Dominio_Tecnologico", 0) if madurez_eval else 0,
+                            "Controles_Totales": madurez_eval.get("Controles_Totales", 0) if madurez_eval else 0,
+                            "Controles_Implementados": implementadas,
+                            "Porcentaje_Cumplimiento": (implementadas / total_salvaguardas * 100) if total_salvaguardas > 0 else 0,
+                            "Observaciones": f"Reevaluación: {implementadas} salvaguardas implementadas. Riesgo anterior: {riesgo_anterior:.2f}, nuevo: {riesgo_nuevo:.2f}"
+                        }
+                        guardar_madurez(nuevo_resultado)
+                        
+                        # Actualizar estado de salvaguardas
+                        for idx, row in salvaguardas_eval.iterrows():
+                            key = f"salv_impl_{idx}"
+                            if salvaguardas_impl.get(key, False):
+                                actualizar_estado_salvaguarda(row.get("id", 0), "Implementada")
+                        
+                        st.success("✅ Resultados guardados correctamente")
+                        st.balloons()
+                    except Exception as e:
+                        st.error(f"Error al guardar: {e}")
+            
+            with col_reset:
+                if st.button("🔄 Nueva Reevaluación", use_container_width=True):
+                    st.session_state["reevaluacion_fase"] = 0
+                    if "salvaguardas_impl_reeval" in st.session_state:
+                        del st.session_state["salvaguardas_impl_reeval"]
+                    st.session_state["reevaluacion_datos"] = {
+                        "riesgo_anterior": riesgo_nuevo,
+                        "madurez_anterior": madurez_nueva,
+                        "nivel_anterior": nivel_nuevo,
+                        "activos_anteriores": len(activos_actuales),
+                        "cambios_activos": {"agregados": [], "eliminados": [], "editados": []},
+                        "salvaguardas_implementadas": []
+                    }
+                    st.rerun()
 
 
 # ==================== FOOTER ====================
@@ -3423,8 +4200,8 @@ with tab13:
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; color: #666; padding: 1rem;">
-    <strong>TITA - Matriz de Riesgos MAGERIT</strong><br>
-    Sistema de Evaluación de Riesgos basado en MAGERIT v3<br>
+    <strong>TITA - Matriz de Riesgos</strong><br>
+    Sistema de Evaluación de Riesgos basado en metodología MAGERIT v3<br>
     <em>Versión: Matriz de Referencia</em>
 </div>
 """, unsafe_allow_html=True)

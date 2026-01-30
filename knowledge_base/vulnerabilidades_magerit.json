@@ -1,0 +1,97 @@
+{
+  "SW": {
+    "nombre": "Software / Aplicaciones",
+    "vulnerabilidades": [
+      {"codigo": "SW-V01", "nombre": "Software desactualizado", "descripcion": "Falta de parches de seguridad en aplicaciones", "nivel": "Alto"},
+      {"codigo": "SW-V02", "nombre": "Configuración por defecto", "descripcion": "Uso de credenciales y configuraciones predeterminadas", "nivel": "Alto"},
+      {"codigo": "SW-V03", "nombre": "Inyección SQL", "descripcion": "Vulnerabilidad a inyección de código en consultas SQL", "nivel": "Alto"},
+      {"codigo": "SW-V04", "nombre": "Cross-Site Scripting (XSS)", "descripcion": "Ejecución de scripts maliciosos en navegador", "nivel": "Alto"},
+      {"codigo": "SW-V05", "nombre": "Autenticación débil", "descripcion": "Mecanismos de autenticación insuficientes", "nivel": "Alto"},
+      {"codigo": "SW-V06", "nombre": "Falta de cifrado", "descripcion": "Datos sensibles sin encriptar", "nivel": "Alto"},
+      {"codigo": "SW-V07", "nombre": "Gestión insegura de sesiones", "descripcion": "Tokens de sesión predecibles o expuestos", "nivel": "Alto"},
+      {"codigo": "SW-V08", "nombre": "APIs expuestas", "descripcion": "Interfaces de programación sin autenticación adecuada", "nivel": "Alto"},
+      {"codigo": "SW-V09", "nombre": "Falta de validación de entrada", "descripcion": "No se validan datos de usuario", "nivel": "Alto"},
+      {"codigo": "SW-V10", "nombre": "Dependencias vulnerables", "descripcion": "Uso de librerías con vulnerabilidades conocidas", "nivel": "Medio"}
+    ]
+  },
+  "HW": {
+    "nombre": "Hardware / Equipos",
+    "vulnerabilidades": [
+      {"codigo": "HW-V01", "nombre": "Firmware desactualizado", "descripcion": "BIOS/UEFI sin actualizaciones de seguridad", "nivel": "Alto"},
+      {"codigo": "HW-V02", "nombre": "Puertos USB habilitados", "descripcion": "Acceso físico a puertos sin control", "nivel": "Medio"},
+      {"codigo": "HW-V03", "nombre": "Falta de TPM", "descripcion": "Sin módulo de plataforma segura para cifrado", "nivel": "Medio"},
+      {"codigo": "HW-V04", "nombre": "Discos sin cifrar", "descripcion": "Almacenamiento local sin encriptación", "nivel": "Alto"},
+      {"codigo": "HW-V05", "nombre": "BIOS sin contraseña", "descripcion": "Configuración de hardware accesible", "nivel": "Medio"},
+      {"codigo": "HW-V06", "nombre": "Hardware obsoleto", "descripcion": "Equipos sin soporte del fabricante", "nivel": "Alto"},
+      {"codigo": "HW-V07", "nombre": "Sin protección física", "descripcion": "Equipos sin cerraduras o cables de seguridad", "nivel": "Bajo"}
+    ]
+  },
+  "COM": {
+    "nombre": "Comunicaciones / Red",
+    "vulnerabilidades": [
+      {"codigo": "COM-V01", "nombre": "Red sin segmentar", "descripcion": "Toda la red en un mismo segmento sin VLANs", "nivel": "Alto"},
+      {"codigo": "COM-V02", "nombre": "WiFi con WEP/WPA", "descripcion": "Protocolos de red inalámbrica obsoletos", "nivel": "Alto"},
+      {"codigo": "COM-V03", "nombre": "Puertos innecesarios abiertos", "descripcion": "Servicios expuestos sin necesidad", "nivel": "Alto"},
+      {"codigo": "COM-V04", "nombre": "Sin firewall", "descripcion": "Falta de control de tráfico perimetral", "nivel": "Alto"},
+      {"codigo": "COM-V05", "nombre": "Protocolos inseguros", "descripcion": "Uso de FTP, Telnet, HTTP sin cifrar", "nivel": "Alto"},
+      {"codigo": "COM-V06", "nombre": "DNS sin protección", "descripcion": "Vulnerable a DNS spoofing/poisoning", "nivel": "Medio"},
+      {"codigo": "COM-V07", "nombre": "Sin IDS/IPS", "descripcion": "Falta de detección de intrusiones", "nivel": "Medio"},
+      {"codigo": "COM-V08", "nombre": "VPN débil", "descripcion": "Uso de protocolos VPN obsoletos (PPTP)", "nivel": "Alto"}
+    ]
+  },
+  "D": {
+    "nombre": "Datos / Información",
+    "vulnerabilidades": [
+      {"codigo": "D-V01", "nombre": "Datos sin clasificar", "descripcion": "Información sin etiquetas de confidencialidad", "nivel": "Medio"},
+      {"codigo": "D-V02", "nombre": "Backups sin cifrar", "descripcion": "Copias de seguridad en texto plano", "nivel": "Alto"},
+      {"codigo": "D-V03", "nombre": "Retención indefinida", "descripcion": "Datos que deberían eliminarse aún disponibles", "nivel": "Medio"},
+      {"codigo": "D-V04", "nombre": "Sin control de acceso", "descripcion": "Datos accesibles sin autorización", "nivel": "Alto"},
+      {"codigo": "D-V05", "nombre": "Transmisión sin cifrar", "descripcion": "Datos enviados en texto plano", "nivel": "Alto"},
+      {"codigo": "D-V06", "nombre": "Sin respaldo", "descripcion": "Información importante sin backup", "nivel": "Alto"},
+      {"codigo": "D-V07", "nombre": "Logs insuficientes", "descripcion": "Sin trazabilidad de acceso a datos", "nivel": "Medio"}
+    ]
+  },
+  "S": {
+    "nombre": "Servicios",
+    "vulnerabilidades": [
+      {"codigo": "S-V01", "nombre": "Sin redundancia", "descripcion": "Servicio con punto único de fallo", "nivel": "Alto"},
+      {"codigo": "S-V02", "nombre": "Sin SLA definido", "descripcion": "Falta de compromisos de disponibilidad", "nivel": "Medio"},
+      {"codigo": "S-V03", "nombre": "Sin monitoreo", "descripcion": "Servicio sin vigilancia de estado", "nivel": "Alto"},
+      {"codigo": "S-V04", "nombre": "Dependencia de terceros", "descripcion": "Servicio crítico dependiente de proveedor externo", "nivel": "Medio"},
+      {"codigo": "S-V05", "nombre": "Sin plan de recuperación", "descripcion": "Falta de DRP para el servicio", "nivel": "Alto"},
+      {"codigo": "S-V06", "nombre": "Capacidad insuficiente", "descripcion": "Sin escalabilidad ante picos de demanda", "nivel": "Medio"}
+    ]
+  },
+  "PS": {
+    "nombre": "Personal",
+    "vulnerabilidades": [
+      {"codigo": "PS-V01", "nombre": "Falta de formación", "descripcion": "Personal sin capacitación en seguridad", "nivel": "Alto"},
+      {"codigo": "PS-V02", "nombre": "Susceptibilidad a phishing", "descripcion": "Usuarios que caen en ingeniería social", "nivel": "Alto"},
+      {"codigo": "PS-V03", "nombre": "Contraseñas débiles", "descripcion": "Uso de contraseñas fáciles de adivinar", "nivel": "Alto"},
+      {"codigo": "PS-V04", "nombre": "Sin acuerdos de confidencialidad", "descripcion": "Personal sin NDA firmado", "nivel": "Medio"},
+      {"codigo": "PS-V05", "nombre": "Privilegios excesivos", "descripcion": "Usuarios con más permisos de los necesarios", "nivel": "Alto"},
+      {"codigo": "PS-V06", "nombre": "Rotación sin control", "descripcion": "Accesos no revocados al salir", "nivel": "Alto"}
+    ]
+  },
+  "L": {
+    "nombre": "Instalaciones",
+    "vulnerabilidades": [
+      {"codigo": "L-V01", "nombre": "Acceso físico no controlado", "descripcion": "Cualquiera puede entrar a áreas sensibles", "nivel": "Alto"},
+      {"codigo": "L-V02", "nombre": "Sin CCTV", "descripcion": "Falta de videovigilancia", "nivel": "Medio"},
+      {"codigo": "L-V03", "nombre": "Sin detección de incendios", "descripcion": "Falta de alarmas y extintores", "nivel": "Alto"},
+      {"codigo": "L-V04", "nombre": "Climatización inadecuada", "descripcion": "Datacenter sin control de temperatura", "nivel": "Alto"},
+      {"codigo": "L-V05", "nombre": "Sin protección eléctrica", "descripcion": "Falta de UPS y reguladores", "nivel": "Alto"},
+      {"codigo": "L-V06", "nombre": "Ubicación vulnerable", "descripcion": "Zona propensa a inundaciones o sismos", "nivel": "Medio"}
+    ]
+  },
+  "AUX": {
+    "nombre": "Servicios Auxiliares",
+    "vulnerabilidades": [
+      {"codigo": "AUX-V01", "nombre": "Sin UPS", "descripcion": "Equipos sin alimentación ininterrumpida", "nivel": "Alto"},
+      {"codigo": "AUX-V02", "nombre": "Sin generador", "descripcion": "Falta de respaldo eléctrico prolongado", "nivel": "Medio"},
+      {"codigo": "AUX-V03", "nombre": "Aire acondicionado único", "descripcion": "Sin redundancia de climatización", "nivel": "Medio"},
+      {"codigo": "AUX-V04", "nombre": "Cableado desordenado", "descripcion": "Infraestructura física sin organizar", "nivel": "Bajo"},
+      {"codigo": "AUX-V05", "nombre": "Conexión a internet única", "descripcion": "Sin ISP de respaldo", "nivel": "Alto"}
+    ]
+  }
+}

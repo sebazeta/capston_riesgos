@@ -328,8 +328,8 @@ def analizar_controles_desde_respuestas(respuestas: pd.DataFrame) -> Dict:
     
     # Calcular métricas
     total = len(controles_encontrados)
-    implementados = sum(1 for c in controles_encontrados.values() if c["efectividad"] >= 0.66)
-    parciales = sum(1 for c in controles_encontrados.values() if 0 < c["efectividad"] < 0.66)
+    implementados = sum(1 for c in controles_encontrados.values() if c["efectividad"] >= 0.75)
+    parciales = sum(1 for c in controles_encontrados.values() if 0 < c["efectividad"] < 0.75)
     no_implementados = sum(1 for c in controles_encontrados.values() if c["efectividad"] == 0)
     
     return {
@@ -434,17 +434,17 @@ def calcular_madurez_evaluacion(eval_id: str) -> Optional[ResultadoMadurez]:
         )
         
         # 7. Determinar nivel de madurez
-        # CORRECCIÓN: Ajustar umbrales para ser más estrictos
-        if puntuacion >= 80:
+        # CORRECCIÓN: Umbrales más estrictos y realistas
+        if puntuacion >= 85:
             nivel = 5
             nombre_nivel = "Optimizado"
-        elif puntuacion >= 60:
+        elif puntuacion >= 70:
             nivel = 4
             nombre_nivel = "Gestionado"
-        elif puntuacion >= 40:
+        elif puntuacion >= 50:
             nivel = 3
             nombre_nivel = "Definido"
-        elif puntuacion >= 20:
+        elif puntuacion >= 30:
             nivel = 2
             nombre_nivel = "Básico"
         else:
@@ -500,9 +500,48 @@ def calcular_madurez_evaluacion(eval_id: str) -> Optional[ResultadoMadurez]:
         return None
 
 
-def guardar_madurez(resultado: ResultadoMadurez) -> bool:
-    """Guarda el resultado de madurez en la base de datos"""
+def guardar_madurez(resultado) -> bool:
+    """Guarda el resultado de madurez en la base de datos.
+    Acepta tanto ResultadoMadurez como dict.
+    """
     try:
+        # Convertir diccionario a valores accesibles
+        if isinstance(resultado, dict):
+            r = resultado
+            get_val = lambda key, default=0: r.get(key, default)
+            id_evaluacion = get_val("ID_Evaluacion", get_val("id_evaluacion", ""))
+            puntuacion_total = get_val("Puntuacion_Total", get_val("puntuacion_total", 0))
+            nivel_madurez = get_val("Nivel_Madurez", get_val("nivel_madurez", 1))
+            nombre_nivel = get_val("Nombre_Nivel", get_val("nombre_nivel", "Inicial"))
+            dominio_organizacional = get_val("Dominio_Organizacional", get_val("dominio_organizacional", 0))
+            dominio_personas = get_val("Dominio_Personas", get_val("dominio_personas", 0))
+            dominio_fisico = get_val("Dominio_Fisico", get_val("dominio_fisico", 0))
+            dominio_tecnologico = get_val("Dominio_Tecnologico", get_val("dominio_tecnologico", 0))
+            pct_controles_impl = get_val("Pct_Controles_Implementados", get_val("pct_controles_implementados", 0))
+            pct_controles_med = get_val("Pct_Controles_Medidos", get_val("pct_controles_medidos", 0))
+            pct_riesgos_mit = get_val("Pct_Riesgos_Criticos_Mitigados", get_val("pct_riesgos_criticos_mitigados", 0))
+            pct_activos_eval = get_val("Pct_Activos_Evaluados", get_val("pct_activos_evaluados", 0))
+            controles_impl = get_val("Controles_Implementados", get_val("controles_implementados", 0))
+            controles_parc = get_val("Controles_Parciales", get_val("controles_parciales", 0))
+            controles_no_impl = get_val("Controles_No_Implementados", get_val("controles_no_implementados", 0))
+        else:
+            # Es un ResultadoMadurez
+            id_evaluacion = resultado.id_evaluacion
+            puntuacion_total = resultado.puntuacion_total
+            nivel_madurez = resultado.nivel_madurez
+            nombre_nivel = resultado.nombre_nivel
+            dominio_organizacional = resultado.dominio_organizacional
+            dominio_personas = resultado.dominio_personas
+            dominio_fisico = resultado.dominio_fisico
+            dominio_tecnologico = resultado.dominio_tecnologico
+            pct_controles_impl = resultado.pct_controles_implementados
+            pct_controles_med = resultado.pct_controles_medidos
+            pct_riesgos_mit = resultado.pct_riesgos_criticos_mitigados
+            pct_activos_eval = resultado.pct_activos_evaluados
+            controles_impl = resultado.controles_implementados
+            controles_parc = resultado.controles_parciales
+            controles_no_impl = resultado.controles_no_implementados
+        
         with get_connection() as conn:
             cursor = conn.cursor()
             
@@ -539,21 +578,21 @@ def guardar_madurez(resultado: ResultadoMadurez) -> bool:
                     Controles_No_Implementados, Fecha_Calculo
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
             ''', [
-                resultado.id_evaluacion,
-                resultado.puntuacion_total,
-                resultado.nivel_madurez,
-                resultado.nombre_nivel,
-                resultado.dominio_organizacional,
-                resultado.dominio_personas,
-                resultado.dominio_fisico,
-                resultado.dominio_tecnologico,
-                resultado.pct_controles_implementados,
-                resultado.pct_controles_medidos,
-                resultado.pct_riesgos_criticos_mitigados,
-                resultado.pct_activos_evaluados,
-                resultado.controles_implementados,
-                resultado.controles_parciales,
-                resultado.controles_no_implementados
+                id_evaluacion,
+                puntuacion_total,
+                nivel_madurez,
+                nombre_nivel,
+                dominio_organizacional,
+                dominio_personas,
+                dominio_fisico,
+                dominio_tecnologico,
+                pct_controles_impl,
+                pct_controles_med,
+                pct_riesgos_mit,
+                pct_activos_eval,
+                controles_impl,
+                controles_parc,
+                controles_no_impl
             ])
         
         return True

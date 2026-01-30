@@ -1,0 +1,57 @@
+[
+  {
+    "nombre_activo": "Base de datos SQL - ERP",
+    "respuestas": {
+      "SF-D1": 3, "SF-D2": 3, "SF-D3": 3, "SF-D4": 3,
+      "SF-I1": 3, "SF-I2": 3, "SF-I3": 3,
+      "SF-C1": 3, "SF-C2": 0, "SF-C3": 3,
+      "SF-RTO1": 3, "SF-RTO2": 3, "SF-RTO3": 3, "SF-RTO4": 3,
+      "SF-RPO1": 3, "SF-RPO2": 3, "SF-RPO3": 3,
+      "SF-BIA1": 3, "SF-BIA2": 3, "SF-BIA3": 3, "SF-BIA4": 3
+    }
+  },
+  {
+    "nombre_activo": "Servidor IIS - Portal Web",
+    "respuestas": {
+      "SV-D1": 2, "SV-D2": 2, "SV-D3": 2, "SV-D4": 2,
+      "SV-I1": 2, "SV-I2": 2, "SV-I3": 2,
+      "SV-C1": 2, "SV-C2": 2, "SV-C3": 2,
+      "SV-RTO1": 2, "SV-RTO2": 2, "SV-RTO3": 2, "SV-RTO4": 2,
+      "SV-RPO1": 2, "SV-RPO2": 2, "SV-RPO3": 2,
+      "SV-BIA1": 2, "SV-BIA2": 2, "SV-BIA3": 2, "SV-BIA4": 2
+    }
+  },
+  {
+    "nombre_activo": "Servidor DNS - Infraestructura",
+    "respuestas": {
+      "SV-D1": 1, "SV-D2": 1, "SV-D3": 1, "SV-D4": 1,
+      "SV-I1": 1, "SV-I2": 1, "SV-I3": 1,
+      "SV-C1": 1, "SV-C2": 1, "SV-C3": 1,
+      "SV-RTO1": 1, "SV-RTO2": 1, "SV-RTO3": 1, "SV-RTO4": 1,
+      "SV-RPO1": 1, "SV-RPO2": 1, "SV-RPO3": 1,
+      "SV-BIA1": 1, "SV-BIA2": 1, "SV-BIA3": 1, "SV-BIA4": 1
+    }
+  },
+  {
+    "nombre_activo": "Impresora HP - Oficina",
+    "respuestas": {
+      "SF-D1": 0, "SF-D2": 0, "SF-D3": 0, "SF-D4": 0,
+      "SF-I1": 0, "SF-I2": 1, "SF-I3": 1,
+      "SF-C1": 0, "SF-C2": 2, "SF-C3": 0,
+      "SF-RTO1": 0, "SF-RTO2": 1, "SF-RTO3": 1, "SF-RTO4": 1,
+      "SF-RPO1": 0, "SF-RPO2": 0, "SF-RPO3": 1,
+      "SF-BIA1": 0, "SF-BIA2": 0, "SF-BIA3": 0, "SF-BIA4": 0
+    }
+  },
+  {
+    "nombre_activo": "Estación de trabajo - Desarrollo",
+    "respuestas": {
+      "SF-D1": 1, "SF-D2": 1, "SF-D3": 2, "SF-D4": 1,
+      "SF-I1": 0, "SF-I2": 2, "SF-I3": 2,
+      "SF-C1": 1, "SF-C2": 1, "SF-C3": 1,
+      "SF-RTO1": 1, "SF-RTO2": 2, "SF-RTO3": 2, "SF-RTO4": 2,
+      "SF-RPO1": 1, "SF-RPO2": 2, "SF-RPO3": 2,
+      "SF-BIA1": 1, "SF-BIA2": 1, "SF-BIA3": 1, "SF-BIA4": 1
+    }
+  }
+]

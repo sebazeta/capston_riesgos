@@ -466,40 +466,55 @@ def sugerir_degradacion_ia(
     - Amenazas de tipo "Ataques intencionados" → Alta degradación C, alta I
     - Activos físicos → Mayor impacto en D
     - Activos virtuales → Mayor impacto en C e I
+    
+    IMPORTANTE: Valores en escala 0.0-1.0 (porcentaje de degradación según MAGERIT).
+    Ajustados para generar variedad de riesgos (bajos, medios, altos).
     """
-    # Valores base
-    deg_d = 0.5
-    deg_i = 0.5
-    deg_c = 0.5
+    # Valores base REDUCIDOS para generar más variedad de riesgos
+    deg_d = 0.3  # 30% base
+    deg_i = 0.3  # 30% base
+    deg_c = 0.3  # 30% base
     
     # Ajuste por tipo de amenaza
     tipo_amenaza_upper = tipo_amenaza.upper() if tipo_amenaza else ""
     
     if "DESASTRE" in tipo_amenaza_upper or "NATURAL" in tipo_amenaza_upper:
-        deg_d = 0.9
-        deg_i = 0.4
-        deg_c = 0.2
+        deg_d = 0.8  # Alta
+        deg_i = 0.3  # Media-baja
+        deg_c = 0.15 # Baja
     elif "ERROR" in tipo_amenaza_upper or "FALLO" in tipo_amenaza_upper:
-        deg_d = 0.6
-        deg_i = 0.5
-        deg_c = 0.3
+        deg_d = 0.5  # Media
+        deg_i = 0.4  # Media
+        deg_c = 0.2  # Baja
     elif "ATAQUE" in tipo_amenaza_upper or "INTENCION" in tipo_amenaza_upper:
-        deg_d = 0.5
-        deg_i = 0.8
-        deg_c = 0.9
+        deg_d = 0.4  # Media
+        deg_i = 0.7  # Alta
+        deg_c = 0.8  # Alta
     elif "FUGA" in tipo_amenaza_upper or "ACCESO" in tipo_amenaza_upper:
-        deg_d = 0.2
-        deg_i = 0.3
-        deg_c = 0.9
+        deg_d = 0.1  # Muy Baja
+        deg_i = 0.2  # Baja
+        deg_c = 0.85 # Muy Alta
+    elif "MANIPULACION" in tipo_amenaza_upper or "SABOTAJE" in tipo_amenaza_upper:
+        deg_d = 0.6  # Media-Alta
+        deg_i = 0.9  # Muy Alta
+        deg_c = 0.3  # Media-baja
+    else:
+        # Valores por defecto más moderados
+        deg_d = 0.4
+        deg_i = 0.35
+        deg_c = 0.3
         
-    # Ajuste por tipo de activo
+    # Ajuste por tipo de activo (moderado)
     tipo_activo_upper = tipo_activo.upper() if tipo_activo else ""
     
     if "FISICO" in tipo_activo_upper or "FÍSICO" in tipo_activo_upper:
-        deg_d = min(1.0, deg_d * 1.2)  # Mayor impacto en disponibilidad
+        deg_d = min(1.0, deg_d * 1.15)  # Ligero aumento en disponibilidad
     elif "VIRTUAL" in tipo_activo_upper or "DATO" in tipo_activo_upper:
-        deg_c = min(1.0, deg_c * 1.2)  # Mayor impacto en confidencialidad
-        deg_i = min(1.0, deg_i * 1.1)  # Mayor impacto en integridad
+        deg_c = min(1.0, deg_c * 1.2)   # Mayor impacto en confidencialidad
+        deg_i = min(1.0, deg_i * 1.15)  # Mayor impacto en integridad
+    elif "SERVICIO" in tipo_activo_upper:
+        deg_d = min(1.0, deg_d * 1.3)   # Servicios dependen de disponibilidad
+        deg_i = min(1.0, deg_i * 1.1)
     
     justificacion = f"Sugerencia automática basada en tipo de amenaza '{tipo_amenaza}' y tipo de activo '{tipo_activo}'"
     

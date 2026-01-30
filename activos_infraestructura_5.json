@@ -1,0 +1,49 @@
+{
+  "activos": [
+    {
+      "nombre_activo": "Servidor Físico Dell PowerEdge R750",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "Data Center Principal - Rack A-03",
+      "propietario": "Infraestructura IT",
+      "tipo_servicio": "Computación",
+      "app_critica": "Virtualización VMware",
+      "descripcion": "Servidor físico Dell PowerEdge R750 con 64GB RAM, 2x Intel Xeon Silver 4314. Host ESXi para máquinas virtuales críticas de producción."
+    },
+    {
+      "nombre_activo": "VM-DB-ORACLE-PROD-01",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Data Center Principal - VM Host ESXi-03",
+      "propietario": "Administración Base de Datos",
+      "tipo_servicio": "Base de datos",
+      "app_critica": "Sistema ERP Financiero",
+      "descripcion": "Máquina virtual con Oracle Database 19c Enterprise. Almacena datos financieros, contables y de nómina. Respaldos diarios automáticos."
+    },
+    {
+      "nombre_activo": "VM-WEB-NGINX-PROD-02",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Data Center Principal - VM Host ESXi-01",
+      "propietario": "Desarrollo Web",
+      "tipo_servicio": "Servidor Web",
+      "app_critica": "Portal Estudiantil",
+      "descripcion": "Servidor virtual con NGINX como balanceador de carga y proxy reverso para el portal estudiantil. Maneja 500+ usuarios concurrentes."
+    },
+    {
+      "nombre_activo": "Rack Primario A-03 42U",
+      "tipo_activo": "Infraestructura Física",
+      "ubicacion": "Data Center Principal - Pasillo A",
+      "propietario": "Facilities IT",
+      "tipo_servicio": "Infraestructura",
+      "app_critica": "Soporte Infraestructura",
+      "descripcion": "Rack de 42U con 18 servidores físicos, switches de red Cisco Catalyst, UPS APC Smart-UPS 3000VA, y sistemas de monitoreo ambiental."
+    },
+    {
+      "nombre_activo": "DB-POSTGRESQL-ACAD-01",
+      "tipo_activo": "Base de Datos",
+      "ubicacion": "Data Center Principal - VM Host ESXi-02",
+      "propietario": "Servicios Académicos TI",
+      "tipo_servicio": "Base de datos",
+      "app_critica": "Sistema de Gestión Académica",
+      "descripcion": "Base de datos PostgreSQL 15.2 con información académica: estudiantes, docentes, materias, calificaciones y horarios. Cluster de alta disponibilidad."
+    }
+  ]
+}

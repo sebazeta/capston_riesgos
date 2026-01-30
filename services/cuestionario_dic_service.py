@@ -1018,18 +1018,18 @@ def calcular_rto_rpo(respuestas_rto: List[int], respuestas_rpo: List[int]) -> Di
     """Calcula los valores de RTO y RPO basados en las respuestas."""
     if respuestas_rto:
         rto_max = max(respuestas_rto)
-        rto_map = {3: ("< 1 hora", "Crítico"), 2: ("1-4 horas", "Alto"),
-                   1: ("4-24 horas", "Medio"), 0: ("> 24 horas", "Bajo")}
-        rto_tiempo, rto_nivel = rto_map.get(rto_max, ("> 24 horas", "Bajo"))
+        rto_map = {3: ("< 1 hora", "Alto"), 2: ("1-4 horas", "Medio"),
+                   1: ("4-24 horas", "Bajo"), 0: ("> 24 horas", "Nulo")}
+        rto_tiempo, rto_nivel = rto_map.get(rto_max, ("> 24 horas", "Nulo"))
     else:
-        rto_max, rto_tiempo, rto_nivel = 0, "No definido", "Bajo"
+        rto_max, rto_tiempo, rto_nivel = 0, "No definido", "Nulo"
     if respuestas_rpo:
         rpo_max = max(respuestas_rpo)
-        rpo_map = {3: ("0 (cero pérdida)", "Crítico"), 2: ("< 1 hora", "Alto"),
-                   1: ("1-4 horas", "Medio"), 0: ("> 24 horas", "Bajo")}
-        rpo_tiempo, rpo_nivel = rpo_map.get(rpo_max, ("> 24 horas", "Bajo"))
+        rpo_map = {3: ("0 (cero pérdida)", "Alto"), 2: ("< 1 hora", "Medio"),
+                   1: ("1-4 horas", "Bajo"), 0: ("> 24 horas", "Nulo")}
+        rpo_tiempo, rpo_nivel = rpo_map.get(rpo_max, ("> 24 horas", "Nulo"))
     else:
-        rpo_max, rpo_tiempo, rpo_nivel = 0, "No definido", "Bajo"
+        rpo_max, rpo_tiempo, rpo_nivel = 0, "No definido", "Nulo"
     return {"RTO_Valor": rto_max, "RTO_Tiempo": rto_tiempo, "RTO_Nivel": rto_nivel,
             "RPO_Valor": rpo_max, "RPO_Tiempo": rpo_tiempo, "RPO_Nivel": rpo_nivel}
 
@@ -1037,17 +1037,17 @@ def calcular_rto_rpo(respuestas_rto: List[int], respuestas_rpo: List[int]) -> Di
 def calcular_bia(respuestas_bia: List[int]) -> Dict:
     """Calcula el impacto BIA basado en las respuestas."""
     if not respuestas_bia:
-        return {"BIA_Valor": 0, "BIA_Nivel": "Bajo"}
+        return {"BIA_Valor": 0, "BIA_Nivel": "Nulo"}
     bia_max = max(respuestas_bia)
     bia_avg = sum(respuestas_bia) / len(respuestas_bia)
     if bia_max == 3 and bia_avg >= 2.0:
-        bia_valor, bia_nivel = 3, "Crítico"
+        bia_valor, bia_nivel = 3, "Alto"
     elif bia_max >= 2 and bia_avg >= 1.5:
-        bia_valor, bia_nivel = 2, "Alto"
+        bia_valor, bia_nivel = 2, "Medio"
     elif bia_max >= 1 and bia_avg >= 1.0:
-        bia_valor, bia_nivel = 1, "Medio"
+        bia_valor, bia_nivel = 1, "Bajo"
     else:
-        bia_valor, bia_nivel = 0, "Bajo"
+        bia_valor, bia_nivel = 0, "Nulo"
     return {"BIA_Valor": bia_valor, "BIA_Nivel": bia_nivel}
 
 

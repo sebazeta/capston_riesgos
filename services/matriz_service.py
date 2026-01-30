@@ -134,6 +134,7 @@ def init_matriz_tables():
                 Nombre_Activo TEXT,
                 Criticidad INTEGER DEFAULT 0,
                 Vulnerabilidad TEXT NOT NULL,
+                Cod_Vulnerabilidad TEXT,
                 Amenaza TEXT NOT NULL,
                 Cod_Amenaza TEXT,
                 Degradacion_D REAL DEFAULT 0,
@@ -439,6 +440,7 @@ def agregar_vulnerabilidad_amenaza(
     vulnerabilidad: str,
     amenaza: str,
     cod_amenaza: str = "",
+    cod_vulnerabilidad: str = "",
     deg_d: float = 0.0,
     deg_i: float = 0.0,
     deg_c: float = 0.0
@@ -456,12 +458,12 @@ def agregar_vulnerabilidad_amenaza(
         cursor.execute('''
             INSERT INTO VULNERABILIDADES_AMENAZAS 
             (ID_Evaluacion, ID_Activo, Nombre_Activo, Criticidad, 
-             Vulnerabilidad, Amenaza, Cod_Amenaza, 
+             Vulnerabilidad, Cod_Vulnerabilidad, Amenaza, Cod_Amenaza, 
              Degradacion_D, Degradacion_I, Degradacion_C, Impacto, Fecha_Registro)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             id_evaluacion, id_activo, nombre_activo, criticidad,
-            vulnerabilidad, amenaza, cod_amenaza,
+            vulnerabilidad, cod_vulnerabilidad, amenaza, cod_amenaza,
             deg_d, deg_i, deg_c, impacto,
             dt.datetime.now().isoformat()
         ))
@@ -612,6 +614,8 @@ def get_riesgos_activo(id_evaluacion: str, id_activo: str) -> pd.DataFrame:
         SELECT 
             r.*,
             va.Vulnerabilidad,
+            va.Cod_Vulnerabilidad,
+            va.Cod_Amenaza,
             va.Degradacion_D,
             va.Degradacion_I,
             va.Degradacion_C
@@ -631,6 +635,7 @@ def get_riesgos_evaluacion(id_evaluacion: str) -> pd.DataFrame:
         SELECT 
             r.*,
             va.Vulnerabilidad,
+            va.Cod_Vulnerabilidad,
             va.Cod_Amenaza,
             va.Degradacion_D,
             va.Degradacion_I,

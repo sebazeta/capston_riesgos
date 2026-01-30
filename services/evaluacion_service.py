@@ -103,6 +103,125 @@ def get_evaluaciones() -> pd.DataFrame:
     return read_table("EVALUACIONES")
 
 
+def actualizar_evaluacion(eval_id: str, nombre: str = None, descripcion: str = None, 
+                         responsable: str = None, estado: str = None) -> bool:
+    """
+    Actualiza los datos de una evaluación existente
+    
+    Args:
+        eval_id: ID de la evaluación a actualizar
+        nombre: Nuevo nombre (opcional)
+        descripcion: Nueva descripción (opcional)
+        responsable: Nuevo responsable (opcional)
+        estado: Nuevo estado (opcional)
+    
+    Returns:
+        True si se actualizó correctamente, False en caso contrario
+    """
+    try:
+        cambios = {}
+        if nombre is not None:
+            cambios["Nombre"] = nombre
+        if descripcion is not None:
+            cambios["Descripcion"] = descripcion
+        if responsable is not None:
+            cambios["Responsable"] = responsable
+        if estado is not None:
+            cambios["Estado"] = estado
+        
+        if cambios:
+            update_row("EVALUACIONES", cambios, {"ID_Evaluacion": eval_id})
+            return True
+        return False
+    except Exception as e:
+        print(f"Error al actualizar evaluación: {e}")
+        return False
+
+
+def eliminar_evaluacion(eval_id: str) -> bool:
+    """
+    Elimina una evaluación y todos sus datos relacionados
+    
+    Args:
+        eval_id: ID de la evaluación a eliminar
+    
+    Returns:
+        True si se eliminó correctamente, False en caso contrario
+    """
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Obtener lista de tablas existentes
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tablas_existentes = [row[0] for row in cursor.fetchall()]
+            
+            # Función auxiliar para eliminar de una tabla si existe
+            def eliminar_de_tabla(tabla: str, condicion: str, params: list):
+                if tabla in tablas_existentes:
+                    try:
+                        cursor.execute(f"DELETE FROM {tabla} WHERE {condicion}", params)
+                    except Exception as e:
+                        print(f"Advertencia al eliminar de {tabla}: {e}")
+            
+            # Eliminar en orden para evitar problemas de integridad referencial
+            # 1. Resultados MAGERIT
+            eliminar_de_tabla("RESULTADOS_MAGERIT", "ID_Evaluacion = ?", [eval_id])
+            
+            # 2. Respuestas del cuestionario
+            eliminar_de_tabla("RESPUESTAS", "ID_Evaluacion = ?", [eval_id])
+            
+            # 3. Salvaguardas
+            eliminar_de_tabla("SALVAGUARDAS", "ID_Evaluacion = ?", [eval_id])
+            
+            # 4. Identificación y Valoración
+            eliminar_de_tabla("IDENTIFICACION_VALORACION", "ID_Evaluacion = ?", [eval_id])
+            
+            # 5. Vulnerabilidades-Amenazas (por ID_Activo)
+            if "VULNERABILIDADES_AMENAZAS" in tablas_existentes:
+                try:
+                    cursor.execute("""
+                        DELETE FROM VULNERABILIDADES_AMENAZAS 
+                        WHERE ID_Activo IN (
+                            SELECT ID_Activo FROM INVENTARIO_ACTIVOS WHERE ID_Evaluacion = ?
+                        )
+                    """, [eval_id])
+                except Exception as e:
+                    print(f"Advertencia al eliminar VULNERABILIDADES_AMENAZAS: {e}")
+            
+            # 6. Riesgo-Amenaza (por ID_Activo)
+            if "RIESGO_AMENAZA" in tablas_existentes:
+                try:
+                    cursor.execute("""
+                        DELETE FROM RIESGO_AMENAZA 
+                        WHERE ID_Activo IN (
+                            SELECT ID_Activo FROM INVENTARIO_ACTIVOS WHERE ID_Evaluacion = ?
+                        )
+                    """, [eval_id])
+                except Exception as e:
+                    print(f"Advertencia al eliminar RIESGO_AMENAZA: {e}")
+            
+            # 7. Degradación
+            eliminar_de_tabla("DEGRADACION", "ID_Evaluacion = ?", [eval_id])
+            
+            # 8. Madurez
+            eliminar_de_tabla("MADUREZ", "ID_Evaluacion = ?", [eval_id])
+            
+            # 9. Activos
+            eliminar_de_tabla("INVENTARIO_ACTIVOS", "ID_Evaluacion = ?", [eval_id])
+            
+            # 10. Evaluación (al final)
+            eliminar_de_tabla("EVALUACIONES", "ID_Evaluacion = ?", [eval_id])
+            
+            conn.commit()
+            return True
+    except Exception as e:
+        print(f"Error al eliminar evaluación: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
 def actualizar_estado_evaluacion(eval_id: str, nuevo_estado: str):
     """Actualiza el estado de una evaluación"""
     try:

@@ -1,0 +1,49 @@
+{
+  "activos": [
+    {
+      "nombre_activo": "Base de datos SQL SNSQL10",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack A1",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Base de datos",
+      "app_critica": "Carpeta Online",
+      "descripcion": "Servidor SQL Server que almacena datos de clases, horarios y material académico de Carpeta Online. Criticidad Muy Alta."
+    },
+    {
+      "nombre_activo": "Servidor IIS SNAPP13",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "Granados - Rack B1",
+      "propietario": "Infraestructura Servidores",
+      "tipo_servicio": "Servidor Web",
+      "app_critica": "Carpeta Online",
+      "descripcion": "Servidor web IIS que hospeda la interfaz de Carpeta Online. Frontend para acceso a material académico. Criticidad Alta."
+    },
+    {
+      "nombre_activo": "Servidor DNS SNAPP06",
+      "tipo_activo": "Servidor Virtual",
+      "ubicacion": "UdlaPark - Rack C2",
+      "propietario": "Infraestructura Red",
+      "tipo_servicio": "DNS",
+      "app_critica": "Servicios de Red",
+      "descripcion": "Servidor DNS para resolución de nombres internos. Criticidad Media."
+    },
+    {
+      "nombre_activo": "Impresora HP LaserJet Pro 4",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "Oficina Administrativa - Piso 2",
+      "propietario": "Departamento Administrativo",
+      "tipo_servicio": "Impresión",
+      "app_critica": "Servicios de Oficina",
+      "descripcion": "Impresora para documentos administrativos generales. Criticidad Baja."
+    },
+    {
+      "nombre_activo": "Estación de trabajo WS-ADM-05",
+      "tipo_activo": "Servidor Físico",
+      "ubicacion": "Oficina RR.HH. - Piso 3",
+      "propietario": "Recursos Humanos",
+      "tipo_servicio": "Computación",
+      "app_critica": "Gestión de Personal",
+      "descripcion": "Estación de trabajo básica para consultas internas. Sin datos sensibles. Criticidad Muy Baja."
+    }
+  ]
+}

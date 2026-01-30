@@ -1,0 +1,314 @@
+{
+  "N.1": {
+    "amenaza": "Fuego",
+    "tipo": "Desastres Naturales",
+    "descripcion": "Incendio natural o provocado",
+    "dimension": "D"
+  },
+  "N.2": {
+    "amenaza": "Daños por agua",
+    "tipo": "Desastres Naturales",
+    "descripcion": "Inundación, humedad, filtración",
+    "dimension": "D"
+  },
+  "N.*": {
+    "amenaza": "Desastres naturales",
+    "tipo": "Desastres Naturales",
+    "descripcion": "Terremoto, tornado, huracán, etc.",
+    "dimension": "D"
+  },
+  "I.1": {
+    "amenaza": "Fuego",
+    "tipo": "Origen Industrial",
+    "descripcion": "Incendio por causas industriales",
+    "dimension": "D"
+  },
+  "I.2": {
+    "amenaza": "Daños por agua",
+    "tipo": "Origen Industrial",
+    "descripcion": "Daños por agua de origen industrial",
+    "dimension": "D"
+  },
+  "I.3": {
+    "amenaza": "Contaminación mecánica",
+    "tipo": "Origen Industrial",
+    "descripcion": "Vibración, polvo, suciedad",
+    "dimension": "D"
+  },
+  "I.4": {
+    "amenaza": "Contaminación electromagnética",
+    "tipo": "Origen Industrial",
+    "descripcion": "Radiación, pulsos electromagnéticos",
+    "dimension": "D"
+  },
+  "I.5": {
+    "amenaza": "Avería de origen físico o lógico",
+    "tipo": "Origen Industrial",
+    "descripcion": "Fallo de equipamiento o software",
+    "dimension": "D"
+  },
+  "I.6": {
+    "amenaza": "Corte del suministro eléctrico",
+    "tipo": "Origen Industrial",
+    "descripcion": "Interrupción del flujo eléctrico",
+    "dimension": "D"
+  },
+  "I.7": {
+    "amenaza": "Condiciones inadecuadas de temperatura o humedad",
+    "tipo": "Origen Industrial",
+    "descripcion": "Ambiente no controlado",
+    "dimension": "D"
+  },
+  "I.8": {
+    "amenaza": "Fallo de servicios de comunicaciones",
+    "tipo": "Origen Industrial",
+    "descripcion": "Interrupción de red/internet",
+    "dimension": "D"
+  },
+  "I.9": {
+    "amenaza": "Interrupción de otros servicios",
+    "tipo": "Origen Industrial",
+    "descripcion": "Servicios esenciales no disponibles",
+    "dimension": "D"
+  },
+  "I.10": {
+    "amenaza": "Degradación de los soportes de almacenamiento",
+    "tipo": "Origen Industrial",
+    "descripcion": "Deterioro de discos/medios",
+    "dimension": "D"
+  },
+  "I.11": {
+    "amenaza": "Emanaciones electromagnéticas",
+    "tipo": "Origen Industrial",
+    "descripcion": "Fuga de información por radiación",
+    "dimension": "D"
+  },
+  "E.1": {
+    "amenaza": "Errores de los usuarios",
+    "tipo": "Errores no Intencionados",
+    "descripcion": "Uso inadecuado, descuido",
+    "dimension": "D"
+  },
+  "E.2": {
+    "amenaza": "Errores del administrador",
+    "tipo": "Errores no Intencionados",
+    "descripcion": "Configuración incorrecta",
+    "dimension": "D"
+  },
+  "E.3": {
+    "amenaza": "Errores de monitorización (log)",
+    "tipo": "Errores no Intencionados",
+    "descripcion": "Fallos en auditoría/registro",
+    "dimension": "D"
+  },
+  "E.4": {
+    "amenaza": "Errores de configuración",
+    "tipo": "Errores no Intencionados",
+    "descripcion": "Parámetros incorrectos",
+    "dimension": "D"
+  },
+  "E.7": {
+    "amenaza": "Deficiencias en la organización",
+    "tipo": "Errores no Intencionados",
+    "descripcion": "Procesos inadecuados",
+    "dimension": "D"
+  },
+  "E.8": {
+    "amenaza": "Difusión de software dañino",
+    "tipo": "Errores no Intencionados",
+    "descripcion": "Propagación de malware sin intención",
+    "dimension": "D"
+  },
+  "E.9": {
+    "amenaza": "Errores de re-encaminamiento",
+    "tipo": "Errores no Intencionados",
+    "descripcion": "Rutas de red incorrectas",
+    "dimension": "D"
+  },
+  "E.10": {
+    "amenaza": "Errores de secuencia",
+    "tipo": "Errores no Intencionados",
+    "descripcion": "Orden incorrecto de operaciones",
+    "dimension": "D"
+  },
+  "E.14": {
+    "amenaza": "Escapes de información",
+    "tipo": "Errores no Intencionados",
+    "descripcion": "Fuga de datos no intencionada",
+    "dimension": "D"
+  },
+  "E.15": {
+    "amenaza": "Alteración accidental de la información",
+    "tipo": "Errores no Intencionados",
+    "descripcion": "Modificación no intencional",
+    "dimension": "D"
+  },
+  "E.18": {
+    "amenaza": "Destrucción de información",
+    "tipo": "Errores no Intencionados",
+    "descripcion": "Borrado accidental",
+    "dimension": "D"
+  },
+  "E.19": {
+    "amenaza": "Fugas de información",
+    "tipo": "Errores no Intencionados",
+    "descripcion": "Divulgación no autorizada",
+    "dimension": "D"
+  },
+  "E.20": {
+    "amenaza": "Vulnerabilidades de los programas",
+    "tipo": "Errores no Intencionados",
+    "descripcion": "Bugs, fallos de software",
+    "dimension": "D"
+  },
+  "E.21": {
+    "amenaza": "Errores de mantenimiento / actualización",
+    "tipo": "Errores no Intencionados",
+    "descripcion": "Fallos en parches/updates",
+    "dimension": "D"
+  },
+  "E.23": {
+    "amenaza": "Errores de uso",
+    "tipo": "Errores no Intencionados",
+    "descripcion": "Uso inadecuado de recursos",
+    "dimension": "D"
+  },
+  "E.25": {
+    "amenaza": "Pérdida de equipos",
+    "tipo": "Errores no Intencionados",
+    "descripcion": "Extravío de hardware",
+    "dimension": "D"
+  },
+  "E.28": {
+    "amenaza": "Indisponibilidad del personal",
+    "tipo": "Errores no Intencionados",
+    "descripcion": "Ausencia de personal clave",
+    "dimension": "D"
+  },
+  "A.3": {
+    "amenaza": "Manipulación de los registros de actividad (log)",
+    "tipo": "Ataques Intencionados",
+    "descripcion": "Alteración de auditoría",
+    "dimension": "D"
+  },
+  "A.4": {
+    "amenaza": "Manipulación de la configuración",
+    "tipo": "Ataques Intencionados",
+    "descripcion": "Cambios maliciosos",
+    "dimension": "D"
+  },
+  "A.5": {
+    "amenaza": "Suplantación de la identidad del usuario",
+    "tipo": "Ataques Intencionados",
+    "descripcion": "Robo de identidad",
+    "dimension": "D"
+  },
+  "A.6": {
+    "amenaza": "Abuso de privilegios de acceso",
+    "tipo": "Ataques Intencionados",
+    "descripcion": "Uso indebido de permisos",
+    "dimension": "D"
+  },
+  "A.7": {
+    "amenaza": "Uso no previsto",
+    "tipo": "Ataques Intencionados",
+    "descripcion": "Utilización fuera de especificación",
+    "dimension": "D"
+  },
+  "A.8": {
+    "amenaza": "Difusión de software dañino",
+    "tipo": "Ataques Intencionados",
+    "descripcion": "Malware, virus, troyanos",
+    "dimension": "D"
+  },
+  "A.9": {
+    "amenaza": "Re-encaminamiento de mensajes",
+    "tipo": "Ataques Intencionados",
+    "descripcion": "Redireccionamiento malicioso",
+    "dimension": "D"
+  },
+  "A.10": {
+    "amenaza": "Alteración de secuencia",
+    "tipo": "Ataques Intencionados",
+    "descripcion": "Manipulación del orden",
+    "dimension": "D"
+  },
+  "A.11": {
+    "amenaza": "Acceso no autorizado",
+    "tipo": "Ataques Intencionados",
+    "descripcion": "Intrusión, penetración",
+    "dimension": "D"
+  },
+  "A.15": {
+    "amenaza": "Modificación deliberada de la información",
+    "tipo": "Ataques Intencionados",
+    "descripcion": "Alteración maliciosa",
+    "dimension": "D"
+  },
+  "A.18": {
+    "amenaza": "Destrucción de información",
+    "tipo": "Ataques Intencionados",
+    "descripcion": "Borrado intencional",
+    "dimension": "D"
+  },
+  "A.19": {
+    "amenaza": "Divulgación de información",
+    "tipo": "Ataques Intencionados",
+    "descripcion": "Fuga deliberada de datos",
+    "dimension": "D"
+  },
+  "A.22": {
+    "amenaza": "Manipulación de programas",
+    "tipo": "Ataques Intencionados",
+    "descripcion": "Backdoors, lógica maliciosa",
+    "dimension": "D"
+  },
+  "A.23": {
+    "amenaza": "Manipulación de los equipos",
+    "tipo": "Ataques Intencionados",
+    "descripcion": "Sabotaje físico",
+    "dimension": "D"
+  },
+  "A.24": {
+    "amenaza": "Denegación de servicio",
+    "tipo": "Ataques Intencionados",
+    "descripcion": "DoS, DDoS",
+    "dimension": "D"
+  },
+  "A.25": {
+    "amenaza": "Robo",
+    "tipo": "Ataques Intencionados",
+    "descripcion": "Sustracción de equipos/información",
+    "dimension": "D"
+  },
+  "A.26": {
+    "amenaza": "Ataque destructivo",
+    "tipo": "Ataques Intencionados",
+    "descripcion": "Destrucción física/lógica",
+    "dimension": "D"
+  },
+  "A.27": {
+    "amenaza": "Ocupación enemiga",
+    "tipo": "Ataques Intencionados",
+    "descripcion": "Toma de control hostil",
+    "dimension": "D"
+  },
+  "A.28": {
+    "amenaza": "Indisponibilidad del personal",
+    "tipo": "Ataques Intencionados",
+    "descripcion": "Sabotaje de RRHH",
+    "dimension": "D"
+  },
+  "A.29": {
+    "amenaza": "Extorsión",
+    "tipo": "Ataques Intencionados",
+    "descripcion": "Chantaje, ransomware",
+    "dimension": "D"
+  },
+  "A.30": {
+    "amenaza": "Ingeniería social (piratería)",
+    "tipo": "Ataques Intencionados",
+    "descripcion": "Phishing, pretexting",
+    "dimension": "D"
+  }
+}
