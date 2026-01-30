@@ -146,17 +146,60 @@ def actualizar_estado_activo(eval_id: str, id_activo: str, nuevo_estado: str) ->
 
 def eliminar_activo(eval_id: str, id_activo: str) -> tuple:
     """
-    Elimina un activo de la base de datos
+    Elimina un activo de la base de datos y todos sus datos relacionados
     
     Returns:
         (exito: bool, mensaje: str)
     """
     try:
-        delete_row(
-            "INVENTARIO_ACTIVOS",
-            {"ID_Evaluacion": eval_id, "ID_Activo": id_activo}
-        )
-        return True, f"✅ Activo {id_activo} eliminado correctamente"
+        from services.database_service import get_connection
+        
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Obtener lista de tablas existentes
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tablas_existentes = [row[0] for row in cursor.fetchall()]
+            
+            # Función auxiliar para eliminar de una tabla si existe
+            def eliminar_de_tabla(tabla: str):
+                if tabla in tablas_existentes:
+                    try:
+                        cursor.execute(
+                            f"DELETE FROM {tabla} WHERE ID_Evaluacion = ? AND ID_Activo = ?",
+                            [eval_id, id_activo]
+                        )
+                    except Exception as e:
+                        print(f"Advertencia al eliminar de {tabla}: {e}")
+            
+            # Tablas que tienen datos relacionados al activo
+            tablas_activo = [
+                "RIESGO_ACTIVOS",
+                "RIESGO_AMENAZA",
+                "MAPA_RIESGOS",
+                "SALVAGUARDAS",
+                "VULNERABILIDADES_AMENAZAS",
+                "IDENTIFICACION_VALORACION",
+                "CUESTIONARIOS",
+                "RESPUESTAS",
+                "IMPACTO_ACTIVOS",
+                "DEGRADACION_AMENAZAS",
+                "VULNERABILIDADES_ACTIVO"
+            ]
+            
+            # Eliminar de todas las tablas relacionadas
+            for tabla in tablas_activo:
+                eliminar_de_tabla(tabla)
+            
+            # Finalmente eliminar el activo
+            cursor.execute(
+                "DELETE FROM INVENTARIO_ACTIVOS WHERE ID_Evaluacion = ? AND ID_Activo = ?",
+                [eval_id, id_activo]
+            )
+            
+            conn.commit()
+            
+        return True, f"✅ Activo {id_activo} y sus datos relacionados eliminados correctamente"
     except Exception as e:
         return False, f"❌ Error al eliminar activo: {str(e)}"
 

@@ -348,155 +348,143 @@ def analizar_controles_desde_respuestas(respuestas: pd.DataFrame) -> Dict:
 
 def calcular_madurez_evaluacion(eval_id: str) -> Optional[ResultadoMadurez]:
     """
-    Calcula el nivel de madurez de ciberseguridad para una evaluación.
+    Calcula el nivel de madurez de ciberseguridad basado en DATOS REALES de la evaluación.
     
-    Fórmula de puntuación (0-100):
-    - 30% -> % de controles implementados
-    - 25% -> % de controles medidos (nivel 4)
-    - 25% -> % de riesgos críticos/altos mitigados (residual < inherente)
-    - 20% -> % de activos evaluados correctamente
+    NUEVA FÓRMULA SIMPLIFICADA (0-100):
+    - 40% -> Salvaguardas identificadas y recomendadas
+    - 30% -> Riesgos identificados y analizados
+    - 30% -> Activos evaluados completamente (con valoración DIC)
     
     Returns:
-        ResultadoMadurez o None si no hay datos
+        ResultadoMadurez o None si no hay datos suficientes
     """
     try:
-        # 1. Obtener activos de la evaluación
-        activos = read_table("INVENTARIO_ACTIVOS")
-        activos_eval = activos[activos["ID_Evaluacion"].astype(str) == str(eval_id)]
-        total_activos = len(activos_eval)
-        
-        if total_activos == 0:
-            return None
-        
-        # 2. Obtener respuestas
-        respuestas = read_table("RESPUESTAS")
-        respuestas_eval = respuestas[respuestas["ID_Evaluacion"].astype(str) == str(eval_id)]
-        
-        # 3. Analizar controles desde respuestas
-        analisis_controles = analizar_controles_desde_respuestas(respuestas_eval)
-        controles = analisis_controles["controles"]
-        metricas = analisis_controles["metricas"]
-        
-        # 4. Obtener resultados MAGERIT
         with get_connection() as conn:
-            resultados_magerit = pd.read_sql_query(
-                """SELECT * FROM RESULTADOS_MAGERIT WHERE ID_Evaluacion = ?""",
-                conn, params=[eval_id]
-            )
-        
-        activos_evaluados = len(resultados_magerit)
-        
-        # 5. Calcular métricas
-        # % controles implementados (SOLO los que realmente están implementados, efectividad >= 0.75)
-        # CORRECCIÓN: No contar parciales como implementados
-        if metricas["total"] > 0:
-            # Solo contar controles con efectividad >= 0.75 (realmente implementados)
-            controles_realmente_impl = sum(1 for c in controles.values() if c["efectividad"] >= 0.75)
-            pct_implementados = (controles_realmente_impl / metricas["total"]) * 100
-        else:
-            pct_implementados = 0
-        
-        # % controles medidos (solo los de efectividad 1.0)
-        controles_medidos = sum(1 for c in controles.values() if c["efectividad"] >= 1.0)
-        pct_medidos = (controles_medidos / metricas["total"] * 100) if metricas["total"] > 0 else 0
-        
-        # % riesgos críticos/altos mitigados
-        # CORRECCIÓN: Si no hay riesgos críticos, NO asumir 100%, sino 0%
-        riesgos_criticos_mitigados = 0
-        total_riesgos_criticos = 0
-        
-        for _, row in resultados_magerit.iterrows():
-            nivel_inherente = str(row.get("Nivel_Riesgo", ""))
-            riesgo_inherente = float(row.get("Riesgo_Inherente", 0))
-            riesgo_residual = float(row.get("Riesgo_Residual", 0))
+            cursor = conn.cursor()
             
-            if nivel_inherente in ["CRÍTICO", "CRITICO", "ALTO"]:
-                total_riesgos_criticos += 1
-                # Consideramos mitigado si el riesgo residual es menor
-                if riesgo_residual < riesgo_inherente:
-                    riesgos_criticos_mitigados += 1
-        
-        pct_criticos_mitigados = (
-            (riesgos_criticos_mitigados / total_riesgos_criticos * 100) 
-            if total_riesgos_criticos > 0 else 0  # CORRECCIÓN: 0% si no hay riesgos críticos (no 100%)
-        )
-        
-        # % activos evaluados
-        pct_evaluados = (activos_evaluados / total_activos * 100) if total_activos > 0 else 0
-        
-        # 6. Calcular puntuación total ponderada
-        # NOTA: La puntuación máxima será baja si no hay controles implementados realmente
-        puntuacion = (
-            pct_implementados * 0.30 +
-            pct_medidos * 0.25 +
-            pct_criticos_mitigados * 0.25 +
-            pct_evaluados * 0.20
-        )
-        
-        # 7. Determinar nivel de madurez
-        # CORRECCIÓN: Umbrales más estrictos y realistas
-        if puntuacion >= 85:
-            nivel = 5
-            nombre_nivel = "Optimizado"
-        elif puntuacion >= 70:
-            nivel = 4
-            nombre_nivel = "Gestionado"
-        elif puntuacion >= 50:
-            nivel = 3
-            nombre_nivel = "Definido"
-        elif puntuacion >= 30:
-            nivel = 2
-            nombre_nivel = "Básico"
-        else:
-            nivel = 1
-            nombre_nivel = "Inicial"
-        
-        # 8. Calcular porcentaje por dominio
-        catalogo_controles = read_table("CATALOGO_CONTROLES_ISO27002")
-        total_por_dominio = {"organizacional": 0, "personas": 0, "fisico": 0, "tecnologico": 0}
-        
-        for _, ctrl in catalogo_controles.iterrows():
-            codigo = str(ctrl.get("codigo", ""))
-            dominio = get_dominio_control(codigo)
-            if dominio in total_por_dominio:
-                total_por_dominio[dominio] += 1
-        
-        impl_por_dominio = analisis_controles["por_dominio"]
-        
-        def pct_dominio(dominio):
-            # CORRECCIÓN: Solo contar controles realmente implementados (efectividad >= 0.75)
-            impl = len([c for c in impl_por_dominio.get(dominio, []) 
-                       if controles.get(c, {}).get("efectividad", 0) >= 0.75])
-            total = total_por_dominio.get(dominio, 1)
-            return (impl / total * 100) if total > 0 else 0
-        
-        # CORRECCIÓN: Recalcular métricas reales
-        controles_impl_real = sum(1 for c in controles.values() if c["efectividad"] >= 0.75)
-        controles_parcial_real = sum(1 for c in controles.values() if 0 < c["efectividad"] < 0.75)
-        controles_no_impl_real = sum(1 for c in controles.values() if c["efectividad"] == 0)
-        
-        # 9. Crear resultado
-        return ResultadoMadurez(
-            id_evaluacion=eval_id,
-            puntuacion_total=round(puntuacion, 1),
-            nivel_madurez=nivel,
-            nombre_nivel=nombre_nivel,
-            dominio_organizacional=round(pct_dominio("organizacional"), 1),
-            dominio_personas=round(pct_dominio("personas"), 1),
-            dominio_fisico=round(pct_dominio("fisico"), 1),
-            dominio_tecnologico=round(pct_dominio("tecnologico"), 1),
-            pct_controles_implementados=round(pct_implementados, 1),
-            pct_controles_medidos=round(pct_medidos, 1),
-            pct_riesgos_criticos_mitigados=round(pct_criticos_mitigados, 1),
-            pct_activos_evaluados=round(pct_evaluados, 1),
-            total_controles_posibles=93,  # Total ISO 27002:2022
-            controles_implementados=controles_impl_real,
-            controles_parciales=controles_parcial_real,
-            controles_no_implementados=controles_no_impl_real
-        )
+            # 1. Total de activos en la evaluación
+            cursor.execute(
+                "SELECT COUNT(*) FROM INVENTARIO_ACTIVOS WHERE ID_Evaluacion = ?",
+                [eval_id]
+            )
+            total_activos = cursor.fetchone()[0]
+            
+            if total_activos == 0:
+                return None
+            
+            # 2. Activos con valoración DIC completa
+            cursor.execute(
+                "SELECT COUNT(*) FROM IDENTIFICACION_VALORACION WHERE ID_Evaluacion = ?",
+                [eval_id]
+            )
+            activos_valorados = cursor.fetchone()[0]
+            
+            # 3. Activos con riesgos identificados (vulnerabilidades + amenazas)
+            cursor.execute(
+                "SELECT COUNT(DISTINCT ID_Activo) FROM RIESGO_AMENAZA WHERE ID_Evaluacion = ?",
+                [eval_id]
+            )
+            activos_con_riesgos = cursor.fetchone()[0]
+            
+            # 4. Total de riesgos identificados
+            cursor.execute(
+                "SELECT COUNT(*) FROM RIESGO_AMENAZA WHERE ID_Evaluacion = ?",
+                [eval_id]
+            )
+            total_riesgos = cursor.fetchone()[0]
+            
+            # 5. Total de salvaguardas recomendadas
+            cursor.execute(
+                "SELECT COUNT(*) FROM SALVAGUARDAS WHERE ID_Evaluacion = ?",
+                [eval_id]
+            )
+            total_salvaguardas = cursor.fetchone()[0]
+            
+            # 6. Promedio de criticidad de activos (0-10)
+            cursor.execute(
+                """SELECT AVG(Criticidad) 
+                   FROM IDENTIFICACION_VALORACION 
+                   WHERE ID_Evaluacion = ?""",
+                [eval_id]
+            )
+            criticidad_promedio = cursor.fetchone()[0] or 0
+            
+            # 7. Promedio de riesgo actual
+            cursor.execute(
+                """SELECT AVG(Riesgo_Actual) 
+                   FROM RIESGO_ACTIVOS 
+                   WHERE ID_Evaluacion = ?""",
+                [eval_id]
+            )
+            riesgo_promedio = cursor.fetchone()[0] or 0
+            
+            # ===== CÁLCULO DE PUNTUACIONES =====
+            
+            # Componente 1: Salvaguardas (40%)
+            # Lógica: Por cada activo debería haber al menos 3-5 salvaguardas
+            # Si tengo salvaguardas >= activos * 3 = 100%
+            salvaguardas_esperadas = total_activos * 3
+            pct_salvaguardas = min(100, (total_salvaguardas / salvaguardas_esperadas * 100)) if salvaguardas_esperadas > 0 else 0
+            
+            # Componente 2: Riesgos identificados (30%)
+            # Lógica: Por cada activo debería haber al menos 5 riesgos identificados
+            # Si tengo riesgos >= activos * 5 = 100%
+            riesgos_esperados = total_activos * 5
+            pct_riesgos = min(100, (total_riesgos / riesgos_esperados * 100)) if riesgos_esperados > 0 else 0
+            
+            # Componente 3: Activos evaluados (30%)
+            # Lógica: % de activos con valoración DIC completa
+            pct_activos_evaluados = (activos_valorados / total_activos * 100) if total_activos > 0 else 0
+            
+            # ===== PUNTUACIÓN TOTAL =====
+            puntuacion = (
+                pct_salvaguardas * 0.40 +
+                pct_riesgos * 0.30 +
+                pct_activos_evaluados * 0.30
+            )
+            
+            # ===== DETERMINAR NIVEL DE MADUREZ =====
+            # Umbrales ajustados basados en completitud de la evaluación
+            if puntuacion >= 80:
+                nivel = 5
+                nombre_nivel = "Optimizado"
+            elif puntuacion >= 60:
+                nivel = 4
+                nombre_nivel = "Gestionado"
+            elif puntuacion >= 40:
+                nivel = 3
+                nombre_nivel = "Definido"
+            elif puntuacion >= 20:
+                nivel = 2
+                nombre_nivel = "Básico"
+            else:
+                nivel = 1
+                nombre_nivel = "Inicial"
+            
+            # ===== CREAR RESULTADO =====
+            return ResultadoMadurez(
+                id_evaluacion=eval_id,
+                puntuacion_total=round(puntuacion, 1),
+                nivel_madurez=nivel,
+                nombre_nivel=nombre_nivel,
+                dominio_organizacional=0,  # No usado
+                dominio_personas=0,  # No usado
+                dominio_fisico=0,  # No usado
+                dominio_tecnologico=0,  # No usado
+                pct_controles_implementados=round(pct_salvaguardas, 1),
+                pct_controles_medidos=round(pct_riesgos, 1),
+                pct_riesgos_criticos_mitigados=round(pct_activos_evaluados, 1),
+                pct_activos_evaluados=round(pct_activos_evaluados, 1),
+                total_controles_posibles=total_activos,
+                controles_implementados=total_salvaguardas,
+                controles_parciales=total_riesgos,
+                controles_no_implementados=total_activos - activos_valorados
+            )
     
     except Exception as e:
         print(f"Error calculando madurez: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 

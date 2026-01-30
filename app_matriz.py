@@ -26,6 +26,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from typing import Optional
 import io
+import time
 
 # Importar servicios
 from services.database_service import get_connection, read_table
@@ -350,7 +351,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
     "📊 7. Riesgo Activos",
     "🛡️ 8. Salvaguardas",
     "🎯 9. Madurez",
-    "� 10. Comparativa (Standby)"
+    "🔄 10. Comparativa"
 ])
 
 
@@ -1506,6 +1507,8 @@ with tab3:
     
     **Metodología:** Cada tipo de activo tiene preguntas específicas. Las respuestas determinan el nivel (N/B/M/A).  
     **Fórmula:** `CRITICIDAD = MAX(Valor_D, Valor_I, Valor_C)`
+    
+    ⚠️ **Importante:** Cada activo solo puede ser valorado una vez. La valoración D/I/C es la base de toda la evaluación de riesgos.
     """)
     
     activos = get_activos_matriz(ID_EVALUACION)
@@ -1536,274 +1539,469 @@ with tab3:
         if activo_sel:
             activo_info = activos[activos["ID_Activo"] == activo_sel].iloc[0]
             tipo_activo = activo_info['Tipo_Activo']
+            
+            # ===== DETECCIÓN DE ESTADO DEL ACTIVO =====
             valoracion_actual = get_valoracion_activo(ID_EVALUACION, activo_sel)
-            respuestas_previas = get_respuestas_previas(ID_EVALUACION, activo_sel)
+            esta_valorado = valoracion_actual is not None
+            
+            # Inicializar estado de edición en session_state
+            key_edit = f"edit_mode_{activo_sel}"
+            if key_edit not in st.session_state:
+                st.session_state[key_edit] = False
+            
+            # Determinar estado actual
+            if esta_valorado and not st.session_state[key_edit]:
+                estado = "VALORADO"
+            elif esta_valorado and st.session_state[key_edit]:
+                estado = "EDITANDO"
+            else:
+                estado = "PENDIENTE"
             
             # Info del activo
             st.markdown("---")
-            col_info1, col_info2, col_info3 = st.columns(3)
+            col_info1, col_info2, col_info3, col_info4 = st.columns(4)
             with col_info1:
                 st.markdown(f"**📦 Activo:** {activo_info['Nombre_Activo']}")
             with col_info2:
                 st.markdown(f"**🏷️ Tipo:** {tipo_activo}")
             with col_info3:
                 st.markdown(f"**📍 Ubicación:** {activo_info['Ubicacion']}")
-            
-            # Obtener preguntas para este tipo
-            preguntas = get_banco_preguntas_tipo(tipo_activo)
-            
-            if not preguntas:
-                st.warning(f"⚠️ No hay cuestionario específico para '{tipo_activo}'. Se usará el cuestionario genérico.")
-                # Usar Servidor Físico como genérico
-                preguntas = get_banco_preguntas_tipo("Servidor Físico")
-            
-            # Mostrar cuestionario por dimensión
-            st.markdown("---")
-            st.markdown("### 📋 Cuestionario de Valoración")
-            st.info("💡 Responda las siguientes preguntas para calcular automáticamente los niveles D/I/C del activo.")
-            
-            respuestas = {}
-            
-            # Tabs por dimensión (ahora con RTO, RPO y BIA)
-            dim_d, dim_i, dim_c, dim_rto, dim_rpo, dim_bia = st.tabs([
-                "🔵 Disponibilidad (D)", 
-                "🟢 Integridad (I)", 
-                "🟣 Confidencialidad (C)",
-                "⏱️ RTO",
-                "💾 RPO",
-                "📊 BIA"
-            ])
-            
-            # ===== DISPONIBILIDAD =====
-            with dim_d:
-                st.markdown("#### ¿Qué tan crítico es que el activo esté disponible?")
-                for i, pregunta in enumerate(preguntas.get("D", [])):
-                    pregunta_id = pregunta["id"]
-                    opciones = [f"({opt['valor']}) {opt['texto']}" for opt in pregunta["opciones"]]
-                    
-                    # Valor previo si existe
-                    default_idx = 0
-                    if respuestas_previas and pregunta_id in respuestas_previas:
-                        val_prev = respuestas_previas[pregunta_id]
-                        for idx, opt in enumerate(pregunta["opciones"]):
-                            if opt["valor"] == val_prev:
-                                default_idx = idx
-                                break
-                    
-                    seleccion = st.radio(
-                        f"**{i+1}. {pregunta['pregunta']}**",
-                        opciones,
-                        index=default_idx,
-                        key=f"q_{pregunta_id}"
-                    )
-                    # Extraer valor de la selección
-                    respuestas[pregunta_id] = int(seleccion.split(")")[0].replace("(", ""))
-            
-            # ===== INTEGRIDAD =====
-            with dim_i:
-                st.markdown("#### ¿Qué tan crítico es mantener la integridad de los datos?")
-                for i, pregunta in enumerate(preguntas.get("I", [])):
-                    pregunta_id = pregunta["id"]
-                    opciones = [f"({opt['valor']}) {opt['texto']}" for opt in pregunta["opciones"]]
-                    
-                    default_idx = 0
-                    if respuestas_previas and pregunta_id in respuestas_previas:
-                        val_prev = respuestas_previas[pregunta_id]
-                        for idx, opt in enumerate(pregunta["opciones"]):
-                            if opt["valor"] == val_prev:
-                                default_idx = idx
-                                break
-                    
-                    seleccion = st.radio(
-                        f"**{i+1}. {pregunta['pregunta']}**",
-                        opciones,
-                        index=default_idx,
-                        key=f"q_{pregunta_id}"
-                    )
-                    respuestas[pregunta_id] = int(seleccion.split(")")[0].replace("(", ""))
-            
-            # ===== CONFIDENCIALIDAD =====
-            with dim_c:
-                st.markdown("#### ¿Qué nivel de confidencialidad requiere el activo?")
-                for i, pregunta in enumerate(preguntas.get("C", [])):
-                    pregunta_id = pregunta["id"]
-                    opciones = [f"({opt['valor']}) {opt['texto']}" for opt in pregunta["opciones"]]
-                    
-                    default_idx = 0
-                    if respuestas_previas and pregunta_id in respuestas_previas:
-                        val_prev = respuestas_previas[pregunta_id]
-                        for idx, opt in enumerate(pregunta["opciones"]):
-                            if opt["valor"] == val_prev:
-                                default_idx = idx
-                                break
-                    
-                    seleccion = st.radio(
-                        f"**{i+1}. {pregunta['pregunta']}**",
-                        opciones,
-                        index=default_idx,
-                        key=f"q_{pregunta_id}"
-                    )
-                    respuestas[pregunta_id] = int(seleccion.split(")")[0].replace("(", ""))
-            
-            # ===== RTO (Recovery Time Objective) =====
-            with dim_rto:
-                st.markdown("#### ¿Cuál es el tiempo máximo aceptable de recuperación?")
-                st.info("🕐 RTO define cuánto tiempo puede estar inoperativo el activo antes de causar impacto inaceptable.")
-                for i, pregunta in enumerate(preguntas.get("RTO", [])):
-                    pregunta_id = pregunta["id"]
-                    opciones = [f"({opt['valor']}) {opt['texto']}" for opt in pregunta["opciones"]]
-                    
-                    default_idx = 0
-                    if respuestas_previas and pregunta_id in respuestas_previas:
-                        val_prev = respuestas_previas[pregunta_id]
-                        for idx, opt in enumerate(pregunta["opciones"]):
-                            if opt["valor"] == val_prev:
-                                default_idx = idx
-                                break
-                    
-                    seleccion = st.radio(
-                        f"**{i+1}. {pregunta['pregunta']}**",
-                        opciones,
-                        index=default_idx,
-                        key=f"q_{pregunta_id}"
-                    )
-                    respuestas[pregunta_id] = int(seleccion.split(")")[0].replace("(", ""))
-            
-            # ===== RPO (Recovery Point Objective) =====
-            with dim_rpo:
-                st.markdown("#### ¿Cuánta pérdida de datos es aceptable?")
-                st.info("💾 RPO define cuántos datos (en tiempo) se pueden perder sin causar impacto inaceptable.")
-                for i, pregunta in enumerate(preguntas.get("RPO", [])):
-                    pregunta_id = pregunta["id"]
-                    opciones = [f"({opt['valor']}) {opt['texto']}" for opt in pregunta["opciones"]]
-                    
-                    default_idx = 0
-                    if respuestas_previas and pregunta_id in respuestas_previas:
-                        val_prev = respuestas_previas[pregunta_id]
-                        for idx, opt in enumerate(pregunta["opciones"]):
-                            if opt["valor"] == val_prev:
-                                default_idx = idx
-                                break
-                    
-                    seleccion = st.radio(
-                        f"**{i+1}. {pregunta['pregunta']}**",
-                        opciones,
-                        index=default_idx,
-                        key=f"q_{pregunta_id}"
-                    )
-                    respuestas[pregunta_id] = int(seleccion.split(")")[0].replace("(", ""))
-            
-            # ===== BIA (Business Impact Analysis) =====
-            with dim_bia:
-                st.markdown("#### ¿Cuál es el impacto al negocio si este activo falla?")
-                st.info("📊 BIA analiza el impacto financiero, operacional y reputacional en caso de falla.")
-                for i, pregunta in enumerate(preguntas.get("BIA", [])):
-                    pregunta_id = pregunta["id"]
-                    opciones = [f"({opt['valor']}) {opt['texto']}" for opt in pregunta["opciones"]]
-                    
-                    default_idx = 0
-                    if respuestas_previas and pregunta_id in respuestas_previas:
-                        val_prev = respuestas_previas[pregunta_id]
-                        for idx, opt in enumerate(pregunta["opciones"]):
-                            if opt["valor"] == val_prev:
-                                default_idx = idx
-                                break
-                    
-                    seleccion = st.radio(
-                        f"**{i+1}. {pregunta['pregunta']}**",
-                        opciones,
-                        index=default_idx,
-                        key=f"q_{pregunta_id}"
-                    )
-                    respuestas[pregunta_id] = int(seleccion.split(")")[0].replace("(", ""))
+            with col_info4:
+                # Badge de estado
+                if estado == "VALORADO":
+                    st.markdown("**📌 Estado:** 🟢 **Valorado**")
+                elif estado == "EDITANDO":
+                    st.markdown("**📌 Estado:** 🟡 **Editando**")
+                else:
+                    st.markdown("**📌 Estado:** ⚪ **Pendiente**")
             
             st.markdown("---")
             
-            # Previsualización del cálculo
-            if respuestas:
-                resultado_preview = procesar_cuestionario_dic(tipo_activo, respuestas)
-                
-                st.markdown("### 📊 Vista Previa del Cálculo")
-                
-                # Fila 1: D/I/C/Criticidad
-                st.markdown("**Valoración D/I/C:**")
-                col_prev1, col_prev2, col_prev3, col_prev4 = st.columns(4)
-                
-                with col_prev1:
-                    color_d = {"A": "🔴", "M": "🟡", "B": "🟢", "N": "⚪"}.get(resultado_preview["D"], "⚪")
-                    st.metric(f"{color_d} Disponibilidad", f"{resultado_preview['Valor_D']} ({resultado_preview['D']})")
-                
-                with col_prev2:
-                    color_i = {"A": "🔴", "M": "🟡", "B": "🟢", "N": "⚪"}.get(resultado_preview["I"], "⚪")
-                    st.metric(f"{color_i} Integridad", f"{resultado_preview['Valor_I']} ({resultado_preview['I']})")
-                
-                with col_prev3:
-                    color_c = {"A": "🔴", "M": "🟡", "B": "🟢", "N": "⚪"}.get(resultado_preview["C"], "⚪")
-                    st.metric(f"{color_c} Confidencialidad", f"{resultado_preview['Valor_C']} ({resultado_preview['C']})")
-                
-                with col_prev4:
-                    color_crit = {"Alta": "🔴", "Media": "🟡", "Baja": "🟢", "Nula": "⚪"}.get(resultado_preview["Criticidad_Nivel"], "⚪")
-                    st.metric(f"{color_crit} CRITICIDAD", f"{resultado_preview['Criticidad']} ({resultado_preview['Criticidad_Nivel']})")
-                
-                # Fila 2: RTO/RPO/BIA
-                st.markdown("**Continuidad del Negocio (RTO/RPO/BIA):**")
-                col_rto, col_rpo, col_bia = st.columns(3)
-                
-                with col_rto:
-                    rto_nivel = resultado_preview.get("RTO_Nivel", "Bajo")
-                    rto_color = {"Alto": "🔴", "Medio": "🟡", "Bajo": "🟢", "Nulo": "⚪"}.get(rto_nivel, "⚪")
-                    rto_tiempo = resultado_preview.get("RTO_Tiempo", "No definido")
-                    st.metric(f"{rto_color} RTO", rto_tiempo, delta=rto_nivel)
-                
-                with col_rpo:
-                    rpo_nivel = resultado_preview.get("RPO_Nivel", "Bajo")
-                    rpo_color = {"Alto": "🔴", "Medio": "🟡", "Bajo": "🟢", "Nulo": "⚪"}.get(rpo_nivel, "⚪")
-                    rpo_tiempo = resultado_preview.get("RPO_Tiempo", "No definido")
-                    st.metric(f"{rpo_color} RPO", rpo_tiempo, delta=rpo_nivel)
-                
-                with col_bia:
-                    bia_nivel = resultado_preview.get("BIA_Nivel", "Bajo")
-                    bia_color = {"Alto": "🔴", "Medio": "🟡", "Bajo": "🟢", "Nulo": "⚪"}.get(bia_nivel, "⚪")
-                    bia_valor = resultado_preview.get("BIA_Valor", 0)
-                    st.metric(f"{bia_color} Impacto BIA", bia_nivel, delta=f"Nivel {bia_valor}")
+            # ===== VISTA SEGÚN ESTADO =====
             
-            # Botón guardar
-            if st.button("💾 Guardar Valoración", type="primary", use_container_width=True):
-                try:
-                    resultado = guardar_respuestas_dic(
-                        id_evaluacion=ID_EVALUACION,
-                        id_activo=activo_sel,
-                        tipo_activo=tipo_activo,
-                        respuestas=respuestas
-                    )
-                    st.success(f"""✅ Valoración guardada exitosamente:
-                    - **Criticidad D/I/C:** {resultado['Criticidad']} ({resultado['Criticidad_Nivel']})
-                    - **RTO:** {resultado.get('RTO_Tiempo', 'N/A')} ({resultado.get('RTO_Nivel', 'N/A')})
-                    - **RPO:** {resultado.get('RPO_Tiempo', 'N/A')} ({resultado.get('RPO_Nivel', 'N/A')})
-                    - **BIA:** {resultado.get('BIA_Nivel', 'N/A')}
+            # ===== ESTADO: VALORADO (Solo Lectura) =====
+            if estado == "VALORADO":
+                st.success("""
+                ✅ **Valoración D/I/C Registrada con Éxito**
+                
+                Esta información es la base de la evaluación de riesgos de este activo.  
+                Todas las vulnerabilidades, amenazas y salvaguardas se basan en estos valores.
+                """)
+                
+                # Mostrar valores actuales en tarjetas grandes
+                st.markdown("### 📊 Valoración Actual")
+                
+                col_d, col_i, col_c, col_crit = st.columns(4)
+                
+                with col_d:
+                    d_nivel = valoracion_actual.get("D", "N")
+                    d_valor = valoracion_actual.get("Valor_D", 0)
+                    color_d = {"A": "🔴", "M": "🟡", "B": "🟢", "N": "⚪"}.get(d_nivel, "⚪")
+                    st.markdown(f"""
+                    <div style="padding: 1.5rem; border: 3px solid #3498db; border-radius: 10px; text-align: center; background: #3498db11;">
+                        <h3>{color_d} Disponibilidad</h3>
+                        <h1 style="color: #3498db; margin: 0;">{d_valor}</h1>
+                        <p style="font-size: 1.2rem; margin: 0;">Nivel: <strong>{d_nivel}</strong></p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col_i:
+                    i_nivel = valoracion_actual.get("I", "N")
+                    i_valor = valoracion_actual.get("Valor_I", 0)
+                    color_i = {"A": "🔴", "M": "🟡", "B": "🟢", "N": "⚪"}.get(i_nivel, "⚪")
+                    st.markdown(f"""
+                    <div style="padding: 1.5rem; border: 3px solid #2ecc71; border-radius: 10px; text-align: center; background: #2ecc7111;">
+                        <h3>{color_i} Integridad</h3>
+                        <h1 style="color: #2ecc71; margin: 0;">{i_valor}</h1>
+                        <p style="font-size: 1.2rem; margin: 0;">Nivel: <strong>{i_nivel}</strong></p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col_c:
+                    c_nivel = valoracion_actual.get("C", "N")
+                    c_valor = valoracion_actual.get("Valor_C", 0)
+                    color_c = {"A": "🔴", "M": "🟡", "B": "🟢", "N": "⚪"}.get(c_nivel, "⚪")
+                    st.markdown(f"""
+                    <div style="padding: 1.5rem; border: 3px solid #9b59b6; border-radius: 10px; text-align: center; background: #9b59b611;">
+                        <h3>{color_c} Confidencialidad</h3>
+                        <h1 style="color: #9b59b6; margin: 0;">{c_valor}</h1>
+                        <p style="font-size: 1.2rem; margin: 0;">Nivel: <strong>{c_nivel}</strong></p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col_crit:
+                    crit_valor = valoracion_actual.get("Criticidad", 0)
+                    crit_nivel = valoracion_actual.get("Criticidad_Nivel", "Nula")
+                    color_crit_dict = {"Alta": "#e74c3c", "Media": "#f39c12", "Baja": "#2ecc71", "Nula": "#95a5a6"}
+                    color_crit = color_crit_dict.get(crit_nivel, "#95a5a6")
+                    emoji_crit = {"Alta": "🔴", "Media": "🟡", "Baja": "🟢", "Nula": "⚪"}.get(crit_nivel, "⚪")
+                    st.markdown(f"""
+                    <div style="padding: 1.5rem; border: 3px solid {color_crit}; border-radius: 10px; text-align: center; background: {color_crit}11;">
+                        <h3>{emoji_crit} CRITICIDAD</h3>
+                        <h1 style="color: {color_crit}; margin: 0;">{crit_valor}</h1>
+                        <p style="font-size: 1.2rem; margin: 0;">Nivel: <strong>{crit_nivel}</strong></p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Mostrar valores RTO/RPO/BIA si existen
+                if valoracion_actual.get("RTO_Tiempo") or valoracion_actual.get("RPO_Tiempo") or valoracion_actual.get("BIA_Nivel"):
+                    st.markdown("---")
+                    st.markdown("### ⏱️ Continuidad del Negocio (RTO/RPO/BIA)")
+                    
+                    col_rto, col_rpo, col_bia = st.columns(3)
+                    
+                    with col_rto:
+                        rto_tiempo = valoracion_actual.get("RTO_Tiempo", "No definido")
+                        rto_nivel = valoracion_actual.get("RTO_Nivel", "Bajo")
+                        st.metric("⏱️ RTO (Recovery Time Objective)", rto_tiempo, delta=rto_nivel)
+                    
+                    with col_rpo:
+                        rpo_tiempo = valoracion_actual.get("RPO_Tiempo", "No definido")
+                        rpo_nivel = valoracion_actual.get("RPO_Nivel", "Bajo")
+                        st.metric("💾 RPO (Recovery Point Objective)", rpo_tiempo, delta=rpo_nivel)
+                    
+                    with col_bia:
+                        bia_nivel = valoracion_actual.get("BIA_Nivel", "Bajo")
+                        st.metric("📊 BIA (Business Impact Analysis)", bia_nivel)
+                
+                st.markdown("---")
+                
+                # Mostrar respuestas del cuestionario en modo solo lectura
+                with st.expander("📋 Ver Respuestas del Cuestionario (Solo Lectura)", expanded=False):
+                    respuestas_previas = get_respuestas_previas(ID_EVALUACION, activo_sel)
+                    preguntas = get_banco_preguntas_tipo(tipo_activo)
+                    
+                    if not preguntas:
+                        preguntas = get_banco_preguntas_tipo("Servidor Físico")
+                    
+                    if respuestas_previas and preguntas:
+                        # Mostrar por dimensión
+                        tabs_lectura = st.tabs(["🔵 Disponibilidad", "🟢 Integridad", "🟣 Confidencialidad", "⏱️ RTO", "💾 RPO", "📊 BIA"])
+                        
+                        dimensiones = ["D", "I", "C", "RTO", "RPO", "BIA"]
+                        for tab_idx, dim in enumerate(dimensiones):
+                            with tabs_lectura[tab_idx]:
+                                preguntas_dim = preguntas.get(dim, [])
+                                for i, pregunta in enumerate(preguntas_dim):
+                                    pregunta_id = pregunta["id"]
+                                    if pregunta_id in respuestas_previas:
+                                        valor_resp = respuestas_previas[pregunta_id]
+                                        # Encontrar texto de la respuesta
+                                        texto_resp = "No encontrado"
+                                        for opt in pregunta["opciones"]:
+                                            if opt["valor"] == valor_resp:
+                                                texto_resp = opt["texto"]
+                                                break
+                                        
+                                        st.markdown(f"""
+                                        **{i+1}. {pregunta['pregunta']}**  
+                                        ➜ **Respuesta:** ({valor_resp}) {texto_resp}
+                                        """)
+                                        st.markdown("---")
+                    else:
+                        st.info("No se encontraron respuestas del cuestionario.")
+                
+                st.markdown("---")
+                
+                # Botón para habilitar edición (con advertencia)
+                st.warning("""
+                ⚠️ **Advertencia sobre Edición**
+                
+                Modificar la valoración D/I/C afectará:
+                - Todas las vulnerabilidades y amenazas identificadas
+                - Los riesgos calculados (inherentes y residuales)
+                - Las salvaguardas recomendadas
+                - El mapa de riesgos completo
+                
+                **Solo edite si es absolutamente necesario.**
+                """)
+                
+                col_edit1, col_edit2 = st.columns([1, 3])
+                with col_edit1:
+                    if st.button("✏️ Habilitar Edición", type="secondary", use_container_width=True):
+                        st.session_state[key_edit] = True
+                        st.rerun()
+                
+                with col_edit2:
+                    st.caption("💡 Al habilitar la edición, podrá modificar las respuestas del cuestionario D/I/C.")
+            
+            # ===== ESTADO: PENDIENTE o EDITANDO (Formulario Editable) =====
+            else:
+                if estado == "EDITANDO":
+                    st.warning("""
+                    ⚠️ **Modo Edición Activado**
+                    
+                    Está modificando una valoración existente. Los cambios afectarán toda la evaluación de riesgos.  
+                    Proceda con precaución.
                     """)
-                    st.balloons()
-                except Exception as e:
-                    st.error(f"❌ Error al guardar: {str(e)}")
-            
-            # Mostrar valoración actual si existe
-            if valoracion_actual:
-                with st.expander("📈 Valoración Actual Guardada", expanded=False):
-                    st.json({
-                        "D": valoracion_actual.get("D"),
-                        "Valor_D": valoracion_actual.get("Valor_D"),
-                        "I": valoracion_actual.get("I"),
-                        "Valor_I": valoracion_actual.get("Valor_I"),
-                        "C": valoracion_actual.get("C"),
-                        "Valor_C": valoracion_actual.get("Valor_C"),
-                        "Criticidad": valoracion_actual.get("Criticidad"),
-                        "Criticidad_Nivel": valoracion_actual.get("Criticidad_Nivel"),
-                        "RTO_Tiempo": valoracion_actual.get("RTO_Tiempo"),
-                        "RTO_Nivel": valoracion_actual.get("RTO_Nivel"),
-                        "RPO_Tiempo": valoracion_actual.get("RPO_Tiempo"),
-                        "RPO_Nivel": valoracion_actual.get("RPO_Nivel"),
-                        "BIA_Nivel": valoracion_actual.get("BIA_Nivel")
-                    })
+                
+                respuestas_previas = get_respuestas_previas(ID_EVALUACION, activo_sel)
+                
+                # Obtener preguntas para este tipo
+                preguntas = get_banco_preguntas_tipo(tipo_activo)
+                
+                if not preguntas:
+                    st.warning(f"⚠️ No hay cuestionario específico para '{tipo_activo}'. Se usará el cuestionario genérico.")
+                    preguntas = get_banco_preguntas_tipo("Servidor Físico")
+                
+                # Mostrar cuestionario por dimensión
+                st.markdown("### 📋 Cuestionario de Valoración")
+                st.info("💡 Responda las siguientes preguntas para calcular automáticamente los niveles D/I/C del activo.")
+                
+                respuestas = {}
+                
+                # Tabs por dimensión
+                dim_d, dim_i, dim_c, dim_rto, dim_rpo, dim_bia = st.tabs([
+                    "🔵 Disponibilidad (D)", 
+                    "🟢 Integridad (I)", 
+                    "🟣 Confidencialidad (C)",
+                    "⏱️ RTO",
+                    "💾 RPO",
+                    "📊 BIA"
+                ])
+                
+                # ===== DISPONIBILIDAD =====
+                with dim_d:
+                    st.markdown("#### ¿Qué tan crítico es que el activo esté disponible?")
+                    for i, pregunta in enumerate(preguntas.get("D", [])):
+                        pregunta_id = pregunta["id"]
+                        opciones = [f"({opt['valor']}) {opt['texto']}" for opt in pregunta["opciones"]]
+                        
+                        default_idx = 0
+                        if respuestas_previas and pregunta_id in respuestas_previas:
+                            val_prev = respuestas_previas[pregunta_id]
+                            for idx, opt in enumerate(pregunta["opciones"]):
+                                if opt["valor"] == val_prev:
+                                    default_idx = idx
+                                    break
+                        
+                        seleccion = st.radio(
+                            f"**{i+1}. {pregunta['pregunta']}**",
+                            opciones,
+                            index=default_idx,
+                            key=f"q_{pregunta_id}_{estado}"
+                        )
+                        respuestas[pregunta_id] = int(seleccion.split(")")[0].replace("(", ""))
+                
+                # ===== INTEGRIDAD =====
+                with dim_i:
+                    st.markdown("#### ¿Qué tan crítico es mantener la integridad de los datos?")
+                    for i, pregunta in enumerate(preguntas.get("I", [])):
+                        pregunta_id = pregunta["id"]
+                        opciones = [f"({opt['valor']}) {opt['texto']}" for opt in pregunta["opciones"]]
+                        
+                        default_idx = 0
+                        if respuestas_previas and pregunta_id in respuestas_previas:
+                            val_prev = respuestas_previas[pregunta_id]
+                            for idx, opt in enumerate(pregunta["opciones"]):
+                                if opt["valor"] == val_prev:
+                                    default_idx = idx
+                                    break
+                        
+                        seleccion = st.radio(
+                            f"**{i+1}. {pregunta['pregunta']}**",
+                            opciones,
+                            index=default_idx,
+                            key=f"q_{pregunta_id}_{estado}"
+                        )
+                        respuestas[pregunta_id] = int(seleccion.split(")")[0].replace("(", ""))
+                
+                # ===== CONFIDENCIALIDAD =====
+                with dim_c:
+                    st.markdown("#### ¿Qué nivel de confidencialidad requiere el activo?")
+                    for i, pregunta in enumerate(preguntas.get("C", [])):
+                        pregunta_id = pregunta["id"]
+                        opciones = [f"({opt['valor']}) {opt['texto']}" for opt in pregunta["opciones"]]
+                        
+                        default_idx = 0
+                        if respuestas_previas and pregunta_id in respuestas_previas:
+                            val_prev = respuestas_previas[pregunta_id]
+                            for idx, opt in enumerate(pregunta["opciones"]):
+                                if opt["valor"] == val_prev:
+                                    default_idx = idx
+                                    break
+                        
+                        seleccion = st.radio(
+                            f"**{i+1}. {pregunta['pregunta']}**",
+                            opciones,
+                            index=default_idx,
+                            key=f"q_{pregunta_id}_{estado}"
+                        )
+                        respuestas[pregunta_id] = int(seleccion.split(")")[0].replace("(", ""))
+                
+                # ===== RTO =====
+                with dim_rto:
+                    st.markdown("#### ¿Cuál es el tiempo máximo aceptable de recuperación?")
+                    st.info("🕐 RTO define cuánto tiempo puede estar inoperativo el activo antes de causar impacto inaceptable.")
+                    for i, pregunta in enumerate(preguntas.get("RTO", [])):
+                        pregunta_id = pregunta["id"]
+                        opciones = [f"({opt['valor']}) {opt['texto']}" for opt in pregunta["opciones"]]
+                        
+                        default_idx = 0
+                        if respuestas_previas and pregunta_id in respuestas_previas:
+                            val_prev = respuestas_previas[pregunta_id]
+                            for idx, opt in enumerate(pregunta["opciones"]):
+                                if opt["valor"] == val_prev:
+                                    default_idx = idx
+                                    break
+                        
+                        seleccion = st.radio(
+                            f"**{i+1}. {pregunta['pregunta']}**",
+                            opciones,
+                            index=default_idx,
+                            key=f"q_{pregunta_id}_{estado}"
+                        )
+                        respuestas[pregunta_id] = int(seleccion.split(")")[0].replace("(", ""))
+                
+                # ===== RPO =====
+                with dim_rpo:
+                    st.markdown("#### ¿Cuánta pérdida de datos es aceptable?")
+                    st.info("💾 RPO define cuántos datos (en tiempo) se pueden perder sin causar impacto inaceptable.")
+                    for i, pregunta in enumerate(preguntas.get("RPO", [])):
+                        pregunta_id = pregunta["id"]
+                        opciones = [f"({opt['valor']}) {opt['texto']}" for opt in pregunta["opciones"]]
+                        
+                        default_idx = 0
+                        if respuestas_previas and pregunta_id in respuestas_previas:
+                            val_prev = respuestas_previas[pregunta_id]
+                            for idx, opt in enumerate(pregunta["opciones"]):
+                                if opt["valor"] == val_prev:
+                                    default_idx = idx
+                                    break
+                        
+                        seleccion = st.radio(
+                            f"**{i+1}. {pregunta['pregunta']}**",
+                            opciones,
+                            index=default_idx,
+                            key=f"q_{pregunta_id}_{estado}"
+                        )
+                        respuestas[pregunta_id] = int(seleccion.split(")")[0].replace("(", ""))
+                
+                # ===== BIA =====
+                with dim_bia:
+                    st.markdown("#### ¿Cuál es el impacto al negocio si este activo falla?")
+                    st.info("📊 BIA analiza el impacto financiero, operacional y reputacional en caso de falla.")
+                    for i, pregunta in enumerate(preguntas.get("BIA", [])):
+                        pregunta_id = pregunta["id"]
+                        opciones = [f"({opt['valor']}) {opt['texto']}" for opt in pregunta["opciones"]]
+                        
+                        default_idx = 0
+                        if respuestas_previas and pregunta_id in respuestas_previas:
+                            val_prev = respuestas_previas[pregunta_id]
+                            for idx, opt in enumerate(pregunta["opciones"]):
+                                if opt["valor"] == val_prev:
+                                    default_idx = idx
+                                    break
+                        
+                        seleccion = st.radio(
+                            f"**{i+1}. {pregunta['pregunta']}**",
+                            opciones,
+                            index=default_idx,
+                            key=f"q_{pregunta_id}_{estado}"
+                        )
+                        respuestas[pregunta_id] = int(seleccion.split(")")[0].replace("(", ""))
+                
+                st.markdown("---")
+                
+                # Previsualización del cálculo
+                if respuestas:
+                    resultado_preview = procesar_cuestionario_dic(tipo_activo, respuestas)
+                    
+                    st.markdown("### 📊 Vista Previa del Cálculo")
+                    
+                    # Fila 1: D/I/C/Criticidad
+                    st.markdown("**Valoración D/I/C:**")
+                    col_prev1, col_prev2, col_prev3, col_prev4 = st.columns(4)
+                    
+                    with col_prev1:
+                        color_d = {"A": "🔴", "M": "🟡", "B": "🟢", "N": "⚪"}.get(resultado_preview["D"], "⚪")
+                        st.metric(f"{color_d} Disponibilidad", f"{resultado_preview['Valor_D']} ({resultado_preview['D']})")
+                    
+                    with col_prev2:
+                        color_i = {"A": "🔴", "M": "🟡", "B": "🟢", "N": "⚪"}.get(resultado_preview["I"], "⚪")
+                        st.metric(f"{color_i} Integridad", f"{resultado_preview['Valor_I']} ({resultado_preview['I']})")
+                    
+                    with col_prev3:
+                        color_c = {"A": "🔴", "M": "🟡", "B": "🟢", "N": "⚪"}.get(resultado_preview["C"], "⚪")
+                        st.metric(f"{color_c} Confidencialidad", f"{resultado_preview['Valor_C']} ({resultado_preview['C']})")
+                    
+                    with col_prev4:
+                        color_crit = {"Alta": "🔴", "Media": "🟡", "Baja": "🟢", "Nula": "⚪"}.get(resultado_preview["Criticidad_Nivel"], "⚪")
+                        st.metric(f"{color_crit} CRITICIDAD", f"{resultado_preview['Criticidad']} ({resultado_preview['Criticidad_Nivel']})")
+                    
+                    # Fila 2: RTO/RPO/BIA
+                    st.markdown("**Continuidad del Negocio (RTO/RPO/BIA):**")
+                    col_rto, col_rpo, col_bia = st.columns(3)
+                    
+                    with col_rto:
+                        rto_nivel = resultado_preview.get("RTO_Nivel", "Bajo")
+                        rto_color = {"Alto": "🔴", "Medio": "🟡", "Bajo": "🟢", "Nulo": "⚪"}.get(rto_nivel, "⚪")
+                        rto_tiempo = resultado_preview.get("RTO_Tiempo", "No definido")
+                        st.metric(f"{rto_color} RTO", rto_tiempo, delta=rto_nivel)
+                    
+                    with col_rpo:
+                        rpo_nivel = resultado_preview.get("RPO_Nivel", "Bajo")
+                        rpo_color = {"Alto": "🔴", "Medio": "🟡", "Bajo": "🟢", "Nulo": "⚪"}.get(rpo_nivel, "⚪")
+                        rpo_tiempo = resultado_preview.get("RPO_Tiempo", "No definido")
+                        st.metric(f"{rpo_color} RPO", rpo_tiempo, delta=rpo_nivel)
+                    
+                    with col_bia:
+                        bia_nivel = resultado_preview.get("BIA_Nivel", "Bajo")
+                        bia_color = {"Alto": "🔴", "Medio": "🟡", "Bajo": "🟢", "Nulo": "⚪"}.get(bia_nivel, "⚪")
+                        bia_valor = resultado_preview.get("BIA_Valor", 0)
+                        st.metric(f"{bia_color} Impacto BIA", bia_nivel, delta=f"Nivel {bia_valor}")
+                
+                st.markdown("---")
+                
+                # Botones de acción
+                col_btn1, col_btn2 = st.columns([2, 1])
+                
+                with col_btn1:
+                    texto_boton = "💾 Guardar Cambios" if estado == "EDITANDO" else "💾 Guardar Valoración"
+                    if st.button(texto_boton, type="primary", use_container_width=True):
+                        try:
+                            resultado = guardar_respuestas_dic(
+                                id_evaluacion=ID_EVALUACION,
+                                id_activo=activo_sel,
+                                tipo_activo=tipo_activo,
+                                respuestas=respuestas
+                            )
+                            
+                            if estado == "EDITANDO":
+                                st.success(f"""✅ Valoración actualizada exitosamente:
+                                - **Criticidad D/I/C:** {resultado['Criticidad']} ({resultado['Criticidad_Nivel']})
+                                - **RTO:** {resultado.get('RTO_Tiempo', 'N/A')} ({resultado.get('RTO_Nivel', 'N/A')})
+                                - **RPO:** {resultado.get('RPO_Tiempo', 'N/A')} ({resultado.get('RPO_Nivel', 'N/A')})
+                                - **BIA:** {resultado.get('BIA_Nivel', 'N/A')}
+                                
+                                ⚠️ Recuerde revisar las vulnerabilidades y riesgos en los siguientes tabs.
+                                """)
+                            else:
+                                st.success(f"""✅ Valoración guardada exitosamente:
+                                - **Criticidad D/I/C:** {resultado['Criticidad']} ({resultado['Criticidad_Nivel']})
+                                - **RTO:** {resultado.get('RTO_Tiempo', 'N/A')} ({resultado.get('RTO_Nivel', 'N/A')})
+                                - **RPO:** {resultado.get('RPO_Tiempo', 'N/A')} ({resultado.get('RPO_Nivel', 'N/A')})
+                                - **BIA:** {resultado.get('BIA_Nivel', 'N/A')}
+                                """)
+                            
+                            st.balloons()
+                            
+                            # Desactivar modo edición
+                            st.session_state[key_edit] = False
+                            
+                            # Esperar un momento antes de recargar
+                            time.sleep(1)
+                            st.rerun()
+                            
+                        except Exception as e:
+                            st.error(f"❌ Error al guardar: {str(e)}")
+                
+                with col_btn2:
+                    if estado == "EDITANDO":
+                        if st.button("❌ Cancelar Edición", use_container_width=True):
+                            st.session_state[key_edit] = False
+                            st.rerun()
+
     
     # ===== RESUMEN DE VALORACIONES =====
     with tab_resumen_val:
@@ -1910,6 +2108,8 @@ with tab4:
     - `Impacto_I = Valor_I × Degradación_I`  
     - `Impacto_C = Valor_C × Degradación_C`
     - `IMPACTO_TOTAL = MAX(Impacto_D, Impacto_I, Impacto_C)`
+    
+    ⚠️ **Importante:** El análisis IA se ejecuta una vez por activo. Los resultados alimentan el cálculo de riesgos y salvaguardas.
     """)
     
     # Importar función de análisis con IA
@@ -1972,6 +2172,23 @@ with tab4:
         activo_info = activos[activos["ID_Activo"] == activo_sel].iloc[0]
         valoracion = get_valoracion_activo(ID_EVALUACION, activo_sel)
         
+        # ===== DETECCIÓN DE ESTADO DEL ACTIVO =====
+        vulnerabilidades_existentes = get_vulnerabilidades_activo(ID_EVALUACION, activo_sel)
+        ya_analizado = not vulnerabilidades_existentes.empty
+        
+        # Inicializar estado de re-análisis en session_state
+        key_reanalizando = f"reanalizando_{activo_sel}"
+        if key_reanalizando not in st.session_state:
+            st.session_state[key_reanalizando] = False
+        
+        # Determinar estado actual
+        if ya_analizado and not st.session_state[key_reanalizando]:
+            estado_analisis = "ANALIZADO"
+        elif ya_analizado and st.session_state[key_reanalizando]:
+            estado_analisis = "RE-ANALIZANDO"
+        else:
+            estado_analisis = "PENDIENTE"
+        
         # Extraer valores de criticidad
         criticidad = valoracion.get("Criticidad", 0) if valoracion else 0
         criticidad_nivel = valoracion.get("Criticidad_Nivel", "Sin valorar") if valoracion else "Sin valorar"
@@ -1986,13 +2203,21 @@ with tab4:
         st.markdown("---")
         st.markdown("### 📋 Información del Activo")
         
-        col_id, col_tipo, col_ubic = st.columns(3)
+        col_id, col_tipo, col_ubic, col_estado = st.columns(4)
         with col_id:
             st.markdown(f"**ID Activo:** `{activo_sel}`")
         with col_tipo:
             st.markdown(f"**Tipo:** {activo_info['Tipo_Activo']}")
         with col_ubic:
             st.markdown(f"**Ubicación:** {activo_info.get('Ubicacion', 'N/A')}")
+        with col_estado:
+            # Badge de estado
+            if estado_analisis == "ANALIZADO":
+                st.markdown("**📌 Estado:** 🟢 **Analizado**")
+            elif estado_analisis == "RE-ANALIZANDO":
+                st.markdown("**📌 Estado:** 🟡 **Re-analizando**")
+            else:
+                st.markdown("**📌 Estado:** ⚪ **Pendiente**")
         
         # ===== VALORACIÓN D/I/C =====
         st.markdown("### 📊 Valoración del Activo (del Tab 3)")
@@ -2016,161 +2241,306 @@ with tab4:
         
         st.markdown("---")
         
-        # ===== ANÁLISIS CON IA =====
-        st.markdown("### 🤖 Análisis de Amenazas con IA Local")
-        st.info("""
-        💡 La IA analizará el activo y su criticidad para identificar automáticamente:
-        - **Amenazas** del catálogo MAGERIT aplicables
-        - **Vulnerabilidades** que permiten que las amenazas se materialicen
-        - **Degradación** estimada para D/I/C
-        """)
+        # ===== VISTA SEGÚN ESTADO =====
         
-        # Usar session_state para almacenar resultados de IA
-        key_amenazas = f"amenazas_ia_{activo_sel}"
-        
-        col_btn1, col_btn2 = st.columns([1, 3])
-        with col_btn1:
-            if st.button("🔍 Analizar con IA", type="primary", key="btn_analizar_ia"):
-                with st.spinner("🧠 Analizando activo con IA local..."):
-                    # Preparar datos del activo
-                    activo_dict = {
-                        "ID_Activo": activo_sel,
-                        "Nombre_Activo": activo_info['Nombre_Activo'],
-                        "Tipo_Activo": activo_info['Tipo_Activo'],
-                        "Descripcion": activo_info.get('Descripcion', ''),
-                        "Ubicacion": activo_info.get('Ubicacion', '')
-                    }
-                    
-                    valoracion_dict = {
-                        "Valor_D": valor_d,
-                        "Valor_I": valor_i,
-                        "Valor_C": valor_c,
-                        "D": nivel_d,
-                        "I": nivel_i,
-                        "C": nivel_c,
-                        "Criticidad": criticidad,
-                        "Criticidad_Nivel": criticidad_nivel
-                    }
-                    
-                    # Llamar a la IA
-                    exito, amenazas, mensaje = analizar_amenazas_por_criticidad(activo_dict, valoracion_dict)
-                    
-                    if exito:
-                        st.session_state[key_amenazas] = amenazas
-                        st.success(f"✅ Análisis completado: Se identificaron **{len(amenazas)} amenazas/vulnerabilidades** para este activo")
-                        st.info(f"💡 {mensaje}")
-                    else:
-                        st.error(f"❌ Error: {mensaje}")
-        
-        with col_btn2:
-            st.caption("La IA usa el catálogo MAGERIT v3 para identificar amenazas relevantes según el tipo y criticidad del activo.")
-        
-        # ===== MOSTRAR RESULTADOS DE IA =====
-        if key_amenazas in st.session_state and st.session_state[key_amenazas]:
-            amenazas_ia = st.session_state[key_amenazas]
+        # ===== ESTADO: ANALIZADO (Solo Lectura) =====
+        if estado_analisis == "ANALIZADO":
+            st.success(f"""
+            ✅ **Análisis de Amenazas y Vulnerabilidades Realizado**
             
-            st.markdown("### 📋 Amenazas y Vulnerabilidades Identificadas por IA")
-            st.caption(f"Se identificaron **{len(amenazas_ia)}** amenazas/vulnerabilidades para este activo.")
+            Se identificaron **{len(vulnerabilidades_existentes)} amenazas/vulnerabilidades** para este activo.  
+            Los resultados alimentan el cálculo de riesgos (Tab 5), salvaguardas (Tab 6) y mapa de riesgos (Tab 7).
+            """)
             
-            # Mostrar cada amenaza con opción de ajustar y guardar
-            amenazas_a_guardar = []
+            # Mostrar resumen de amenazas
+            st.markdown("### 📊 Amenazas Identificadas")
             
-            for idx, am in enumerate(amenazas_ia):
-                with st.expander(f"🔴 [{am['codigo_amenaza']}] {am['nombre_amenaza']}", expanded=idx < 3):
-                    col1, col2 = st.columns([2, 1])
-                    
-                    with col1:
-                        st.markdown(f"**Tipo de Amenaza:** {am.get('tipo_amenaza', 'N/A')}")
-                        st.markdown(f"**Vulnerabilidad Identificada:**")
-                        vuln_editada = st.text_area(
-                            "Vulnerabilidad",
-                            value=am['vulnerabilidad'],
-                            height=80,
-                            key=f"vuln_{idx}_{activo_sel}",
-                            label_visibility="collapsed"
-                        )
-                        if am.get('justificacion'):
-                            st.caption(f"💡 *{am['justificacion']}*")
-                    
-                    with col2:
-                        st.markdown("**Degradación Sugerida:**")
-                        deg_d = st.slider(f"D", 0, 100, am['degradacion_d'], 5, key=f"deg_d_{idx}_{activo_sel}")
-                        deg_i = st.slider(f"I", 0, 100, am['degradacion_i'], 5, key=f"deg_i_{idx}_{activo_sel}")
-                        deg_c = st.slider(f"C", 0, 100, am['degradacion_c'], 5, key=f"deg_c_{idx}_{activo_sel}")
-                        
-                        # Calcular impacto
-                        imp_d = valor_d * (deg_d / 100)
-                        imp_i = valor_i * (deg_i / 100)
-                        imp_c = valor_c * (deg_c / 100)
-                        impacto = max(imp_d, imp_i, imp_c)
-                        
-                        if impacto >= 2.0:
-                            st.error(f"Impacto: **{impacto:.2f}** (Alto)")
-                        elif impacto >= 1.0:
-                            st.warning(f"Impacto: **{impacto:.2f}** (Medio)")
-                        elif impacto >= 0.5:
-                            st.info(f"Impacto: **{impacto:.2f}** (Bajo)")
-                        else:
-                            st.success(f"Impacto: **{impacto:.2f}** (Nulo)")
-                    
-                    # Checkbox para incluir
-                    incluir = st.checkbox("✅ Incluir esta amenaza", value=True, key=f"incluir_{idx}_{activo_sel}")
-                    
-                    if incluir:
-                        amenazas_a_guardar.append({
-                            "codigo": am['codigo_amenaza'],
-                            "codigo_vuln": am.get('codigo_vulnerabilidad', ''),
-                            "nombre": am['nombre_amenaza'],
-                            "vulnerabilidad": vuln_editada,
-                            "deg_d": deg_d,
-                            "deg_i": deg_i,
-                            "deg_c": deg_c,
-                            "impacto": impacto
-                        })
+            # Calcular estadísticas
+            impactos = []
+            for idx, row in vulnerabilidades_existentes.iterrows():
+                imp_d = valor_d * row.get("Degradacion_D", 0)
+                imp_i = valor_i * row.get("Degradacion_I", 0)
+                imp_c = valor_c * row.get("Degradacion_C", 0)
+                impacto = max(imp_d, imp_i, imp_c)
+                impactos.append(impacto)
+            
+            vulnerabilidades_existentes['Impacto'] = impactos
+            
+            # Métricas de impacto
+            col_met1, col_met2, col_met3, col_met4 = st.columns(4)
+            
+            with col_met1:
+                st.metric("Total Amenazas", len(vulnerabilidades_existentes))
+            
+            with col_met2:
+                alto = sum(1 for i in impactos if i >= 2.0)
+                st.metric("Impacto Alto", alto, delta="🔴" if alto > 0 else None)
+            
+            with col_met3:
+                medio = sum(1 for i in impactos if 1.0 <= i < 2.0)
+                st.metric("Impacto Medio", medio, delta="🟡" if medio > 0 else None)
+            
+            with col_met4:
+                bajo = sum(1 for i in impactos if i < 1.0)
+                st.metric("Impacto Bajo", bajo, delta="🟢" if bajo > 0 else None)
+            
+            # Tabla resumen
+            st.markdown("#### 📋 Lista de Amenazas")
+            
+            df_display = vulnerabilidades_existentes[['Cod_Amenaza', 'Amenaza', 'Vulnerabilidad', 'Degradacion_D', 'Degradacion_I', 'Degradacion_C', 'Impacto']].copy()
+            df_display['Degradacion_D'] = (df_display['Degradacion_D'] * 100).round(0).astype(int)
+            df_display['Degradacion_I'] = (df_display['Degradacion_I'] * 100).round(0).astype(int)
+            df_display['Degradacion_C'] = (df_display['Degradacion_C'] * 100).round(0).astype(int)
+            df_display['Impacto'] = df_display['Impacto'].round(2)
+            
+            df_display.columns = ['Código', 'Amenaza', 'Vulnerabilidad', 'Deg D (%)', 'Deg I (%)', 'Deg C (%)', 'Impacto']
+            
+            # Colorear por impacto
+            def colorear_impacto(row):
+                if row['Impacto'] >= 2.0:
+                    return ['background-color: #ff4444; color: white'] * len(row)
+                elif row['Impacto'] >= 1.0:
+                    return ['background-color: #ffbb33; color: black'] * len(row)
+                elif row['Impacto'] >= 0.5:
+                    return ['background-color: #00C851; color: white'] * len(row)
+                return [''] * len(row)
+            
+            st.dataframe(
+                df_display.style.apply(colorear_impacto, axis=1),
+                use_container_width=True,
+                hide_index=True
+            )
             
             st.markdown("---")
             
-            # Botón para guardar todas las amenazas seleccionadas
-            st.markdown("### 💾 Guardar Amenazas Seleccionadas")
-            col_save1, col_save2 = st.columns([1, 2])
+            # Advertencia sobre re-análisis
+            st.warning("""
+            ⚠️ **Advertencia sobre Re-Análisis**
             
-            with col_save1:
-                if st.button("💾 Guardar Todas", type="primary", key="btn_guardar_amenazas"):
-                    guardadas = 0
-                    for am in amenazas_a_guardar:
-                        try:
-                            agregar_vulnerabilidad_amenaza(
-                                id_evaluacion=ID_EVALUACION,
-                                id_activo=activo_sel,
-                                nombre_activo=activo_info['Nombre_Activo'],
-                                vulnerabilidad=am['vulnerabilidad'],
-                                amenaza=am['nombre'],
-                                cod_amenaza=am['codigo'],
-                                cod_vulnerabilidad=am.get('codigo_vuln', ''),
-                                deg_d=am['deg_d'] / 100,
-                                deg_i=am['deg_i'] / 100,
-                                deg_c=am['deg_c'] / 100
-                            )
-                            guardadas += 1
-                        except Exception as e:
-                            st.error(f"Error guardando {am['codigo']}: {e}")
-                    
-                    if guardadas > 0:
-                        st.success(f"✅ Se guardaron {guardadas} amenazas/vulnerabilidades")
-                        # Limpiar resultados de IA
-                        del st.session_state[key_amenazas]
-                        st.rerun()
+            Volver a ejecutar el análisis IA afectará:
+            - Los riesgos calculados en el Tab 5 (Frecuencia × Impacto)
+            - Las salvaguardas recomendadas en el Tab 6
+            - El mapa de riesgos completo en el Tab 7
+            - Todas las métricas derivadas de amenazas/vulnerabilidades
             
-            with col_save2:
-                st.caption(f"Se guardarán **{len(amenazas_a_guardar)}** amenazas seleccionadas con sus degradaciones.")
+            **Solo re-analice si es absolutamente necesario** (ej: cambio en criticidad D/I/C, nueva información sobre vulnerabilidades).
+            """)
+            
+            # Botón para habilitar re-análisis
+            col_re1, col_re2 = st.columns([1, 3])
+            with col_re1:
+                if st.button("🔄 Habilitar Re-Análisis", type="secondary", use_container_width=True):
+                    st.session_state[key_reanalizando] = True
+                    st.rerun()
+            
+            with col_re2:
+                st.caption("💡 Al habilitar el re-análisis, la IA volverá a identificar amenazas y vulnerabilidades desde cero.")
         
-        # Mostrar mensaje si hay vulnerabilidades del activo actual
-        vulns = get_vulnerabilidades_activo(ID_EVALUACION, activo_sel)
-        
-        if not vulns.empty:
-            st.success(f"✅ **{activo_info['Nombre_Activo']}** tiene {len(vulns)} vulnerabilidades/amenazas registradas. Ver tabla unificada abajo.")
+        # ===== ESTADO: PENDIENTE o RE-ANALIZANDO (Análisis IA Activo) =====
         else:
-            st.info("📭 No hay vulnerabilidades/amenazas registradas para este activo. Usa el botón 'Analizar con IA' para identificar automáticamente.")
+            if estado_analisis == "RE-ANALIZANDO":
+                st.warning("""
+                ⚠️ **Modo Re-Análisis Activado**
+                
+                Está volviendo a analizar un activo que ya tiene amenazas identificadas.  
+                Los resultados anteriores serán reemplazados. Esta acción afectará el cálculo de riesgos completo.  
+                Proceda con precaución.
+                """)
+            
+            # ===== ANÁLISIS CON IA =====
+            st.markdown("### 🤖 Análisis de Amenazas con IA Local")
+            st.info("""
+            💡 La IA analizará el activo y su criticidad para identificar automáticamente:
+            - **Amenazas** del catálogo MAGERIT aplicables
+            - **Vulnerabilidades** que permiten que las amenazas se materialicen
+            - **Degradación** estimada para D/I/C
+            """)
+            
+            # Usar session_state para almacenar resultados de IA
+            key_amenazas = f"amenazas_ia_{activo_sel}"
+            
+            col_btn1, col_btn2 = st.columns([1, 3])
+            with col_btn1:
+                texto_boton = "🔍 Re-analizar con IA" if estado_analisis == "RE-ANALIZANDO" else "🔍 Analizar con IA"
+                if st.button(texto_boton, type="primary", key="btn_analizar_ia"):
+                    with st.spinner("🧠 Analizando activo con IA local..."):
+                        # Preparar datos del activo
+                        activo_dict = {
+                            "ID_Activo": activo_sel,
+                            "Nombre_Activo": activo_info['Nombre_Activo'],
+                            "Tipo_Activo": activo_info['Tipo_Activo'],
+                            "Descripcion": activo_info.get('Descripcion', ''),
+                            "Ubicacion": activo_info.get('Ubicacion', '')
+                        }
+                        
+                        valoracion_dict = {
+                            "Valor_D": valor_d,
+                            "Valor_I": valor_i,
+                            "Valor_C": valor_c,
+                            "D": nivel_d,
+                            "I": nivel_i,
+                            "C": nivel_c,
+                            "Criticidad": criticidad,
+                            "Criticidad_Nivel": criticidad_nivel
+                        }
+                        
+                        # Llamar a la IA
+                        exito, amenazas, mensaje = analizar_amenazas_por_criticidad(activo_dict, valoracion_dict)
+                        
+                        if exito:
+                            st.session_state[key_amenazas] = amenazas
+                            st.success(f"✅ Análisis completado: Se identificaron **{len(amenazas)} amenazas/vulnerabilidades** para este activo")
+                            st.info(f"💡 {mensaje}")
+                        else:
+                            st.error(f"❌ Error: {mensaje}")
+            
+            with col_btn2:
+                if estado_analisis == "RE-ANALIZANDO":
+                    st.caption("⚠️ Este análisis reemplazará las amenazas existentes. La IA usa el catálogo MAGERIT v3.")
+                else:
+                    st.caption("La IA usa el catálogo MAGERIT v3 para identificar amenazas relevantes según el tipo y criticidad del activo.")
+            
+            # Botón para cancelar re-análisis
+            if estado_analisis == "RE-ANALIZANDO":
+                st.markdown("---")
+                if st.button("❌ Cancelar Re-Análisis", use_container_width=True):
+                    st.session_state[key_reanalizando] = False
+                    # Limpiar resultados de IA si existen
+                    if key_amenazas in st.session_state:
+                        del st.session_state[key_amenazas]
+                    st.rerun()
+            
+            # ===== MOSTRAR RESULTADOS DE IA =====
+            if key_amenazas in st.session_state and st.session_state[key_amenazas]:
+                amenazas_ia = st.session_state[key_amenazas]
+                
+                st.markdown("### 📋 Amenazas y Vulnerabilidades Identificadas por IA")
+                st.caption(f"Se identificaron **{len(amenazas_ia)}** amenazas/vulnerabilidades para este activo.")
+                
+                # Mostrar cada amenaza con opción de ajustar y guardar
+                amenazas_a_guardar = []
+                
+                for idx, am in enumerate(amenazas_ia):
+                    with st.expander(f"🔴 [{am['codigo_amenaza']}] {am['nombre_amenaza']}", expanded=idx < 3):
+                        col1, col2 = st.columns([2, 1])
+                        
+                        with col1:
+                            st.markdown(f"**Tipo de Amenaza:** {am.get('tipo_amenaza', 'N/A')}")
+                            st.markdown(f"**Vulnerabilidad Identificada:**")
+                            vuln_editada = st.text_area(
+                                "Vulnerabilidad",
+                                value=am['vulnerabilidad'],
+                                height=80,
+                                key=f"vuln_{idx}_{activo_sel}_{estado_analisis}",
+                                label_visibility="collapsed"
+                            )
+                            if am.get('justificacion'):
+                                st.caption(f"💡 *{am['justificacion']}*")
+                        
+                        with col2:
+                            st.markdown("**Degradación Sugerida:**")
+                            deg_d = st.slider(f"D", 0, 100, am['degradacion_d'], 5, key=f"deg_d_{idx}_{activo_sel}_{estado_analisis}")
+                            deg_i = st.slider(f"I", 0, 100, am['degradacion_i'], 5, key=f"deg_i_{idx}_{activo_sel}_{estado_analisis}")
+                            deg_c = st.slider(f"C", 0, 100, am['degradacion_c'], 5, key=f"deg_c_{idx}_{activo_sel}_{estado_analisis}")
+                            
+                            # Calcular impacto
+                            imp_d = valor_d * (deg_d / 100)
+                            imp_i = valor_i * (deg_i / 100)
+                            imp_c = valor_c * (deg_c / 100)
+                            impacto = max(imp_d, imp_i, imp_c)
+                            
+                            if impacto >= 2.0:
+                                st.error(f"Impacto: **{impacto:.2f}** (Alto)")
+                            elif impacto >= 1.0:
+                                st.warning(f"Impacto: **{impacto:.2f}** (Medio)")
+                            elif impacto >= 0.5:
+                                st.info(f"Impacto: **{impacto:.2f}** (Bajo)")
+                            else:
+                                st.success(f"Impacto: **{impacto:.2f}** (Nulo)")
+                        
+                        # Checkbox para incluir
+                        incluir = st.checkbox("✅ Incluir esta amenaza", value=True, key=f"incluir_{idx}_{activo_sel}_{estado_analisis}")
+                        
+                        if incluir:
+                            amenazas_a_guardar.append({
+                                "codigo": am['codigo_amenaza'],
+                                "codigo_vuln": am.get('codigo_vulnerabilidad', ''),
+                                "nombre": am['nombre_amenaza'],
+                                "vulnerabilidad": vuln_editada,
+                                "deg_d": deg_d,
+                                "deg_i": deg_i,
+                                "deg_c": deg_c,
+                                "impacto": impacto
+                            })
+                
+                st.markdown("---")
+                
+                # Botón para guardar todas las amenazas seleccionadas
+                st.markdown("### 💾 Guardar Amenazas Seleccionadas")
+                
+                if estado_analisis == "RE-ANALIZANDO":
+                    st.warning(f"""
+                    ⚠️ **Confirmación de Re-Análisis**
+                    
+                    Se eliminarán las **{len(vulnerabilidades_existentes)} amenazas existentes** y se guardarán **{len(amenazas_a_guardar)} nuevas amenazas**.
+                    
+                    Esta acción:
+                    - Recalculará todos los riesgos en el Tab 5
+                    - Regenerará las salvaguardas en el Tab 6
+                    - Actualizará el mapa de riesgos en el Tab 7
+                    """)
+                
+                col_save1, col_save2 = st.columns([1, 2])
+                
+                with col_save1:
+                    texto_guardar = "💾 Confirmar Re-Análisis" if estado_analisis == "RE-ANALIZANDO" else "💾 Guardar Todas"
+                    if st.button(texto_guardar, type="primary", key="btn_guardar_amenazas"):
+                        # Si es re-análisis, eliminar amenazas existentes primero
+                        if estado_analisis == "RE-ANALIZANDO":
+                            with get_connection() as conn:
+                                cursor = conn.cursor()
+                                cursor.execute("""
+                                    DELETE FROM VULNERABILIDADES_AMENAZAS 
+                                    WHERE ID_Evaluacion = ? AND ID_Activo = ?
+                                """, (ID_EVALUACION, activo_sel))
+                                conn.commit()
+                        
+                        guardadas = 0
+                        for am in amenazas_a_guardar:
+                            try:
+                                agregar_vulnerabilidad_amenaza(
+                                    id_evaluacion=ID_EVALUACION,
+                                    id_activo=activo_sel,
+                                    nombre_activo=activo_info['Nombre_Activo'],
+                                    vulnerabilidad=am['vulnerabilidad'],
+                                    amenaza=am['nombre'],
+                                    cod_amenaza=am['codigo'],
+                                    cod_vulnerabilidad=am.get('codigo_vuln', ''),
+                                    deg_d=am['deg_d'] / 100,
+                                    deg_i=am['deg_i'] / 100,
+                                    deg_c=am['deg_c'] / 100
+                                )
+                                guardadas += 1
+                            except Exception as e:
+                                st.error(f"Error guardando {am['codigo']}: {e}")
+                        
+                        if guardadas > 0:
+                            if estado_analisis == "RE-ANALIZANDO":
+                                st.success(f"✅ Re-análisis completado: Se guardaron {guardadas} amenazas/vulnerabilidades")
+                                st.warning("⚠️ Recuerde revisar y recalcular los riesgos en el Tab 5.")
+                            else:
+                                st.success(f"✅ Se guardaron {guardadas} amenazas/vulnerabilidades")
+                            
+                            # Limpiar resultados de IA
+                            del st.session_state[key_amenazas]
+                            # Desactivar modo re-análisis
+                            st.session_state[key_reanalizando] = False
+                            
+                            time.sleep(1)
+                            st.rerun()
+                
+                with col_save2:
+                    st.caption(f"Se guardarán **{len(amenazas_a_guardar)}** amenazas seleccionadas con sus degradaciones.")
     
     st.markdown("---")
     
@@ -2368,6 +2738,8 @@ with tab5:
     **Propósito:** Calcular el riesgo para cada par activo-amenaza identificado.
     
     **Fórmula MAGERIT:** `RIESGO = FRECUENCIA × IMPACTO`
+    
+    ⚠️ **Importante:** El cálculo de riesgos se ejecuta una vez. Los resultados alimentan el mapa de riesgos, agregaciones y salvaguardas.
     """)
     
     # Importar función de cálculo de frecuencia
@@ -2423,8 +2795,29 @@ with tab5:
     
     st.markdown("---")
     
+    # ===== DETECCIÓN DE ESTADO =====
+    riesgos_existentes = get_riesgos_evaluacion(ID_EVALUACION)
+    ya_calculado = not riesgos_existentes.empty
+    
+    # Estado de recálculo
+    if "recalculando_riesgos" not in st.session_state:
+        st.session_state.recalculando_riesgos = False
+    
+    if ya_calculado and not st.session_state.recalculando_riesgos:
+        estado_calculo = "CALCULADO"
+    elif ya_calculado and st.session_state.recalculando_riesgos:
+        estado_calculo = "RECALCULANDO"
+    else:
+        estado_calculo = "PENDIENTE"
+    
     # ===== CALCULAR RIESGOS PARA TODOS LOS ACTIVOS =====
     st.subheader("🔄 Calcular Riesgos")
+    
+    # Badge de estado
+    if estado_calculo == "CALCULADO":
+        st.success(f"✅ **Riesgos Calculados**: Se identificaron **{len(riesgos_existentes)} riesgos** en la evaluación. Los resultados alimentan el mapa de riesgos (Tab 6), agregación (Tab 7) y salvaguardas (Tab 8).")
+    elif estado_calculo == "RECALCULANDO":
+        st.warning("⚠️ **Modo Recálculo Activado**: Los riesgos existentes serán eliminados y recalculados. Esta acción afectará el mapa de riesgos y las salvaguardas.")
     
     # Aplicar filtro a activos si no es TODOS
     if filtro_global != "TODOS" and not activos.empty:
@@ -2434,26 +2827,94 @@ with tab5:
     else:
         activos_calc = activos
     
-    col_calc1, col_calc2 = st.columns([1, 2])
-    with col_calc1:
-        if st.button("⚡ Calcular Todos los Riesgos", type="primary", key="calc_all_risks"):
-            total_guardados = 0
-            for _, activo in activos_calc.iterrows():
-                id_activo = activo["ID_Activo"]
-                amenazas = calcular_frecuencia_todas_amenazas(ID_EVALUACION, id_activo)
-                for am in amenazas:
-                    calcular_riesgo_amenaza(
-                        id_evaluacion=ID_EVALUACION,
-                        id_activo=id_activo,
-                        id_va=am['id_va'],
-                        frecuencia=am['frecuencia']
-                    )
-                    total_guardados += 1
-            st.success(f"✅ Se calcularon y guardaron {total_guardados} riesgos")
-            st.rerun()
+    # ===== VISTA SEGÚN ESTADO =====
+    if estado_calculo == "CALCULADO":
+        # Mostrar resumen
+        col_met1, col_met2, col_met3, col_met4 = st.columns(4)
+        with col_met1:
+            st.metric("Total Riesgos", len(riesgos_existentes))
+        with col_met2:
+            alto = sum(1 for _, r in riesgos_existentes.iterrows() if r.get("Riesgo", 0) >= 6.0)
+            st.metric("Riesgo Alto", alto, delta="🔴" if alto > 0 else None)
+        with col_met3:
+            medio = sum(1 for _, r in riesgos_existentes.iterrows() if 4.0 <= r.get("Riesgo", 0) < 6.0)
+            st.metric("Riesgo Medio", medio, delta="🟡" if medio > 0 else None)
+        with col_met4:
+            bajo = sum(1 for _, r in riesgos_existentes.iterrows() if r.get("Riesgo", 0) < 4.0)
+            st.metric("Riesgo Bajo", bajo, delta="🟢" if bajo > 0 else None)
+        
+        st.markdown("---")
+        
+        # Advertencia sobre recálculo
+        st.warning("""
+        ⚠️ **Advertencia sobre Recálculo**
+        
+        Recalcular los riesgos afectará:
+        - El mapa de riesgos en el Tab 6
+        - La agregación de riesgos por activo en el Tab 7
+        - Las salvaguardas recomendadas en el Tab 8
+        - Todas las métricas derivadas de riesgos
+        
+        **Solo recalcule si cambió la frecuencia de amenazas o la valoración D/I/C.**
+        """)
+        
+        # Botón para habilitar recálculo
+        col_re1, col_re2 = st.columns([1, 3])
+        with col_re1:
+            if st.button("🔄 Habilitar Recálculo", type="secondary", use_container_width=True):
+                st.session_state.recalculando_riesgos = True
+                st.rerun()
+        with col_re2:
+            st.caption("💡 Al habilitar el recálculo, podrá ejecutar el cálculo de riesgos nuevamente.")
     
-    with col_calc2:
-        st.caption("Calcula automáticamente la frecuencia basándose en criticidad, RTO y BIA de cada activo.")
+    else:
+        # PENDIENTE o RECALCULANDO
+        col_calc1, col_calc2 = st.columns([1, 2])
+        with col_calc1:
+            texto_boton = "⚡ Recalcular Todos los Riesgos" if estado_calculo == "RECALCULANDO" else "⚡ Calcular Todos los Riesgos"
+            if st.button(texto_boton, type="primary", key="calc_all_risks"):
+                # Si es recálculo, eliminar riesgos existentes
+                if estado_calculo == "RECALCULANDO":
+                    with get_connection() as conn:
+                        cursor = conn.cursor()
+                        cursor.execute("DELETE FROM RIESGO_AMENAZA WHERE ID_Evaluacion = ?", (ID_EVALUACION,))
+                        conn.commit()
+                
+                total_guardados = 0
+                for _, activo in activos_calc.iterrows():
+                    id_activo = activo["ID_Activo"]
+                    amenazas = calcular_frecuencia_todas_amenazas(ID_EVALUACION, id_activo)
+                    for am in amenazas:
+                        calcular_riesgo_amenaza(
+                            id_evaluacion=ID_EVALUACION,
+                            id_activo=id_activo,
+                            id_va=am['id_va'],
+                            frecuencia=am['frecuencia']
+                        )
+                        total_guardados += 1
+                
+                if estado_calculo == "RECALCULANDO":
+                    st.success(f"✅ Recálculo completado: {total_guardados} riesgos recalculados")
+                    st.warning("⚠️ Recuerde revisar el mapa de riesgos (Tab 6) y salvaguardas (Tab 8).")
+                else:
+                    st.success(f"✅ Se calcularon y guardaron {total_guardados} riesgos")
+                
+                st.session_state.recalculando_riesgos = False
+                time.sleep(1)
+                st.rerun()
+        
+        with col_calc2:
+            if estado_calculo == "RECALCULANDO":
+                st.caption("⚠️ Este recálculo eliminará los riesgos existentes y los calculará nuevamente desde cero.")
+            else:
+                st.caption("Calcula automáticamente la frecuencia basándose en criticidad, RTO y BIA de cada activo.")
+        
+        # Botón cancelar si está recalculando
+        if estado_calculo == "RECALCULANDO":
+            st.markdown("---")
+            if st.button("❌ Cancelar Recálculo", use_container_width=True):
+                st.session_state.recalculando_riesgos = False
+                st.rerun()
     
     st.markdown("---")
     
@@ -2859,16 +3320,85 @@ with tab7:
     - **Objetivo**: Meta de riesgo a alcanzar (Actual × 0.7)
     - **Límite**: Umbral máximo aceptable (constante: 4.0)
     - **Observaciones**: Recomendaciones generadas automáticamente
+    
+    ⚠️ **Importante:** La agregación de riesgos se calcula una vez. Recalcule solo si cambió el Tab 5 (Riesgos individuales).
     """)
     
     # Obtener filtro global
     filtro_global = st.session_state.get("activo_filtro_global", "TODOS")
     
-    # Botón para recalcular todos
-    if st.button("🔄 Recalcular Todos los Riesgos", type="primary"):
-        count = recalcular_todos_riesgos_activos(ID_EVALUACION)
-        st.success(f"✅ {count} activos recalculados")
-        st.rerun()
+    # ===== DETECCIÓN DE ESTADO =====
+    riesgos_activos_existentes = get_riesgos_activos_evaluacion(ID_EVALUACION)
+    ya_agregado = not riesgos_activos_existentes.empty
+    
+    # Estado de reagregación
+    if "reagregando_riesgos" not in st.session_state:
+        st.session_state.reagregando_riesgos = False
+    
+    if ya_agregado and not st.session_state.reagregando_riesgos:
+        estado_agregacion = "AGREGADO"
+    elif ya_agregado and st.session_state.reagregando_riesgos:
+        estado_agregacion = "REAGREGANDO"
+    else:
+        estado_agregacion = "PENDIENTE"
+    
+    # ===== VISTA SEGÚN ESTADO =====
+    if estado_agregacion == "AGREGADO":
+        st.success(f"✅ **Riesgos Agregados**: Se calculó el riesgo consolidado para **{len(riesgos_activos_existentes)} activos**. Los resultados se usan en el mapa de riesgos y comparativas.")
+        
+        st.warning("""
+        ⚠️ **Advertencia sobre Reagregación**
+        
+        Recalcular la agregación de riesgos afectará:
+        - Los promedios de riesgo por activo
+        - Los objetivos y límites calculados
+        - Las observaciones automáticas generadas
+        - Las visualizaciones del mapa radar
+        
+        **Solo reagregue si cambió los riesgos individuales en el Tab 5.**
+        """)
+        
+        col_re1, col_re2 = st.columns([1, 3])
+        with col_re1:
+            if st.button("🔄 Habilitar Reagregación", type="secondary", use_container_width=True):
+                st.session_state.reagregando_riesgos = True
+                st.rerun()
+        with col_re2:
+            st.caption("💡 Al habilitar la reagregación, podrá recalcular los riesgos consolidados por activo.")
+    
+    elif estado_agregacion == "REAGREGANDO":
+        st.warning("⚠️ **Modo Reagregación Activado**: Los riesgos agregados existentes serán recalculados desde los riesgos individuales (Tab 5).")
+        
+        col_calc1, col_calc2 = st.columns([1, 3])
+        with col_calc1:
+            if st.button("🔄 Recalcular Todos los Riesgos", type="primary"):
+                # Eliminar agregaciones existentes
+                with get_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("DELETE FROM RIESGO_ACTIVOS WHERE ID_Evaluacion = ?", (ID_EVALUACION,))
+                    conn.commit()
+                
+                count = recalcular_todos_riesgos_activos(ID_EVALUACION)
+                st.success(f"✅ {count} activos reagregados correctamente")
+                st.session_state.reagregando_riesgos = False
+                time.sleep(1)
+                st.rerun()
+        with col_calc2:
+            st.caption("⚠️ Este recálculo agregará los riesgos individuales desde el Tab 5.")
+        
+        st.markdown("---")
+        if st.button("❌ Cancelar Reagregación", use_container_width=True):
+            st.session_state.reagregando_riesgos = False
+            st.rerun()
+    
+    else:
+        # PENDIENTE
+        st.info("📭 No hay riesgos agregados. Primero calcula los riesgos individuales (Tab 5) y luego agrega aquí.")
+        
+        if st.button("🔄 Agregar Riesgos por Activo", type="primary"):
+            count = recalcular_todos_riesgos_activos(ID_EVALUACION)
+            st.success(f"✅ {count} activos agregados")
+            st.rerun()
     
     riesgos_activos = get_riesgos_activos_evaluacion(ID_EVALUACION)
     
@@ -3104,6 +3634,8 @@ with tab8:
     **La IA sugiere automáticamente:**
     - Salvaguardas específicas basadas en la amenaza y vulnerabilidad
     - Controles ISO 27002:2022 aplicables
+    
+    ⚠️ **Importante:** Las salvaguardas se generan una vez. Regenere solo si cambió los riesgos en el Tab 5.
     """)
     
     # Importar función de sugerencia de IA
@@ -3145,18 +3677,98 @@ with tab8:
     catalogo_amenazas = get_catalogo_amenazas()
     catalogo_controles = get_catalogo_controles()
     
-    # Botón para generar salvaguardas con IA
+    # ===== DETECCIÓN DE ESTADO =====
+    salvaguardas_existentes = get_salvaguardas_evaluacion(ID_EVALUACION)
+    ya_generado = not salvaguardas_existentes.empty
+    
+    # Estado de regeneración
+    if "regenerando_salvaguardas" not in st.session_state:
+        st.session_state.regenerando_salvaguardas = False
+    
+    if ya_generado and not st.session_state.regenerando_salvaguardas:
+        estado_generacion = "GENERADO"
+    elif ya_generado and st.session_state.regenerando_salvaguardas:
+        estado_generacion = "REGENERANDO"
+    else:
+        estado_generacion = "PENDIENTE"
+    
+    # ===== VISTA SEGÚN ESTADO =====
+    if estado_generacion == "GENERADO":
+        st.success(f"✅ **Salvaguardas Generadas**: Se crearon **{len(salvaguardas_existentes)} salvaguardas** para mitigar los riesgos identificados.")
+        
+        # Métricas de salvaguardas
+        col_met1, col_met2, col_met3 = st.columns(3)
+        with col_met1:
+            st.metric("Total Salvaguardas", len(salvaguardas_existentes))
+        with col_met2:
+            prioridad_alta = sum(1 for _, s in salvaguardas_existentes.iterrows() if "Alta" in str(s.get("Prioridad", "")))
+            st.metric("Prioridad Alta", prioridad_alta, delta="🔴" if prioridad_alta > 0 else None)
+        with col_met3:
+            implementadas = sum(1 for _, s in salvaguardas_existentes.iterrows() if s.get("Estado", "") == "Implementada")
+            st.metric("Implementadas", implementadas)
+        
+        st.markdown("---")
+        
+        st.warning("""
+        ⚠️ **Advertencia sobre Regeneración**
+        
+        Regenerar las salvaguardas afectará:
+        - Las recomendaciones específicas por riesgo
+        - Los controles ISO 27002 asignados
+        - Las priorizaciones establecidas
+        - El plan de tratamiento de riesgos
+        
+        **Solo regenere si cambió significativamente los riesgos en el Tab 5.**
+        """)
+        
+        col_re1, col_re2 = st.columns([1, 3])
+        with col_re1:
+            if st.button("🔄 Habilitar Regeneración", type="secondary", use_container_width=True):
+                st.session_state.regenerando_salvaguardas = True
+                st.rerun()
+        with col_re2:
+            st.caption("💡 Al habilitar la regeneración, la IA volverá a analizar los riesgos y sugerirá nuevas salvaguardas.")
+        
+        # Mostrar tabla de salvaguardas existentes
+        st.markdown("---")
+        st.markdown("### 📋 Salvaguardas Actuales")
+        st.dataframe(salvaguardas_existentes, use_container_width=True, hide_index=True)
+        
+        # Detener aquí si está en modo GENERADO
+        st.stop()
+    
+    elif estado_generacion == "REGENERANDO":
+        st.warning("⚠️ **Modo Regeneración Activado**: Las salvaguardas existentes serán eliminadas y la IA las generará nuevamente desde cero.")
+    
+    # Botón para generar/regenerar salvaguardas con IA
     col_btn1, col_btn2 = st.columns([1, 3])
     with col_btn1:
-        generar_ia = st.button("🤖 Generar Salvaguardas con IA", type="primary")
+        texto_boton = "🤖 Regenerar Salvaguardas con IA" if estado_generacion == "REGENERANDO" else "🤖 Generar Salvaguardas con IA"
+        generar_ia = st.button(texto_boton, type="primary")
     with col_btn2:
-        st.caption("La IA analizará cada riesgo y sugerirá salvaguardas y controles ISO 27002")
+        if estado_generacion == "REGENERANDO":
+            st.caption("⚠️ Esto eliminará las salvaguardas existentes y las regenerará desde los riesgos actuales.")
+        else:
+            st.caption("La IA analizará cada riesgo y sugerirá salvaguardas y controles ISO 27002")
+    
+    # Botón cancelar si está regenerando
+    if estado_generacion == "REGENERANDO" and not generar_ia:
+        st.markdown("---")
+        if st.button("❌ Cancelar Regeneración", use_container_width=True):
+            st.session_state.regenerando_salvaguardas = False
+            st.rerun()
     
     # Session state para guardar resultados
     if "salvaguardas_generadas" not in st.session_state:
         st.session_state.salvaguardas_generadas = None
     
     if generar_ia:
+        # Si es regeneración, eliminar salvaguardas existentes
+        if estado_generacion == "REGENERANDO":
+            with get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM SALVAGUARDAS WHERE ID_Evaluacion = ?", (ID_EVALUACION,))
+                conn.commit()
         with st.spinner("🔄 Generando salvaguardas con IA... (puede tomar unos segundos)"):
             try:
                 # Generar salvaguardas en batch
@@ -3361,37 +3973,40 @@ with tab8:
 # ==================== TAB 9: NIVEL DE MADUREZ ====================
 
 with tab9:
-    st.header("🎯 Nivel de Madurez de Ciberseguridad")
+    st.header("🎯 Nivel de Madurez de Gestión de Riesgos")
     st.markdown("""
-    **Propósito:** Calcular el nivel de madurez organizacional basado en CMMI/ISO.
+    **Propósito:** Evaluar el nivel de madurez de la gestión de riesgos de TI basado en la completitud de la evaluación.
     
     **Niveles de Madurez:**
-    - **1 - Inicial**: Procesos ad-hoc, sin controles formales
-    - **2 - Básico**: Controles básicos, documentación mínima
-    - **3 - Definido**: Procesos documentados, controles estandarizados
-    - **4 - Gestionado**: Controles medidos y monitoreados
-    - **5 - Optimizado**: Mejora continua, controles automatizados
+    - **Nivel 1 - Inicial (0-19%)**: Evaluación mínima, sin análisis completo
+    - **Nivel 2 - Básico (20-39%)**: Evaluación parcial, análisis básico de riesgos
+    - **Nivel 3 - Definido (40-59%)**: Evaluación completa, riesgos identificados y documentados
+    - **Nivel 4 - Gestionado (60-79%)**: Evaluación detallada con salvaguardas definidas
+    - **Nivel 5 - Optimizado (80-100%)**: Evaluación exhaustiva con análisis completo y controles recomendados
+    
+    **La puntuación se basa en:**
+    - 40% → Salvaguardas identificadas (al menos 3 por activo)
+    - 30% → Riesgos identificados (al menos 5 por activo)
+    - 30% → Activos evaluados completamente (con valoración DIC)
     """)
     
     # Botón para calcular
-    col_btn, col_info = st.columns([1, 2])
-    with col_btn:
-        if st.button("🔄 Calcular Nivel de Madurez", type="primary"):
-            with st.spinner("Calculando nivel de madurez..."):
-                resultado = calcular_madurez_evaluacion(ID_EVALUACION)
-                if resultado:
-                    guardar_madurez(resultado)
-                    st.success("✅ Nivel de madurez calculado y guardado")
-                    st.rerun()
-                else:
-                    st.error("❌ Error al calcular. Asegúrate de tener activos y respuestas.")
+    if st.button("🔄 Calcular Nivel de Madurez", type="primary", use_container_width=True):
+        with st.spinner("Calculando nivel de madurez basado en datos reales de la evaluación..."):
+            resultado = calcular_madurez_evaluacion(ID_EVALUACION)
+            if resultado:
+                guardar_madurez(resultado)
+                st.success("✅ Nivel de madurez calculado y guardado")
+                st.rerun()
+            else:
+                st.error("❌ Error: No hay datos suficientes. Debes tener al menos 1 activo registrado.")
+    
+    st.markdown("---")
     
     # Obtener madurez guardada
     madurez = get_madurez_evaluacion(ID_EVALUACION)
     
     if madurez:
-        st.markdown("---")
-        
         # ===== INDICADOR PRINCIPAL =====
         col1, col2, col3 = st.columns([1, 2, 1])
         
@@ -3411,122 +4026,214 @@ with tab9:
             color = colores_nivel.get(nivel, "#666")
             
             st.markdown(f"""
-            <div style="text-align: center; padding: 2rem; border: 4px solid {color}; border-radius: 20px; background: linear-gradient(135deg, {color}22, {color}11);">
-                <h1 style="color: {color}; margin: 0; font-size: 4rem;">Nivel {nivel}</h1>
-                <h2 style="color: {color}; margin: 0.5rem 0;">{nombre}</h2>
-                <p style="font-size: 1.5rem; color: #666;">Puntuación: <strong>{puntuacion:.1f}/100</strong></p>
+            <div style="text-align: center; padding: 2.5rem; border: 5px solid {color}; border-radius: 20px; background: linear-gradient(135deg, {color}22, {color}11);">
+                <h1 style="color: {color}; margin: 0; font-size: 5rem; font-weight: bold;">NIVEL {nivel}</h1>
+                <h2 style="color: {color}; margin: 1rem 0; font-size: 2rem;">{nombre}</h2>
+                <p style="font-size: 2rem; color: #333; margin-top: 1rem;">
+                    <strong>{puntuacion:.1f}/100</strong> puntos
+                </p>
             </div>
             """, unsafe_allow_html=True)
         
         st.markdown("---")
         
-        # ===== MÉTRICAS DETALLADAS =====
-        st.subheader("📊 Métricas de Evaluación")
+        # ===== COMPONENTES DE LA PUNTUACIÓN =====
+        st.subheader("📊 Componentes de la Puntuación")
         
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3 = st.columns(3)
+        
+        # Valores reales mapeados a los componentes
+        total_activos = madurez.get("Total_Controles_Posibles", 0)
+        salvaguardas = madurez.get("Controles_Implementados", 0)
+        riesgos = madurez.get("Controles_Parciales", 0)
+        activos_sin_evaluar = madurez.get("Controles_No_Implementados", 0)
+        activos_evaluados = total_activos - activos_sin_evaluar
+        
+        # Calcular porcentajes reales
+        pct_salv = madurez.get("Pct_Controles_Implementados", 0)
+        pct_riesg = madurez.get("Pct_Controles_Medidos", 0)
+        pct_activ = madurez.get("Pct_Riesgos_Criticos_Mitigados", 0)
         
         with col1:
-            pct_impl = madurez.get("Pct_Controles_Implementados", 0)
-            st.metric("🛡️ Controles Implementados", f"{pct_impl:.1f}%")
-            st.progress(min(pct_impl / 100, 1.0))
-        with col2:
-            pct_med = madurez.get("Pct_Controles_Medidos", 0)
-            st.metric("📏 Controles Medidos", f"{pct_med:.1f}%")
-            st.progress(min(pct_med / 100, 1.0))
-        with col3:
-            pct_mit = madurez.get("Pct_Riesgos_Criticos_Mitigados", 0)
-            st.metric("🎯 Riesgos Mitigados", f"{pct_mit:.1f}%")
-            st.progress(min(pct_mit / 100, 1.0))
-        with col4:
-            pct_eval = madurez.get("Pct_Activos_Evaluados", 0)
-            st.metric("📦 Activos Evaluados", f"{pct_eval:.1f}%")
-            st.progress(min(pct_eval / 100, 1.0))
-        
-        st.markdown("---")
-        
-        # ===== DETALLE DE CONTROLES =====
-        st.subheader("🛡️ Estado de Controles")
-        
-        col_ctrl1, col_ctrl2, col_ctrl3 = st.columns(3)
-        
-        ctrl_impl = madurez.get("Controles_Implementados", 0)
-        ctrl_parc = madurez.get("Controles_Parciales", 0)
-        ctrl_no_impl = madurez.get("Controles_No_Implementados", 0)
-        total_ctrl = madurez.get("Total_Controles_Posibles", 93)
-        
-        with col_ctrl1:
-            st.metric("✅ Implementados (≥75%)", ctrl_impl)
-        with col_ctrl2:
-            st.metric("🟡 Parciales (<75%)", ctrl_parc)
-        with col_ctrl3:
-            st.metric("❌ No Implementados", ctrl_no_impl)
-        
-        # Gráfico de pastel de controles
-        if ctrl_impl > 0 or ctrl_parc > 0 or ctrl_no_impl > 0:
-            fig_pie = go.Figure(data=[go.Pie(
-                labels=['Implementados', 'Parciales', 'No Implementados'],
-                values=[ctrl_impl, ctrl_parc, ctrl_no_impl],
-                hole=0.4,
-                marker_colors=['#51cf66', '#ffd93d', '#ff6b6b'],
-                textinfo='label+percent',
-                textposition='outside'
-            )])
-            fig_pie.update_layout(
-                title="Distribución de Controles",
-                height=350,
-                showlegend=False
+            st.metric(
+                "🛡️ Salvaguardas Identificadas",
+                f"{salvaguardas}",
+                f"{pct_salv:.1f}% (peso: 40%)"
             )
-            st.plotly_chart(fig_pie, use_container_width=True)
+            st.progress(min(pct_salv / 100, 1.0))
+            st.caption(f"Meta: {total_activos * 3} salvaguardas ({total_activos} activos × 3)")
+        
+        with col2:
+            st.metric(
+                "⚠️ Riesgos Identificados",
+                f"{riesgos}",
+                f"{pct_riesg:.1f}% (peso: 30%)"
+            )
+            st.progress(min(pct_riesg / 100, 1.0))
+            st.caption(f"Meta: {total_activos * 5} riesgos ({total_activos} activos × 5)")
+        
+        with col3:
+            st.metric(
+                "📦 Activos Evaluados",
+                f"{activos_evaluados} / {total_activos}",
+                f"{pct_activ:.1f}% (peso: 30%)"
+            )
+            st.progress(min(pct_activ / 100, 1.0))
+            st.caption("Activos con valoración DIC completa")
         
         st.markdown("---")
         
-        # ===== FÓRMULA DE CÁLCULO =====
-        st.subheader("📐 Fórmula de Cálculo")
+        # ===== GRÁFICO DE RADAR =====
+        st.subheader("📈 Análisis de Componentes")
         
-        st.markdown("""
-        La puntuación de madurez se calcula con la siguiente fórmula ponderada:
+        fig_radar = go.Figure()
         
-        | Componente | Peso | Tu Valor |
-        |------------|------|----------|
-        | Controles Implementados (≥75% efectividad) | 30% | {:.1f}% |
-        | Controles Medidos (100% efectividad) | 25% | {:.1f}% |
-        | Riesgos Críticos/Altos Mitigados | 25% | {:.1f}% |
-        | Activos Evaluados | 20% | {:.1f}% |
-        | **TOTAL** | **100%** | **{:.1f}** |
-        """.format(
-            madurez.get("Pct_Controles_Implementados", 0),
-            madurez.get("Pct_Controles_Medidos", 0),
-            madurez.get("Pct_Riesgos_Criticos_Mitigados", 0),
-            madurez.get("Pct_Activos_Evaluados", 0),
-            puntuacion
+        categorias = ['Salvaguardas<br>(40%)', 'Riesgos<br>(30%)', 'Activos<br>Evaluados<br>(30%)']
+        valores = [pct_salv, pct_riesg, pct_activ]
+        
+        fig_radar.add_trace(go.Scatterpolar(
+            r=valores,
+            theta=categorias,
+            fill='toself',
+            fillcolor='rgba(52, 152, 219, 0.3)',
+            line=dict(color='rgb(52, 152, 219)', width=3),
+            marker=dict(size=10, color='rgb(52, 152, 219)'),
+            name='Puntuación'
         ))
         
+        fig_radar.update_layout(
+            polar=dict(
+                radialaxis=dict(
+                    visible=True,
+                    range=[0, 100],
+                    ticksuffix='%',
+                    gridcolor='lightgray'
+                ),
+                angularaxis=dict(
+                    gridcolor='lightgray'
+                )
+            ),
+            showlegend=False,
+            height=500,
+            title=dict(
+                text="Distribución de Puntuación por Componente",
+                x=0.5,
+                xanchor='center'
+            )
+        )
+        
+        st.plotly_chart(fig_radar, use_container_width=True)
+        
         st.markdown("---")
         
-        # ===== TABLA DE NIVELES =====
-        st.subheader("📋 Tabla de Identificación de Niveles")
+        # ===== INTERPRETACIÓN DEL NIVEL =====
+        st.subheader("📋 Interpretación del Nivel de Madurez")
         
-        niveles_tabla = [
-            {"Nivel": 1, "Nombre": "Inicial", "Puntuación": "0-19", "Descripción": "Procesos ad-hoc, sin controles formales, respuesta reactiva"},
-            {"Nivel": 2, "Nombre": "Básico", "Puntuación": "20-39", "Descripción": "Controles básicos implementados, documentación mínima"},
-            {"Nivel": 3, "Nombre": "Definido", "Puntuación": "40-59", "Descripción": "Procesos documentados, controles estandarizados"},
-            {"Nivel": 4, "Nombre": "Gestionado", "Puntuación": "60-79", "Descripción": "Controles medidos y monitoreados, métricas definidas"},
-            {"Nivel": 5, "Nombre": "Optimizado", "Puntuación": "80-100", "Descripción": "Mejora continua, controles automatizados, proactivo"},
-        ]
+        interpretaciones = {
+            1: {
+                "emoji": "🔴",
+                "titulo": "Nivel 1 - Inicial",
+                "descripcion": "La gestión de riesgos de TI está en etapa inicial. Se requiere completar la evaluación básica de activos y realizar análisis de riesgos.",
+                "recomendaciones": [
+                    "Completar el inventario de todos los activos críticos de TI",
+                    "Realizar valoración DIC (Disponibilidad, Integridad, Confidencialidad) de cada activo",
+                    "Identificar vulnerabilidades y amenazas mediante análisis con IA",
+                    "Documentar al menos 3 salvaguardas por cada activo crítico"
+                ]
+            },
+            2: {
+                "emoji": "🟠",
+                "titulo": "Nivel 2 - Básico",
+                "descripcion": "Existe un análisis básico de riesgos, pero falta profundidad en la identificación de vulnerabilidades y salvaguardas.",
+                "recomendaciones": [
+                    "Aumentar el número de riesgos identificados por activo (meta: 5+)",
+                    "Generar salvaguardas específicas para cada riesgo identificado",
+                    "Completar la valoración DIC de todos los activos",
+                    "Documentar controles existentes y planificar nuevos controles"
+                ]
+            },
+            3: {
+                "emoji": "🟡",
+                "titulo": "Nivel 3 - Definido",
+                "descripcion": "La evaluación está completa con riesgos identificados y documentados. Se han definido salvaguardas básicas.",
+                "recomendaciones": [
+                    "Incrementar salvaguardas recomendadas (meta: 3-5 por activo)",
+                    "Realizar análisis de riesgo residual vs inherente",
+                    "Priorizar salvaguardas por criticidad del activo",
+                    "Establecer plan de implementación de controles"
+                ]
+            },
+            4: {
+                "emoji": "🟢",
+                "titulo": "Nivel 4 - Gestionado",
+                "descripcion": "Evaluación detallada con salvaguardas bien definidas. La gestión de riesgos es proactiva y estructurada.",
+                "recomendaciones": [
+                    "Continuar identificando riesgos emergentes",
+                    "Monitorear la implementación de salvaguardas",
+                    "Establecer indicadores de efectividad de controles",
+                    "Realizar evaluaciones periódicas (reevaluaciones)"
+                ]
+            },
+            5: {
+                "emoji": "🔵",
+                "titulo": "Nivel 5 - Optimizado",
+                "descripcion": "Excelencia en gestión de riesgos de TI. Análisis exhaustivo con controles completos y documentados.",
+                "recomendaciones": [
+                    "Mantener el nivel mediante reevaluaciones periódicas",
+                    "Implementar mejora continua de procesos de seguridad",
+                    "Monitorear métricas de seguridad en tiempo real",
+                    "Compartir mejores prácticas con la organización"
+                ]
+            }
+        }
         
-        df_niveles = pd.DataFrame(niveles_tabla)
+        info_nivel = interpretaciones.get(nivel, interpretaciones[1])
         
-        # Destacar nivel actual
-        def highlight_nivel(row):
-            if row["Nivel"] == nivel:
-                return ["background-color: #3498db; color: white"] * len(row)
-            return [""] * len(row)
+        st.markdown(f"### {info_nivel['emoji']} {info_nivel['titulo']}")
+        st.info(info_nivel['descripcion'])
         
-        st.dataframe(
-            df_niveles.style.apply(highlight_nivel, axis=1),
-            use_container_width=True,
-            hide_index=True
-        )
+        st.markdown("#### 🎯 Recomendaciones para Mejorar:")
+        for i, rec in enumerate(info_nivel['recomendaciones'], 1):
+            st.markdown(f"{i}. {rec}")
+        
+        st.markdown("---")
+        
+        # ===== DETALLES TÉCNICOS =====
+        with st.expander("🔍 Ver Detalles Técnicos del Cálculo"):
+            st.markdown("### Fórmula de Cálculo")
+            st.code(f"""
+Puntuación Total = 
+    (Salvaguardas × 0.40) + 
+    (Riesgos × 0.30) + 
+    (Activos Evaluados × 0.30)
+
+Donde:
+- Salvaguardas = {salvaguardas} identificadas
+  Meta = {total_activos * 3} ({total_activos} activos × 3)
+  Porcentaje = {pct_salv:.1f}%
+  Contribución = {pct_salv * 0.40:.2f} puntos
+
+- Riesgos = {riesgos} identificados
+  Meta = {total_activos * 5} ({total_activos} activos × 5)
+  Porcentaje = {pct_riesg:.1f}%
+  Contribución = {pct_riesg * 0.30:.2f} puntos
+
+- Activos Evaluados = {activos_evaluados} de {total_activos}
+  Porcentaje = {pct_activ:.1f}%
+  Contribución = {pct_activ * 0.30:.2f} puntos
+
+TOTAL = {puntuacion:.1f} puntos → Nivel {nivel} ({nombre})
+            """)
+            
+            st.markdown("### Umbrales de Niveles")
+            umbrales_data = [
+                {"Nivel": 1, "Nombre": "Inicial", "Rango": "0-19 puntos", "Requisito": "Evaluación mínima"},
+                {"Nivel": 2, "Nombre": "Básico", "Rango": "20-39 puntos", "Requisito": "Evaluación parcial"},
+                {"Nivel": 3, "Nombre": "Definido", "Rango": "40-59 puntos", "Requisito": "Evaluación completa"},
+                {"Nivel": 4, "Nombre": "Gestionado", "Rango": "60-79 puntos", "Requisito": "Evaluación detallada"},
+                {"Nivel": 5, "Nombre": "Optimizado", "Rango": "80-100 puntos", "Requisito": "Evaluación exhaustiva"},
+            ]
+            st.dataframe(pd.DataFrame(umbrales_data), use_container_width=True, hide_index=True)
     else:
         st.info("📭 No hay datos de madurez. Haz clic en 'Calcular Nivel de Madurez' para generar el análisis.")
 

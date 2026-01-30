@@ -164,53 +164,46 @@ def eliminar_evaluacion(eval_id: str) -> bool:
                     except Exception as e:
                         print(f"Advertencia al eliminar de {tabla}: {e}")
             
-            # Eliminar en orden para evitar problemas de integridad referencial
-            # 1. Resultados MAGERIT
-            eliminar_de_tabla("RESULTADOS_MAGERIT", "ID_Evaluacion = ?", [eval_id])
+            # ===== LISTA COMPLETA DE TABLAS A LIMPIAR =====
+            # Tablas con ID_Evaluacion directo
+            tablas_con_evaluacion = [
+                "RESULTADOS_MAGERIT",
+                "RESULTADOS_MADUREZ",
+                "RESULTADOS_CONCENTRACION",
+                "RESPUESTAS",
+                "SALVAGUARDAS",
+                "IDENTIFICACION_VALORACION",
+                "CUESTIONARIOS",
+                "IMPACTO_ACTIVOS",
+                "ANALISIS_RIESGO",
+                "MAPA_RIESGOS",
+                "RIESGO_ACTIVOS",
+                "RIESGO_AMENAZA",
+                "VULNERABILIDADES_AMENAZAS",
+                "DEGRADACION_AMENAZAS",
+                "DEGRADACION",
+                "MADUREZ",
+                "RIESGO_HEREDADO",
+                "IA_RESULTADOS_AVANZADOS",
+                "IA_STATUS",
+                "IA_EXECUTION_EVIDENCE",
+                "IA_VALIDATION_LOG",
+                "VULNERABILIDADES",
+                "VULNERABILIDADES_ACTIVO",
+                "HISTORIAL_EVALUACIONES",
+                "TRATAMIENTO_RIESGOS",
+                "AUDITORIA_CAMBIOS",
+                "CONFIGURACION_EVALUACION"
+            ]
             
-            # 2. Respuestas del cuestionario
-            eliminar_de_tabla("RESPUESTAS", "ID_Evaluacion = ?", [eval_id])
+            # Eliminar de todas las tablas con ID_Evaluacion
+            for tabla in tablas_con_evaluacion:
+                eliminar_de_tabla(tabla, "ID_Evaluacion = ?", [eval_id])
             
-            # 3. Salvaguardas
-            eliminar_de_tabla("SALVAGUARDAS", "ID_Evaluacion = ?", [eval_id])
-            
-            # 4. Identificación y Valoración
-            eliminar_de_tabla("IDENTIFICACION_VALORACION", "ID_Evaluacion = ?", [eval_id])
-            
-            # 5. Vulnerabilidades-Amenazas (por ID_Activo)
-            if "VULNERABILIDADES_AMENAZAS" in tablas_existentes:
-                try:
-                    cursor.execute("""
-                        DELETE FROM VULNERABILIDADES_AMENAZAS 
-                        WHERE ID_Activo IN (
-                            SELECT ID_Activo FROM INVENTARIO_ACTIVOS WHERE ID_Evaluacion = ?
-                        )
-                    """, [eval_id])
-                except Exception as e:
-                    print(f"Advertencia al eliminar VULNERABILIDADES_AMENAZAS: {e}")
-            
-            # 6. Riesgo-Amenaza (por ID_Activo)
-            if "RIESGO_AMENAZA" in tablas_existentes:
-                try:
-                    cursor.execute("""
-                        DELETE FROM RIESGO_AMENAZA 
-                        WHERE ID_Activo IN (
-                            SELECT ID_Activo FROM INVENTARIO_ACTIVOS WHERE ID_Evaluacion = ?
-                        )
-                    """, [eval_id])
-                except Exception as e:
-                    print(f"Advertencia al eliminar RIESGO_AMENAZA: {e}")
-            
-            # 7. Degradación
-            eliminar_de_tabla("DEGRADACION", "ID_Evaluacion = ?", [eval_id])
-            
-            # 8. Madurez
-            eliminar_de_tabla("MADUREZ", "ID_Evaluacion = ?", [eval_id])
-            
-            # 9. Activos
+            # Eliminar activos
             eliminar_de_tabla("INVENTARIO_ACTIVOS", "ID_Evaluacion = ?", [eval_id])
             
-            # 10. Evaluación (al final)
+            # Eliminar evaluación (al final)
             eliminar_de_tabla("EVALUACIONES", "ID_Evaluacion = ?", [eval_id])
             
             conn.commit()
