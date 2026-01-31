@@ -346,14 +346,24 @@ def analizar_controles_desde_respuestas(respuestas: pd.DataFrame) -> Dict:
 
 # ==================== CÁLCULO DE MADUREZ ====================
 
-def calcular_madurez_evaluacion(eval_id: str) -> Optional[ResultadoMadurez]:
+def calcular_madurez_evaluacion(eval_id: str, considerar_salvaguardas: bool = False) -> Optional[ResultadoMadurez]:
     """
-    Calcula el nivel de madurez de ciberseguridad basado en DATOS REALES de la evaluación.
+    Calcula el nivel de madurez de gestión de riesgos basado en datos REALES.
     
-    NUEVA FÓRMULA SIMPLIFICADA (0-100):
-    - 40% -> Salvaguardas identificadas y recomendadas
-    - 30% -> Riesgos identificados y analizados
-    - 30% -> Activos evaluados completamente (con valoración DIC)
+    PARÁMETROS:
+    - eval_id: ID de la evaluación
+    - considerar_salvaguardas: 
+        * False (default) = Madurez ACTUAL/INHERENTE (Tab 9) - solo riesgos identificados
+        * True = Madurez CON CONTROLES (Tab 10) - considera salvaguardas implementadas
+    
+    FÓRMULA Tab 9 (sin salvaguardas - estado actual):
+    - 60% -> Nivel de riesgo (% de riesgos en zona BAJA vs ALTA)
+    - 40% -> Riesgo máximo/promedio (severidad del peor caso)
+    
+    FÓRMULA Tab 10 (con salvaguardas - estado mejorado):
+    - 40% -> Nivel de riesgo controlado
+    - 35% -> Salvaguardas implementadas
+    - 25% -> Riesgo residual bajo
     
     Returns:
         ResultadoMadurez o None si no hay datos suficientes
@@ -379,72 +389,138 @@ def calcular_madurez_evaluacion(eval_id: str) -> Optional[ResultadoMadurez]:
             )
             activos_valorados = cursor.fetchone()[0]
             
-            # 3. Activos con riesgos identificados (vulnerabilidades + amenazas)
+            # 3. Total de riesgos y distribución por nivel
             cursor.execute(
-                "SELECT COUNT(DISTINCT ID_Activo) FROM RIESGO_AMENAZA WHERE ID_Evaluacion = ?",
+                "SELECT Riesgo FROM RIESGO_AMENAZA WHERE ID_Evaluacion = ?",
                 [eval_id]
             )
-            activos_con_riesgos = cursor.fetchone()[0]
+            riesgos_rows = cursor.fetchall()
+            total_riesgos = len(riesgos_rows)
             
-            # 4. Total de riesgos identificados
+            if total_riesgos == 0:
+                # Sin riesgos identificados = madurez muy baja
+                return ResultadoMadurez(
+                    id_evaluacion=eval_id,
+                    puntuacion_total=10.0,
+                    nivel_madurez=1,
+                    nombre_nivel="Inicial",
+                    dominio_organizacional=0,
+                    dominio_personas=0,
+                    dominio_fisico=0,
+                    dominio_tecnologico=0,
+                    pct_controles_implementados=0,
+                    pct_controles_medidos=0,
+                    pct_riesgos_criticos_mitigados=0,
+                    pct_activos_evaluados=0,
+                    total_controles_posibles=total_activos,
+                    controles_implementados=0,
+                    controles_parciales=0,
+                    controles_no_implementados=total_activos
+                )
+            
+            # Clasificar riesgos por nivel
+            riesgos_altos = 0      # >= 6
+            riesgos_medios = 0     # 4-5.99
+            riesgos_bajos = 0      # < 4
+            suma_riesgos = 0
+            
+            for row in riesgos_rows:
+                riesgo = row[0] or 0
+                suma_riesgos += riesgo
+                if riesgo >= 6:
+                    riesgos_altos += 1
+                elif riesgo >= 4:
+                    riesgos_medios += 1
+                else:
+                    riesgos_bajos += 1
+            
+            riesgo_promedio = suma_riesgos / total_riesgos if total_riesgos > 0 else 0
+            
+            # 4. Salvaguardas y su estado de implementación
             cursor.execute(
-                "SELECT COUNT(*) FROM RIESGO_AMENAZA WHERE ID_Evaluacion = ?",
+                "SELECT Estado FROM SALVAGUARDAS WHERE ID_Evaluacion = ?",
                 [eval_id]
             )
-            total_riesgos = cursor.fetchone()[0]
+            salvaguardas_rows = cursor.fetchall()
+            total_salvaguardas = len(salvaguardas_rows)
             
-            # 5. Total de salvaguardas recomendadas
+            salvaguardas_implementadas = 0
+            for row in salvaguardas_rows:
+                estado = row[0] or ""
+                if "Implementada" in estado or "implementada" in estado.lower():
+                    salvaguardas_implementadas += 1
+            
+            # ===== OBTENER RIESGO MÁXIMO =====
             cursor.execute(
-                "SELECT COUNT(*) FROM SALVAGUARDAS WHERE ID_Evaluacion = ?",
+                "SELECT MAX(Riesgo) FROM RIESGO_AMENAZA WHERE ID_Evaluacion = ?",
                 [eval_id]
             )
-            total_salvaguardas = cursor.fetchone()[0]
+            riesgo_maximo = cursor.fetchone()[0] or 0
             
-            # 6. Promedio de criticidad de activos (0-10)
-            cursor.execute(
-                """SELECT AVG(Criticidad) 
-                   FROM IDENTIFICACION_VALORACION 
-                   WHERE ID_Evaluacion = ?""",
-                [eval_id]
-            )
-            criticidad_promedio = cursor.fetchone()[0] or 0
+            # ===== CÁLCULO DE COMPONENTES (DIFERENTE SEGÚN MODO) =====
             
-            # 7. Promedio de riesgo actual
-            cursor.execute(
-                """SELECT AVG(Riesgo_Actual) 
-                   FROM RIESGO_ACTIVOS 
-                   WHERE ID_Evaluacion = ?""",
-                [eval_id]
-            )
-            riesgo_promedio = cursor.fetchone()[0] or 0
-            
-            # ===== CÁLCULO DE PUNTUACIONES =====
-            
-            # Componente 1: Salvaguardas (40%)
-            # Lógica: Por cada activo debería haber al menos 3-5 salvaguardas
-            # Si tengo salvaguardas >= activos * 3 = 100%
-            salvaguardas_esperadas = total_activos * 3
-            pct_salvaguardas = min(100, (total_salvaguardas / salvaguardas_esperadas * 100)) if salvaguardas_esperadas > 0 else 0
-            
-            # Componente 2: Riesgos identificados (30%)
-            # Lógica: Por cada activo debería haber al menos 5 riesgos identificados
-            # Si tengo riesgos >= activos * 5 = 100%
-            riesgos_esperados = total_activos * 5
-            pct_riesgos = min(100, (total_riesgos / riesgos_esperados * 100)) if riesgos_esperados > 0 else 0
-            
-            # Componente 3: Activos evaluados (30%)
-            # Lógica: % de activos con valoración DIC completa
-            pct_activos_evaluados = (activos_valorados / total_activos * 100) if total_activos > 0 else 0
-            
-            # ===== PUNTUACIÓN TOTAL =====
-            puntuacion = (
-                pct_salvaguardas * 0.40 +
-                pct_riesgos * 0.30 +
-                pct_activos_evaluados * 0.30
-            )
+            if not considerar_salvaguardas:
+                # ========================================
+                # TAB 9: MADUREZ ACTUAL/INHERENTE
+                # Solo considera los riesgos, NO las salvaguardas
+                # Representa el estado ANTES de aplicar controles
+                # ========================================
+                
+                # Componente 1 (60%): Distribución de riesgos
+                # Penalización severa por riesgos ALTOS
+                if riesgos_altos > 0:
+                    proporcion_altos = riesgos_altos / total_riesgos
+                    # Cada riesgo ALTO resta mucho - 25% altos = 0 puntos
+                    factor_penalizacion = max(0, 1 - (proporcion_altos * 4))
+                    pct_riesgos_controlados = (riesgos_bajos / total_riesgos * 100) * factor_penalizacion
+                else:
+                    pct_riesgos_controlados = (riesgos_bajos / total_riesgos * 100) if total_riesgos > 0 else 0
+                
+                # Componente 2 (40%): Severidad del riesgo (usar máximo)
+                riesgo_efectivo = riesgo_maximo * 0.8 + riesgo_promedio * 0.2
+                pct_riesgo_bajo = max(0, (10 - riesgo_efectivo) / 10 * 100)
+                
+                # Puntuación SIN salvaguardas
+                puntuacion = (
+                    pct_riesgos_controlados * 0.60 +
+                    pct_riesgo_bajo * 0.40
+                )
+                
+                # Para el resultado, salvaguardas se reporta como 0 (no consideradas)
+                pct_salvaguardas_impl = 0
+                pct_control_ajustado = pct_riesgos_controlados
+                pct_riesgo_residual_bajo = pct_riesgo_bajo
+                
+            else:
+                # ========================================
+                # TAB 10: MADUREZ CON CONTROLES APLICADOS
+                # Considera salvaguardas implementadas
+                # Representa el estado DESPUÉS de aplicar controles
+                # ========================================
+                
+                # Componente 1 (40%): Nivel de riesgo controlado
+                if riesgos_altos > 0:
+                    proporcion_altos = riesgos_altos / total_riesgos
+                    factor_penalizacion = max(0, 1 - (proporcion_altos * 4))
+                    pct_control_ajustado = (riesgos_bajos / total_riesgos * 100) * factor_penalizacion
+                else:
+                    pct_control_ajustado = (riesgos_bajos / total_riesgos * 100) if total_riesgos > 0 else 0
+                
+                # Componente 2 (35%): Salvaguardas IMPLEMENTADAS
+                pct_salvaguardas_impl = (salvaguardas_implementadas / total_salvaguardas * 100) if total_salvaguardas > 0 else 0
+                
+                # Componente 3 (25%): Riesgo residual bajo
+                riesgo_efectivo = riesgo_maximo * 0.8 + riesgo_promedio * 0.2
+                pct_riesgo_residual_bajo = max(0, (10 - riesgo_efectivo) / 10 * 100)
+                
+                # Puntuación CON salvaguardas
+                puntuacion = (
+                    pct_control_ajustado * 0.40 +
+                    pct_salvaguardas_impl * 0.35 +
+                    pct_riesgo_residual_bajo * 0.25
+                )
             
             # ===== DETERMINAR NIVEL DE MADUREZ =====
-            # Umbrales ajustados basados en completitud de la evaluación
             if puntuacion >= 80:
                 nivel = 5
                 nombre_nivel = "Optimizado"
@@ -462,24 +538,37 @@ def calcular_madurez_evaluacion(eval_id: str) -> Optional[ResultadoMadurez]:
                 nombre_nivel = "Inicial"
             
             # ===== CREAR RESULTADO =====
-            return ResultadoMadurez(
+            resultado = ResultadoMadurez(
                 id_evaluacion=eval_id,
                 puntuacion_total=round(puntuacion, 1),
                 nivel_madurez=nivel,
                 nombre_nivel=nombre_nivel,
-                dominio_organizacional=0,  # No usado
-                dominio_personas=0,  # No usado
-                dominio_fisico=0,  # No usado
-                dominio_tecnologico=0,  # No usado
-                pct_controles_implementados=round(pct_salvaguardas, 1),
-                pct_controles_medidos=round(pct_riesgos, 1),
-                pct_riesgos_criticos_mitigados=round(pct_activos_evaluados, 1),
-                pct_activos_evaluados=round(pct_activos_evaluados, 1),
-                total_controles_posibles=total_activos,
-                controles_implementados=total_salvaguardas,
-                controles_parciales=total_riesgos,
-                controles_no_implementados=total_activos - activos_valorados
+                dominio_organizacional=0,
+                dominio_personas=0,
+                dominio_fisico=0,
+                dominio_tecnologico=0,
+                pct_controles_implementados=round(pct_salvaguardas_impl, 1),
+                pct_controles_medidos=round(pct_control_ajustado, 1),
+                pct_riesgos_criticos_mitigados=round(pct_riesgo_residual_bajo, 1),
+                pct_activos_evaluados=round((activos_valorados / total_activos * 100) if total_activos > 0 else 0, 1),
+                total_controles_posibles=total_riesgos,
+                controles_implementados=salvaguardas_implementadas,
+                controles_parciales=riesgos_altos,
+                controles_no_implementados=total_salvaguardas - salvaguardas_implementadas
             )
+            
+            # Agregar datos adicionales para UI
+            resultado.riesgos_altos = riesgos_altos
+            resultado.riesgos_medios = riesgos_medios
+            resultado.riesgos_bajos = riesgos_bajos
+            resultado.total_riesgos = total_riesgos
+            resultado.total_salvaguardas = total_salvaguardas
+            resultado.salvaguardas_implementadas = salvaguardas_implementadas
+            resultado.riesgo_promedio = round(riesgo_promedio, 2)
+            resultado.riesgo_maximo = riesgo_maximo
+            resultado.modo_calculo = "inherente" if not considerar_salvaguardas else "con_controles"
+            
+            return resultado
     
     except Exception as e:
         print(f"Error calculando madurez: {e}")
@@ -774,3 +863,110 @@ def get_controles_existentes_detallados(eval_id: str, activo_id: str = None) -> 
         "resumen": analisis["metricas"],
         "por_dominio": por_dominio
     }
+
+# ==================== HISTORIAL DE REEVALUACIONES ====================
+
+def init_historial_reevaluaciones():
+    """Crea la tabla de historial de reevaluaciones si no existe"""
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS HISTORIAL_REEVALUACIONES (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ID_Evaluacion TEXT,
+                    Fecha_Reevaluacion TEXT,
+                    Tipo TEXT,
+                    Riesgo_Anterior REAL,
+                    Riesgo_Nuevo REAL,
+                    Madurez_Anterior REAL,
+                    Madurez_Nueva REAL,
+                    Nivel_Anterior INTEGER,
+                    Nivel_Nuevo INTEGER,
+                    Nombre_Nivel TEXT,
+                    Salvaguardas_Implementadas INTEGER,
+                    Total_Salvaguardas INTEGER,
+                    Factor_Reduccion REAL,
+                    Total_Activos INTEGER,
+                    Total_Riesgos INTEGER,
+                    Observaciones TEXT
+                )
+            ''')
+            conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error creando tabla historial: {e}")
+        return False
+
+
+def guardar_reevaluacion(
+    eval_id: str,
+    riesgo_anterior: float,
+    riesgo_nuevo: float,
+    madurez_anterior: float,
+    madurez_nueva: float,
+    nivel_anterior: int,
+    nivel_nuevo: int,
+    nombre_nivel: str,
+    salvaguardas_implementadas: int,
+    total_salvaguardas: int,
+    factor_reduccion: float,
+    total_activos: int,
+    total_riesgos: int,
+    observaciones: str = "",
+    tipo: str = "Reevaluación"
+) -> bool:
+    """Guarda un registro de reevaluación en el historial"""
+    try:
+        # Asegurar que la tabla existe
+        init_historial_reevaluaciones()
+        
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO HISTORIAL_REEVALUACIONES (
+                    ID_Evaluacion, Fecha_Reevaluacion, Tipo,
+                    Riesgo_Anterior, Riesgo_Nuevo,
+                    Madurez_Anterior, Madurez_Nueva,
+                    Nivel_Anterior, Nivel_Nuevo, Nombre_Nivel,
+                    Salvaguardas_Implementadas, Total_Salvaguardas,
+                    Factor_Reduccion, Total_Activos, Total_Riesgos,
+                    Observaciones
+                ) VALUES (?, datetime('now'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', [
+                eval_id, tipo,
+                riesgo_anterior, riesgo_nuevo,
+                madurez_anterior, madurez_nueva,
+                nivel_anterior, nivel_nuevo, nombre_nivel,
+                salvaguardas_implementadas, total_salvaguardas,
+                factor_reduccion, total_activos, total_riesgos,
+                observaciones
+            ])
+            conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error guardando reevaluación: {e}")
+        return False
+
+
+def get_historial_reevaluaciones(eval_id: str = None) -> pd.DataFrame:
+    """Obtiene el historial de reevaluaciones, opcionalmente filtrado por evaluación"""
+    try:
+        # Asegurar que la tabla existe
+        init_historial_reevaluaciones()
+        
+        with get_connection() as conn:
+            if eval_id:
+                df = pd.read_sql_query(
+                    "SELECT * FROM HISTORIAL_REEVALUACIONES WHERE ID_Evaluacion = ? ORDER BY Fecha_Reevaluacion DESC",
+                    conn, params=[eval_id]
+                )
+            else:
+                df = pd.read_sql_query(
+                    "SELECT * FROM HISTORIAL_REEVALUACIONES ORDER BY Fecha_Reevaluacion DESC",
+                    conn
+                )
+            return df
+    except Exception as e:
+        print(f"Error obteniendo historial: {e}")
+        return pd.DataFrame()
