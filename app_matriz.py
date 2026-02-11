@@ -5583,8 +5583,8 @@ with tab10:
                         
                         st.success("✅ Resultados guardados correctamente en el historial")
                         st.balloons()
-                    except Exception as e:
-                        st.error(f"Error al guardar: {e}")
+                        # Forzar recarga para mostrar el nuevo registro
+                        st.session_state["mostrar_historial_reeval"] = True
                     except Exception as e:
                         st.error(f"Error al guardar: {e}")
             
@@ -5602,6 +5602,97 @@ with tab10:
                         "salvaguardas_implementadas": []
                     }
                     st.rerun()
+        
+        # ===== SECCIÓN: HISTORIAL DE REEVALUACIONES (Visible siempre) =====
+        st.markdown("---")
+        st.markdown("### 📜 Historial de Reevaluaciones Guardadas")
+        st.caption("Consulta todas las reevaluaciones realizadas para esta evaluación")
+        
+        # Obtener historial de reevaluaciones de esta evaluación
+        historial_reeval_tab10 = get_historial_reevaluaciones(ID_EVALUACION)
+        
+        if not historial_reeval_tab10.empty:
+            st.success(f"📋 Se encontraron **{len(historial_reeval_tab10)}** reevaluaciones guardadas")
+            
+            # Mostrar tabla resumen
+            tabla_historial = []
+            for idx, row in historial_reeval_tab10.iterrows():
+                fecha = row.get("Fecha_Reevaluacion", "")
+                riesgo_ant = row.get("Riesgo_Anterior", 0)
+                riesgo_new = row.get("Riesgo_Nuevo", 0)
+                madurez_ant = row.get("Madurez_Anterior", 0)
+                madurez_new = row.get("Madurez_Nueva", 0)
+                nivel_ant = row.get("Nivel_Anterior", 1)
+                nivel_new = row.get("Nivel_Nuevo", 1)
+                salvs_impl = row.get("Salvaguardas_Implementadas", 0)
+                total_salvs = row.get("Total_Salvaguardas", 0)
+                
+                # Calcular cambios
+                delta_riesgo = riesgo_new - riesgo_ant
+                delta_madurez = madurez_new - madurez_ant
+                
+                tabla_historial.append({
+                    "📅 Fecha": fecha[:16] if len(str(fecha)) > 16 else fecha,
+                    "📉 Riesgo Ant.": f"{riesgo_ant:.2f}",
+                    "📈 Riesgo Nuevo": f"{riesgo_new:.2f}",
+                    "Δ Riesgo": f"{delta_riesgo:+.2f}" if delta_riesgo != 0 else "0",
+                    "🎯 Madurez Ant.": f"{madurez_ant:.0f}%",
+                    "🎯 Madurez Nueva": f"{madurez_new:.0f}%",
+                    "Δ Madurez": f"{delta_madurez:+.0f}%" if delta_madurez != 0 else "0",
+                    "🛡️ Salvaguardas": f"{salvs_impl}/{total_salvs}",
+                    "Estado": "✅ Mejora" if delta_riesgo < 0 else "⚠️ Empeoró" if delta_riesgo > 0 else "➡️ Igual"
+                })
+            
+            df_historial_tab10 = pd.DataFrame(tabla_historial)
+            st.dataframe(df_historial_tab10, use_container_width=True, hide_index=True)
+            
+            # Gráfico de evolución
+            with st.expander("📊 Ver Gráfico de Evolución", expanded=False):
+                if len(historial_reeval_tab10) >= 1:
+                    fig_evolucion = go.Figure()
+                    
+                    # Agregar línea de riesgo
+                    fechas = historial_reeval_tab10["Fecha_Reevaluacion"].tolist()
+                    riesgos_nuevos = historial_reeval_tab10["Riesgo_Nuevo"].tolist()
+                    madurez_nuevas = historial_reeval_tab10["Madurez_Nueva"].tolist()
+                    
+                    fig_evolucion.add_trace(go.Scatter(
+                        x=fechas, y=riesgos_nuevos,
+                        mode='lines+markers',
+                        name='Riesgo',
+                        line=dict(color='#ff6b6b', width=3),
+                        marker=dict(size=10)
+                    ))
+                    
+                    fig_evolucion.add_trace(go.Scatter(
+                        x=fechas, y=madurez_nuevas,
+                        mode='lines+markers',
+                        name='Madurez (%)',
+                        line=dict(color='#51cf66', width=3),
+                        marker=dict(size=10),
+                        yaxis='y2'
+                    ))
+                    
+                    fig_evolucion.update_layout(
+                        title="Evolución de Riesgo y Madurez en Reevaluaciones",
+                        xaxis_title="Fecha de Reevaluación",
+                        yaxis=dict(title="Riesgo", side="left", color="#ff6b6b"),
+                        yaxis2=dict(title="Madurez (%)", side="right", overlaying="y", color="#51cf66"),
+                        height=400,
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
+                    )
+                    
+                    st.plotly_chart(fig_evolucion, use_container_width=True)
+            
+            # Botón de descarga
+            st.download_button(
+                label="📥 Descargar Historial (CSV)",
+                data=historial_reeval_tab10.to_csv(index=False, encoding='utf-8-sig'),
+                file_name=f"historial_reevaluaciones_{NOMBRE_EVALUACION}.csv",
+                mime="text/csv"
+            )
+        else:
+            st.info("📭 Aún no hay reevaluaciones guardadas para esta evaluación. Completa el proceso de reevaluación y guarda los resultados.")
 
 
 # ==================== FOOTER ====================
