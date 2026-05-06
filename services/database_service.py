@@ -217,6 +217,54 @@ def init_database():
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_impacto_eval_activo ON IMPACTO_ACTIVOS(ID_Evaluacion, ID_Activo)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_analisis_eval_activo ON ANALISIS_RIESGO(ID_Evaluacion, ID_Activo)')
 
+        # AUDITORIA_CAMBIOS
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS AUDITORIA_CAMBIOS (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                Tabla_Afectada TEXT,
+                ID_Registro TEXT,
+                Tipo_Operacion TEXT,
+                Valores_JSON TEXT,
+                Usuario TEXT,
+                Fecha_Hora TEXT
+            )
+        ''')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_auditoria_fecha ON AUDITORIA_CAMBIOS(Fecha_Hora)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_auditoria_tabla ON AUDITORIA_CAMBIOS(Tabla_Afectada)')
+
+        # LOG_PROCESOS — registro de todas las operaciones del sistema
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS LOG_PROCESOS (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ID_Evaluacion TEXT,
+                Proceso TEXT NOT NULL,
+                Tipo TEXT,
+                Descripcion TEXT,
+                Estado TEXT DEFAULT 'completado',
+                Detalles_JSON TEXT,
+                Usuario TEXT DEFAULT 'sistema',
+                Fecha_Inicio TEXT,
+                Fecha_Fin TEXT,
+                Duracion_Seg REAL
+            )
+        ''')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_log_eval ON LOG_PROCESOS(ID_Evaluacion)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_log_fecha ON LOG_PROCESOS(Fecha_Inicio)')
+
+        # Agregar columnas de vida útil a INVENTARIO_ACTIVOS si no existen
+        try:
+            cursor.execute("ALTER TABLE INVENTARIO_ACTIVOS ADD COLUMN Fecha_Adquisicion TEXT")
+        except: pass
+        try:
+            cursor.execute("ALTER TABLE INVENTARIO_ACTIVOS ADD COLUMN Vida_Util_Anios REAL")
+        except: pass
+        try:
+            cursor.execute("ALTER TABLE INVENTARIO_ACTIVOS ADD COLUMN Fabricante TEXT")
+        except: pass
+        try:
+            cursor.execute("ALTER TABLE INVENTARIO_ACTIVOS ADD COLUMN Modelo TEXT")
+        except: pass
+
 
 def read_table(table_name: str) -> pd.DataFrame:
     """Lee una tabla como DataFrame"""

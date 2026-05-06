@@ -50,10 +50,6 @@ from .concentration_risk_ui import (
     render_concentracion_tab
 )
 
-from .ia_advanced_ui import (
-    render_ia_avanzada_ui
-)
-
 from .degradacion_ui import (
     render_degradacion_tab
 )

@@ -26,7 +26,8 @@ def render_tratamiento_tab(id_evaluacion: str):
     """
     Renderiza el tab de tratamiento de riesgos.
     """
-    st.header("🛡️ Tratamiento de Riesgos")
+    from utils.ui_styles import styled_header
+    styled_header("🛡️", "Tratamiento de Riesgos", "Decisiones y planes de mitigación por activo")
     
     # Estadísticas generales
     stats = get_estadisticas_tratamiento(id_evaluacion)

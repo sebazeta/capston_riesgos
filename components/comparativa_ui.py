@@ -19,7 +19,8 @@ def render_comparativa_tab(id_evaluacion_actual: str):
     """
     Renderiza el tab de comparativa de evaluaciones.
     """
-    st.header("📊 Comparativa de Evaluaciones")
+    from utils.ui_styles import styled_header
+    styled_header("📊", "Comparativa de Evaluaciones", "Compara resultados entre evaluaciones")
     
     # Obtener todas las evaluaciones disponibles
     with get_connection() as conn:

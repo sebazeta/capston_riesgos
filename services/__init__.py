@@ -162,34 +162,6 @@ from .concentration_risk_service import (
     RiesgoHeredado
 )
 
-# Servicio de IA Avanzada
-from .ia_advanced_service import (
-    generar_plan_tratamiento,
-    generar_planes_evaluacion,
-    consultar_chatbot_magerit,
-    generar_resumen_ejecutivo,
-    generar_prediccion_riesgo,
-    generar_priorizacion_controles,
-    verificar_ia_disponible,
-    obtener_amenazas_evaluacion,
-    obtener_controles_evaluacion,
-    guardar_resultado_ia,
-    cargar_resultado_ia,
-    eliminar_resultado_ia,
-    PlanTratamiento,
-    ResumenEjecutivo,
-    PrediccionRiesgo,
-    ControlPriorizado
-)
-
-# Servicio de Exportación
-from .export_service import (
-    generar_documento_ejecutivo,
-    generar_datos_powerbi,
-    exportar_powerbi_excel,
-    exportar_powerbi_csv
-)
-
 # Servicio de Vulnerabilidades
 from .vulnerabilidad_service import (
     crear_vulnerabilidad,
@@ -239,6 +211,16 @@ from .auditoria_service import (
     limpiar_auditoria_antigua,
     RegistroAuditoria,
     ACCIONES
+)
+
+# Servicio de Log de Procesos
+from .process_log_service import (
+    log_proceso,
+    registrar_proceso,
+    registrar_proceso_rapido,
+    obtener_log_procesos,
+    obtener_resumen_procesos,
+    obtener_timeline_evaluacion
 )
 
 __all__ = [
@@ -400,5 +382,12 @@ __all__ = [
     'obtener_estadisticas_auditoria',
     'limpiar_auditoria_antigua',
     'RegistroAuditoria',
-    'ACCIONES'
+    'ACCIONES',
+    # Process Log Service
+    'log_proceso',
+    'registrar_proceso',
+    'registrar_proceso_rapido',
+    'obtener_log_procesos',
+    'obtener_resumen_procesos',
+    'obtener_timeline_evaluacion',
 ]

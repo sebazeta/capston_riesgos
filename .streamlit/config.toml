@@ -3,6 +3,14 @@
 magicEnabled = true
 
 [theme]
-# Tema base
-base = "light"
-primaryColor = "#ff4b4b"
+# Tema corporativo oscuro TITA
+base = "dark"
+primaryColor = "#2ec4b6"
+backgroundColor = "#0a1628"
+secondaryBackgroundColor = "#0e1b30"
+textColor = "#d0d8e0"
+font = "sans serif"
+
+[client]
+# Deshabilitar la navegación automática de páginas en el sidebar
+showSidebarNavigation = false

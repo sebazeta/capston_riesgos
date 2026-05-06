@@ -347,7 +347,8 @@ def render_concentracion_mini_card(eval_id: str):
 
 def render_concentracion_tab(eval_id: str):
     """Renderiza el tab completo de concentración"""
-    st.title("🎯 Riesgo por Concentración")
+    from utils.ui_styles import styled_header
+    styled_header("🎯", "Riesgo por Concentración", "Análisis de dependencias host-VM y blast radius")
     
     st.markdown("""
     El **riesgo por concentración** analiza cómo las dependencias entre hosts físicos y 

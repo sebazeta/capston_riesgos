@@ -49,7 +49,8 @@ def render_estado_ia_badge() -> bool:
 
 def render_tab_validacion_ia():
     """Renderiza la pestaña completa de validación de IA"""
-    st.header("🛡️ Validación y Preparación de IA Local")
+    from utils.ui_styles import styled_header
+    styled_header("🛡️", "Validación de IA Local", "Verifica que Ollama funcione 100% local y sin Internet")
     
     st.markdown("""
     Este módulo valida que la IA funciona **100% local** con Ollama y sin conexión a Internet.

@@ -53,8 +53,8 @@ pip install -r requirements.txt
 # 5. Configurar Ollama
 ollama pull llama3
 
-# 6. Crear estructura Excel inicial
-python setup_excel_v2.py
+# 6. Crear estructura de Base de Datos (SQLite)
+python init_sqlite.py
 
 # 7. Sembrar catálogos MAGERIT/ISO
 python seed_catalogos.py
@@ -72,11 +72,11 @@ La aplicación estará disponible en: **http://localhost:8501**
 ```
 capston_riesgos/
 ├── app.py                          # Aplicación principal Streamlit
-├── setup_excel_v2.py               # Setup de estructura Excel
+├── init_sqlite.py                  # Setup de base de datos SQLite
 ├── seed_catalogos.py               # Seeding de catálogos
 ├── generate_questions.py           # CLI generación preguntas IA
 ├── add_bia_columns.py              # Migración esquema BIA
-├── matriz_riesgos_v2.xlsx          # Base de datos Excel
+├── tita_database.db                # Base de datos SQLite
 ├── CONTEXTO_PROYECTO_TITA.md       # Documentación arquitectura
 ├── ANALISIS_ARQUITECTURA_GAP.md    # Análisis técnico
 ├── ROADMAP_DESARROLLO.md           # Plan de desarrollo
@@ -149,9 +149,9 @@ Genera EXACTAMENTE 15 preguntas TÉCNICAS para continuidad:
 
 ---
 
-## 📊 Estructura Excel (Base de Datos)
+## 📊 Estructura Base de Datos (SQLite)
 
-El sistema usa Excel como persistencia con 15+ hojas:
+El sistema usa SQLite como motor de persistencia relacional con tablas como:
 
 ### Hojas Principales
 
@@ -176,7 +176,7 @@ El sistema usa Excel como persistencia con 15+ hojas:
 Editar en `app.py`:
 
 ```python
-EXCEL_PATH = "matriz_riesgos_v2.xlsx"
+DB_PATH = "tita_database.db"
 OLLAMA_URL = "http://localhost:11434/api/generate"
 ```
 
@@ -222,7 +222,6 @@ pytest tests/ -v
 - [ ] IA solo genera preguntas (análisis completo en desarrollo)
 - [ ] Sin dashboards visuales (usar Plotly próximamente)
 - [ ] Sin autenticación (implementar streamlit-authenticator)
-- [ ] Excel no soporta edición simultánea
 
 ---
 

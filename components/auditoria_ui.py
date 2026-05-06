@@ -20,7 +20,8 @@ def render_auditoria_tab():
     """
     Renderiza el tab de auditoría y trazabilidad.
     """
-    st.header("📋 Auditoría y Trazabilidad")
+    from utils.ui_styles import styled_header
+    styled_header("📋", "Auditoría y Trazabilidad", "Registro de cambios y operaciones del sistema")
     
     # Estadísticas generales
     stats = obtener_estadisticas_auditoria()

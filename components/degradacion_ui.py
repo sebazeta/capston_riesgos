@@ -142,7 +142,8 @@ def render_degradacion_tab(eval_id: str):
     """
     Renderiza la pestaña completa de gestión de degradación.
     """
-    st.header("⚙️ Gestión de Degradación")
+    from utils.ui_styles import styled_header
+    styled_header("⚙️", "Gestión de Degradación", "Degradación DIC por amenaza según MAGERIT v3")
     
     st.markdown("""
     La **Degradación** representa el daño potencial que una amenaza puede causar sobre un activo

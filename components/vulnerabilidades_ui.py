@@ -26,7 +26,8 @@ def render_vulnerabilidades_tab(id_evaluacion: str):
     """
     Renderiza el tab de gestión de vulnerabilidades.
     """
-    st.header("🔓 Gestión de Vulnerabilidades")
+    from utils.ui_styles import styled_header
+    styled_header("🔓", "Gestión de Vulnerabilidades", "Identifica y gestiona vulnerabilidades por activo")
     
     # Estadísticas generales
     stats = get_estadisticas_vulnerabilidades(id_evaluacion)

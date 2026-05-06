@@ -981,14 +981,30 @@ BANCO_PREGUNTAS_DIC = {
 # ==================== FUNCIONES DE CÁLCULO ====================
 
 def get_banco_preguntas_tipo(tipo_activo: str) -> Optional[Dict]:
-    """Obtiene el banco de preguntas para un tipo de activo específico."""
-    banco = BANCO_PREGUNTAS_DIC.get(tipo_activo)
-    if not banco:
-        for tipo, preguntas in BANCO_PREGUNTAS_DIC.items():
+    """Obtiene el banco de preguntas para un tipo de activo específico.
+    Primero busca preguntas personalizadas en la BD; si no hay, usa el banco por defecto."""
+    # Resolver tipo_activo al nombre canónico
+    tipo_canonico = tipo_activo
+    if tipo_activo not in BANCO_PREGUNTAS_DIC:
+        for tipo in BANCO_PREGUNTAS_DIC:
             if tipo.lower() in tipo_activo.lower() or tipo_activo.lower() in tipo.lower():
-                return preguntas
-        return BANCO_PREGUNTAS_DIC.get("Servidor Físico")
-    return banco
+                tipo_canonico = tipo
+                break
+        else:
+            tipo_canonico = "Servidor Físico"
+
+    banco_base = BANCO_PREGUNTAS_DIC.get(tipo_canonico, {})
+
+    # Intentar cargar personalizaciones por dimensión
+    try:
+        from components.cuestionario_editor_ui import _load_custom
+        resultado = {}
+        for dim, pregs_default in banco_base.items():
+            custom = _load_custom(tipo_canonico, dim)
+            resultado[dim] = custom if custom is not None else pregs_default
+        return resultado
+    except Exception:
+        return banco_base
 
 
 def calcular_valor_dimension(respuestas: List[int]) -> Tuple[int, str]:

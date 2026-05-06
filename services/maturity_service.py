@@ -361,9 +361,11 @@ def calcular_madurez_evaluacion(eval_id: str, considerar_salvaguardas: bool = Fa
     - 40% -> Riesgo máximo/promedio (severidad del peor caso)
     
     FÓRMULA Tab 10 (con salvaguardas - estado mejorado):
-    - 40% -> Nivel de riesgo controlado
-    - 35% -> Salvaguardas implementadas
-    - 25% -> Riesgo residual bajo
+    - Puntuación base (fórmula Tab 9) como referencia
+    - Si < 25% salvaguardas implementadas: penalización leve por estancamiento
+      (máx -15% de la base cuando 0% implementadas → retroceso leve)
+    - Si >= 25%: bonus proporcional al % implementado (llena hasta 60% del gap)
+    - GARANTÍA: el retroceso nunca es catastrófico, solo refleja falta de avance
     
     Returns:
         ResultadoMadurez o None si no hay datos suficientes
@@ -496,29 +498,58 @@ def calcular_madurez_evaluacion(eval_id: str, considerar_salvaguardas: bool = Fa
                 # TAB 10: MADUREZ CON CONTROLES APLICADOS
                 # Considera salvaguardas implementadas
                 # Representa el estado DESPUÉS de aplicar controles
+                #
+                # PRINCIPIO:
+                # - Si se implementan salvaguardas → la madurez SUBE (bonus)
+                # - Si NO se implementan → la madurez BAJA LIGERAMENTE
+                #   (retroceso por estancamiento, máx ~15% de la base)
+                #
+                # FÓRMULA:
+                #   puntuación = base - penalización_estancamiento + bonus_salvaguardas
+                #
+                # Umbral de estancamiento: < 25% de salvaguardas implementadas
+                #   0% impl → penalización = 15% de la base (retroceso leve)
+                #  25% impl → penalización = 0 (neutral)
+                #  25%+ impl → bonus proporcional al gap hacia 100%
                 # ========================================
                 
-                # Componente 1 (40%): Nivel de riesgo controlado
+                # Primero calcular la puntuación base (misma fórmula que Tab 9)
                 if riesgos_altos > 0:
                     proporcion_altos = riesgos_altos / total_riesgos
                     factor_penalizacion = max(0, 1 - (proporcion_altos * 4))
-                    pct_control_ajustado = (riesgos_bajos / total_riesgos * 100) * factor_penalizacion
+                    pct_riesgos_controlados_base = (riesgos_bajos / total_riesgos * 100) * factor_penalizacion
                 else:
-                    pct_control_ajustado = (riesgos_bajos / total_riesgos * 100) if total_riesgos > 0 else 0
+                    pct_riesgos_controlados_base = (riesgos_bajos / total_riesgos * 100) if total_riesgos > 0 else 0
                 
-                # Componente 2 (35%): Salvaguardas IMPLEMENTADAS
+                riesgo_efectivo = riesgo_maximo * 0.8 + riesgo_promedio * 0.2
+                pct_riesgo_bajo_base = max(0, (10 - riesgo_efectivo) / 10 * 100)
+                
+                puntuacion_base = (
+                    pct_riesgos_controlados_base * 0.60 +
+                    pct_riesgo_bajo_base * 0.40
+                )
+                
                 pct_salvaguardas_impl = (salvaguardas_implementadas / total_salvaguardas * 100) if total_salvaguardas > 0 else 0
                 
-                # Componente 3 (25%): Riesgo residual bajo
-                riesgo_efectivo = riesgo_maximo * 0.8 + riesgo_promedio * 0.2
-                pct_riesgo_residual_bajo = max(0, (10 - riesgo_efectivo) / 10 * 100)
+                # Penalización por estancamiento (< 25% de salvaguardas implementadas)
+                # Refleja que no avanzar implica un retroceso leve, pero no catastrófico
+                penalizacion_estancamiento = 0
+                if pct_salvaguardas_impl < 25:
+                    # Escala lineal: 15% de la base a 0% impl → 0% a 25% impl
+                    factor_estancamiento = (25 - pct_salvaguardas_impl) / 25
+                    penalizacion_estancamiento = puntuacion_base * 0.15 * factor_estancamiento
                 
-                # Puntuación CON salvaguardas
-                puntuacion = (
-                    pct_control_ajustado * 0.40 +
-                    pct_salvaguardas_impl * 0.35 +
-                    pct_riesgo_residual_bajo * 0.25
-                )
+                # Bonus por salvaguardas implementadas
+                # El bonus llena proporcionalmente el gap hasta 100%
+                gap_disponible = 100 - puntuacion_base
+                bonus_salvaguardas = (pct_salvaguardas_impl / 100) * gap_disponible * 0.6  # 60% del gap máximo
+                
+                puntuacion = puntuacion_base - penalizacion_estancamiento + bonus_salvaguardas
+                puntuacion = max(0, min(100, puntuacion))  # Clamp entre 0 y 100
+                
+                # Variables para el resultado
+                pct_control_ajustado = pct_riesgos_controlados_base
+                pct_riesgo_residual_bajo = pct_riesgo_bajo_base
             
             # ===== DETERMINAR NIVEL DE MADUREZ =====
             if puntuacion >= 80:

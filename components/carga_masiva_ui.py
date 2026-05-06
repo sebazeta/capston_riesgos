@@ -25,8 +25,8 @@ def render_carga_masiva(eval_id: str, eval_nombre: str):
         eval_id: ID de la evaluación destino
         eval_nombre: Nombre de la evaluación para mostrar
     """
-    st.markdown("## 📤 Carga Masiva de Activos")
-    st.info(f"📋 Evaluación destino: **{eval_nombre}** (`{eval_id}`)")
+    from utils.ui_styles import styled_header
+    styled_header("📤", "Carga Masiva de Activos", f"Evaluación destino: {eval_nombre}")
     
     # Tabs para diferentes formatos
     tab_json, tab_excel, tab_ayuda = st.tabs([
@@ -76,9 +76,11 @@ def _render_carga_json(eval_id: str):
         col1, col2 = st.columns([1, 3])
         with col1:
             if st.button("🚀 Procesar JSON", type="primary", key="btn_procesar_json"):
-                with st.spinner("Procesando archivo JSON..."):
-                    resultado = procesar_json(contenido, eval_id)
-                    _mostrar_resultado(resultado)
+                _carga_progress = st.progress(0, text="Validando estructura JSON...")
+                _carga_progress.progress(0.3, text="Procesando activos...")
+                resultado = procesar_json(contenido, eval_id)
+                _carga_progress.progress(1.0, text="✅ Procesamiento completado")
+                _mostrar_resultado(resultado)
     
     st.divider()
     
@@ -94,9 +96,11 @@ def _render_carga_json(eval_id: str):
     
     if json_texto.strip():
         if st.button("🚀 Procesar JSON Pegado", type="primary", key="btn_procesar_json_texto"):
-            with st.spinner("Procesando JSON..."):
-                resultado = procesar_json(json_texto, eval_id)
-                _mostrar_resultado(resultado)
+            _carga_progress2 = st.progress(0, text="Validando estructura JSON...")
+            _carga_progress2.progress(0.3, text="Procesando activos...")
+            resultado = procesar_json(json_texto, eval_id)
+            _carga_progress2.progress(1.0, text="✅ Procesamiento completado")
+            _mostrar_resultado(resultado)
 
 
 def _render_carga_excel(eval_id: str):
@@ -134,10 +138,12 @@ def _render_carga_excel(eval_id: str):
             col1, col2 = st.columns([1, 3])
             with col1:
                 if st.button("🚀 Procesar Excel", type="primary", key="btn_procesar_excel"):
-                    with st.spinner("Procesando archivo Excel..."):
-                        archivo_bytes = archivo_excel.read()
-                        resultado = procesar_excel(archivo_bytes, eval_id)
-                        _mostrar_resultado(resultado)
+                    _carga_xl_progress = st.progress(0, text="Leyendo archivo Excel...")
+                    archivo_bytes = archivo_excel.read()
+                    _carga_xl_progress.progress(0.4, text="Procesando activos...")
+                    resultado = procesar_excel(archivo_bytes, eval_id)
+                    _carga_xl_progress.progress(1.0, text="✅ Procesamiento completado")
+                    _mostrar_resultado(resultado)
         
         except Exception as e:
             st.error(f"❌ Error al leer el archivo: {str(e)}")
