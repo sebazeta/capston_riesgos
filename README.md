@@ -1,4 +1,4 @@
-# 🛡️ Proyecto TITA - Sistema de Evaluación de Riesgos
+# Proyecto TITA - Sistema de Evaluación de Riesgos
 
 **Sistema de Gestión de Auditoría de Activos Críticos**  
 Metodología: MAGERIT + ISO/IEC 27001-27002  
@@ -86,24 +86,24 @@ capston_riesgos/
 
 ---
 
-## 🎯 Uso del Sistema
+## Uso del Sistema
 
-### 1️⃣ Tab 1: Inventario
+### 1. Tab 1: Inventario
 
 Visualiza los activos críticos registrados.
 
 **Requisito:** Crear activos manualmente en Excel (hoja `INVENTARIO_ACTIVOS`)
 
-### 2️⃣ Tab 2: Generar Cuestionario (IA)
+### 2. Tab 2: Generar Cuestionario (IA)
 
 1. Seleccionar activo del inventario
 2. Definir ID y nombre de evaluación
 3. Elegir modelo Ollama (llama3, phi3, mistral)
-4. Click "🚀 Ejecutar"
+4. Click "Ejecutar"
 
 **Resultado:** Cuestionario versionado con preguntas base + IA
 
-### 3️⃣ Tab 3: Responder Cuestionario
+### 3. Tab 3: Responder Cuestionario
 
 1. Seleccionar Evaluación/Activo/Versión
 2. Responder preguntas (0/1 o escala 1-5)
@@ -111,7 +111,7 @@ Visualiza los activos críticos registrados.
 
 **Opcional:** Editar preguntas antes de responder
 
-### 4️⃣ Tab 4: Cálculo de Impacto DIC
+### 4. Tab 4: Cálculo de Impacto DIC
 
 1. Seleccionar Evaluación/Activo/Versión respondida
 2. Ver cálculo de impactos por dimensión:
@@ -122,7 +122,7 @@ Visualiza los activos críticos registrados.
 
 ---
 
-## 🧠 Integración con IA (Ollama)
+## Integración con IA (Ollama)
 
 ### Configuración
 
@@ -136,8 +136,8 @@ El sistema usa **Ollama** corriendo localmente en: `http://localhost:11434`
 
 ### Funcionalidad Actual
 
-✅ **Generación de Preguntas:** IA crea preguntas técnicas contextualizadas  
-🔄 **Análisis de Riesgos:** (Próximamente - ver roadmap)
+**Generación de Preguntas:** IA crea preguntas técnicas contextualizadas  
+**Análisis de Riesgos:** (Próximamente - ver roadmap)
 
 ### Ejemplo de Prompt
 
@@ -149,7 +149,7 @@ Genera EXACTAMENTE 15 preguntas TÉCNICAS para continuidad:
 
 ---
 
-## 📊 Estructura Base de Datos (SQLite)
+## Estructura Base de Datos (SQLite)
 
 El sistema usa SQLite como motor de persistencia relacional con tablas como:
 
@@ -169,7 +169,7 @@ El sistema usa SQLite como motor de persistencia relacional con tablas como:
 
 ---
 
-## 🔧 Configuración
+## Configuración
 
 ### Variables de Entorno
 
@@ -191,7 +191,7 @@ n_ia = 15    # Preguntas generadas por IA
 
 ---
 
-## 🛠️ Desarrollo
+## Desarrollo
 
 ### Ejecutar Tests
 
@@ -199,17 +199,9 @@ n_ia = 15    # Preguntas generadas por IA
 pytest tests/ -v
 ```
 
-### Contribuir
-
-1. Fork del proyecto
-2. Crear rama: `git checkout -b feature/nueva-funcionalidad`
-3. Commit: `git commit -m "feat: Descripción"`
-4. Push: `git push origin feature/nueva-funcionalidad`
-5. Pull Request
-
 ---
 
-## 📚 Documentación Adicional
+## Documentación Adicional
 
 - [CONTEXTO_PROYECTO_TITA.md](CONTEXTO_PROYECTO_TITA.md) - Arquitectura detallada
 - [ANALISIS_ARQUITECTURA_GAP.md](ANALISIS_ARQUITECTURA_GAP.md) - Análisis técnico
@@ -217,7 +209,7 @@ pytest tests/ -v
 
 ---
 
-## 🐛 Problemas Conocidos
+## Problemas Conocidos
 
 - [ ] IA solo genera preguntas (análisis completo en desarrollo)
 - [ ] Sin dashboards visuales (usar Plotly próximamente)
@@ -225,7 +217,7 @@ pytest tests/ -v
 
 ---
 
-## 📝 Metodología MAGERIT
+## Metodología MAGERIT
 
 El sistema implementa:
 
@@ -251,9 +243,9 @@ El sistema implementa:
 
 ---
 
-## 🔐 Seguridad
+## Seguridad
 
-⚠️ **IMPORTANTE:** Sistema en desarrollo sin autenticación.
+**IMPORTANTE:** Sistema en desarrollo sin autenticación.
 
 ### Para Producción (Roadmap):
 
@@ -265,7 +257,7 @@ El sistema implementa:
 
 ---
 
-## 📞 Soporte
+## Soporte
 
 Para dudas o problemas:
 
@@ -275,13 +267,13 @@ Para dudas o problemas:
 
 ---
 
-## 📄 Licencia
+## Licencia
 
 [Definir licencia]
 
 ---
 
-## 👥 Autores
+## Autores
 
 - Equipo Proyecto TITA
 - Universidad [Nombre]
@@ -289,7 +281,7 @@ Para dudas o problemas:
 
 ---
 
-## 🙏 Agradecimientos
+## Agradecimientos
 
 - MAGERIT (Ministerio de Asuntos Económicos y Transformación Digital - España)
 - ISO/IEC 27001-27002
