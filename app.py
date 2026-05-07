@@ -911,40 +911,83 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Widget de Estadísticas (siempre visible en sidebar) ──
-    if st.session_state.get("eval_actual"):
-        _sidebar_stats = get_estadisticas_evaluacion(st.session_state["eval_actual"])
-        st.markdown(f"""
-        <div style="
-            background: rgba(46,196,182,0.06);
-            border: 1px solid rgba(46,196,182,0.15);
-            border-radius: 10px;
-            padding: 10px 14px;
-            margin-bottom: 12px;
-        ">
-            <div style="color:#7eb8c9; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px;">
-                📊 Estadísticas — {st.session_state['eval_nombre']}
+    # ── Selector de Evaluacion (siempre visible en sidebar) ──
+    _sidebar_evals = get_evaluaciones()
+
+    if not _sidebar_evals.empty:
+        _eval_ids = _sidebar_evals["ID_Evaluacion"].tolist()
+        _eval_actual = st.session_state.get("eval_actual")
+
+        # Determinar indice actual en la lista
+        _default_idx = 0
+        if _eval_actual and _eval_actual in _eval_ids:
+            _default_idx = _eval_ids.index(_eval_actual)
+
+        _sidebar_eval_selec = st.selectbox(
+            "Evaluacion activa",
+            _eval_ids,
+            index=_default_idx,
+            key="sidebar_eval_selector",
+            format_func=lambda x: f"{x} - {_sidebar_evals[_sidebar_evals['ID_Evaluacion']==x].iloc[0]['Nombre']}"
+        )
+
+        _sidebar_eval_data = _sidebar_evals[_sidebar_evals["ID_Evaluacion"] == _sidebar_eval_selec].iloc[0]
+        _sidebar_eval_name = _sidebar_eval_data["Nombre"]
+
+        # Boton activar (solo si es diferente a la actual)
+        if _sidebar_eval_selec != _eval_actual:
+            if st.button("Activar evaluacion", key="sidebar_btn_activar", type="primary", use_container_width=True):
+                st.session_state["eval_actual"] = _sidebar_eval_selec
+                st.session_state["eval_nombre"] = _sidebar_eval_name
+                st.rerun()
+        else:
+            st.markdown(f"""
+            <div style="
+                background: rgba(46,196,182,0.08);
+                border: 1px solid rgba(46,196,182,0.2);
+                border-radius: 8px;
+                padding: 6px 12px;
+                margin-bottom: 4px;
+                text-align: center;
+            ">
+                <span style="color:#2ec4b6; font-size:0.75rem; font-weight:600;">Evaluacion activa</span>
             </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
-                <div style="background:rgba(10,22,40,0.5); border-radius:8px; padding:6px 10px; text-align:center;">
-                    <div style="color:#7eb8c9; font-size:0.62rem; text-transform:uppercase; letter-spacing:0.5px;">Activos</div>
-                    <div style="color:#e0eff8; font-weight:800; font-size:1.1rem;">{_sidebar_stats['total_activos']}</div>
+            """, unsafe_allow_html=True)
+
+        # Widget de estadisticas de la evaluacion activa
+        if st.session_state.get("eval_actual"):
+            _sidebar_stats = get_estadisticas_evaluacion(st.session_state["eval_actual"])
+            st.markdown(f"""
+            <div style="
+                background: rgba(46,196,182,0.06);
+                border: 1px solid rgba(46,196,182,0.15);
+                border-radius: 10px;
+                padding: 10px 14px;
+                margin-bottom: 12px;
+            ">
+                <div style="color:#7eb8c9; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px;">
+                    ESTADISTICAS
                 </div>
-                <div style="background:rgba(10,22,40,0.5); border-radius:8px; padding:6px 10px; text-align:center;">
-                    <div style="color:#7eb8c9; font-size:0.62rem; text-transform:uppercase; letter-spacing:0.5px;">Progreso</div>
-                    <div style="color:#2ec4b6; font-weight:800; font-size:1.1rem;">{_sidebar_stats['progreso']}%</div>
-                </div>
-                <div style="background:rgba(10,22,40,0.5); border-radius:8px; padding:6px 10px; text-align:center;">
-                    <div style="color:#7eb8c9; font-size:0.62rem; text-transform:uppercase; letter-spacing:0.5px;">Evaluados</div>
-                    <div style="color:#66bb6a; font-weight:800; font-size:1.1rem;">{_sidebar_stats['evaluados']}</div>
-                </div>
-                <div style="background:rgba(10,22,40,0.5); border-radius:8px; padding:6px 10px; text-align:center;">
-                    <div style="color:#7eb8c9; font-size:0.62rem; text-transform:uppercase; letter-spacing:0.5px;">Pendientes</div>
-                    <div style="color:#ffb74d; font-weight:800; font-size:1.1rem;">{_sidebar_stats['pendientes']}</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+                    <div style="background:rgba(10,22,40,0.5); border-radius:8px; padding:6px 10px; text-align:center;">
+                        <div style="color:#7eb8c9; font-size:0.62rem; text-transform:uppercase; letter-spacing:0.5px;">Activos</div>
+                        <div style="color:#e0eff8; font-weight:800; font-size:1.1rem;">{_sidebar_stats['total_activos']}</div>
+                    </div>
+                    <div style="background:rgba(10,22,40,0.5); border-radius:8px; padding:6px 10px; text-align:center;">
+                        <div style="color:#7eb8c9; font-size:0.62rem; text-transform:uppercase; letter-spacing:0.5px;">Progreso</div>
+                        <div style="color:#2ec4b6; font-weight:800; font-size:1.1rem;">{_sidebar_stats['progreso']}%</div>
+                    </div>
+                    <div style="background:rgba(10,22,40,0.5); border-radius:8px; padding:6px 10px; text-align:center;">
+                        <div style="color:#7eb8c9; font-size:0.62rem; text-transform:uppercase; letter-spacing:0.5px;">Evaluados</div>
+                        <div style="color:#66bb6a; font-weight:800; font-size:1.1rem;">{_sidebar_stats['evaluados']}</div>
+                    </div>
+                    <div style="background:rgba(10,22,40,0.5); border-radius:8px; padding:6px 10px; text-align:center;">
+                        <div style="color:#7eb8c9; font-size:0.62rem; text-transform:uppercase; letter-spacing:0.5px;">Pendientes</div>
+                        <div style="color:#ffb74d; font-weight:800; font-size:1.1rem;">{_sidebar_stats['pendientes']}</div>
+                    </div>
                 </div>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
     else:
         st.markdown("""
         <div style="
@@ -955,8 +998,8 @@ with st.sidebar:
             margin-bottom: 12px;
             text-align: center;
         ">
-            <div style="color:#ffb74d; font-size:0.75rem; font-weight:600;">⚠ Sin evaluación activa</div>
-            <div style="color:#5a8898; font-size:0.68rem; margin-top:2px;">Selecciona una en Evaluaciones</div>
+            <div style="color:#ffb74d; font-size:0.75rem; font-weight:600;">Sin evaluaciones</div>
+            <div style="color:#5a8898; font-size:0.68rem; margin-top:2px;">Crea una en Nueva Evaluacion</div>
         </div>
         """, unsafe_allow_html=True)
 
