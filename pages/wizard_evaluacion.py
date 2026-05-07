@@ -199,7 +199,8 @@ def render_wizard(_styled_header):
     elif step == 2 and eval_id:
         st.markdown("### Paso 2: Agregar Activos")
         eval_data = evals[evals["ID_Evaluacion"] == eval_id].iloc[0] if not evals.empty else {}
-        st.caption(f"Evaluación: **{eval_data.get('Nombre', eval_id)}** (`{eval_id}`)")
+        eval_nombre = eval_data.get("Nombre", eval_id)
+        st.caption(f"Evaluacion: **{eval_nombre}** (`{eval_id}`)")
 
         # Tabla de activos existentes
         activos = get_activos_por_evaluacion(eval_id)
@@ -222,44 +223,55 @@ def render_wizard(_styled_header):
 
         st.divider()
 
-        # Formulario para agregar activo
-        st.markdown("#### Agregar activo")
-        with st.form("wiz_form_activo"):
-            nombre_act = st.text_input("Nombre del activo *", placeholder="Ej: Servidor DB Principal")
-            c1, c2 = st.columns(2)
-            with c1:
-                tipo_act = st.selectbox("Tipo *", ["Servidor Físico", "Servidor Virtual"], key="wiz_tipo")
-                ubicacion = st.selectbox("Ubicación *", ["UdlaPark", "Granados"], key="wiz_ubic")
-            with c2:
-                propietario = st.selectbox("Propietario *",
-                    ["Infraestructura", "Seguridad de la Información", "Soporte"], key="wiz_prop")
-                tipo_servicio = st.selectbox("Tipo Servicio *",
-                    ["Base de datos", "Servidor web", "Servidor aplicaciones",
-                     "Firewall", "Switch", "Router", "Storage", "Backup", "Otro"], key="wiz_serv")
-            app_critica = st.radio("Aplicación Crítica", ["Sí", "No"], horizontal=True, key="wiz_crit")
-            submitted_act = st.form_submit_button("Agregar Activo", type="primary", use_container_width=True)
+        # Tabs: Individual vs Carga Masiva
+        tab_individual, tab_masiva = st.tabs(["Agregar individualmente", "Carga masiva"])
 
-        if submitted_act:
-            if not nombre_act:
-                st.error("El **Nombre** del activo es obligatorio.")
-            else:
-                es_dup, msg_dup = validar_duplicado(eval_id, nombre_act, ubicacion, tipo_servicio)
-                if es_dup:
-                    st.error(msg_dup)
+        with tab_individual:
+            st.markdown("#### Agregar activo")
+            with st.form("wiz_form_activo"):
+                nombre_act = st.text_input("Nombre del activo *", placeholder="Ej: Servidor DB Principal")
+                c1, c2 = st.columns(2)
+                with c1:
+                    tipo_act = st.selectbox("Tipo *", ["Servidor Fisico", "Servidor Virtual"], key="wiz_tipo")
+                    ubicacion = st.selectbox("Ubicacion *", ["UdlaPark", "Granados"], key="wiz_ubic")
+                with c2:
+                    propietario = st.selectbox("Propietario *",
+                        ["Infraestructura", "Seguridad de la Informacion", "Soporte"], key="wiz_prop")
+                    tipo_servicio = st.selectbox("Tipo Servicio *",
+                        ["Base de datos", "Servidor web", "Servidor aplicaciones",
+                         "Firewall", "Switch", "Router", "Storage", "Backup", "Otro"], key="wiz_serv")
+                app_critica = st.radio("Aplicacion Critica", ["Si", "No"], horizontal=True, key="wiz_crit")
+                submitted_act = st.form_submit_button("Agregar Activo", type="primary", use_container_width=True)
+
+            if submitted_act:
+                if not nombre_act:
+                    st.error("El **Nombre** del activo es obligatorio.")
                 else:
-                    datos = {
-                        "Nombre_Activo": nombre_act, "Tipo_Activo": tipo_act,
-                        "Ubicacion": ubicacion, "Propietario": propietario,
-                        "Tipo_Servicio": tipo_servicio, "App_Critica": app_critica
-                    }
-                    exito, msg, nuevo_id_act = crear_activo(eval_id, datos)
-                    if exito:
-                        registrar_proceso_rapido(eval_id, "wizard_paso2", "INVENTARIO",
-                            f"Wizard: Activo '{nombre_act}' agregado ({nuevo_id_act})")
-                        st.success(msg)
-                        st.rerun()
+                    es_dup, msg_dup = validar_duplicado(eval_id, nombre_act, ubicacion, tipo_servicio)
+                    if es_dup:
+                        st.error(msg_dup)
                     else:
-                        st.error(msg)
+                        datos = {
+                            "Nombre_Activo": nombre_act, "Tipo_Activo": tipo_act,
+                            "Ubicacion": ubicacion, "Propietario": propietario,
+                            "Tipo_Servicio": tipo_servicio, "App_Critica": app_critica
+                        }
+                        exito, msg, nuevo_id_act = crear_activo(eval_id, datos)
+                        if exito:
+                            registrar_proceso_rapido(eval_id, "wizard_paso2", "INVENTARIO",
+                                f"Wizard: Activo '{nombre_act}' agregado ({nuevo_id_act})")
+                            st.success(msg)
+                            st.rerun()
+                        else:
+                            st.error(msg)
+
+        with tab_masiva:
+            try:
+                from components.carga_masiva_ui import render_carga_masiva
+                render_carga_masiva(eval_id, eval_nombre)
+            except ImportError as e:
+                st.error(f"Componente de carga masiva no disponible: {e}")
+
 
         # Navegación
         st.divider()
