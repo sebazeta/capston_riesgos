@@ -517,5 +517,5 @@ def render_wizard(_styled_header):
                 st.balloons()
 
                 # Redirigir a Estadísticas
-                st.session_state["nav_pagina"] = "Estadísticas"
+                st.session_state["nav_pagina"] = "Dashboard"
                 st.rerun()

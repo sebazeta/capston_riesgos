@@ -836,63 +836,114 @@ st.markdown("""
 
 # ==================== NAVEGACIÓN POR SIDEBAR ====================
 
-# Opciones de menú base
+# Opciones de menu base (disponibles para todos los roles)
 _menu_options = [
-    "Nueva Evaluación",
+    "Nueva Evaluacion",
     "Evaluaciones",
     "Activos",
     "Cuestionarios",
-    "IA Evaluación",
-    "Degradación",
+    "IA Evaluacion",
+    "Degradacion",
     "Vulnerabilidades",
     "Tratamiento",
     "Dashboard",
     "Madurez",
     "Matriz MAGERIT",
     "Comparativas",
-    "Auditoría",
-    "Validación IA",
+    "Auditoria",
+    "Validacion IA",
 ]
 
-# Opciones admin
+_menu_icons = [
+    "plus-circle",            # Nueva Evaluacion
+    "folder2-open",           # Evaluaciones
+    "hdd-stack",              # Activos
+    "clipboard-check",        # Cuestionarios
+    "robot",                  # IA Evaluacion
+    "graph-down-arrow",       # Degradacion
+    "shield-exclamation",     # Vulnerabilidades
+    "bandaid",                # Tratamiento
+    "speedometer2",           # Dashboard
+    "award",                  # Madurez
+    "grid-3x3",              # Matriz MAGERIT
+    "arrows-angle-contract",  # Comparativas
+    "journal-check",          # Auditoria
+    "check2-circle",          # Validacion IA
+]
+
+# Grupo ADMINISTRACION (solo admin)
 if _user_role == "admin":
-    _menu_options.append("Editor Cuestionarios")
-    _menu_options.append("Usuarios")
-    _menu_options.append("Logs Auth")
+    _menu_options.append("---")
+    _menu_icons.append("")
+    _menu_options.extend(["Editor Cuestionarios", "Usuarios", "Logs Auth"])
+    _menu_icons.extend(["pencil-square", "people", "file-earmark-text"])
+
+# Grupo CUENTA (todos los roles)
+_menu_options.append("---")
+_menu_icons.append("")
+_menu_options.extend(["Mi Perfil", "Cerrar Sesion"])
+_menu_icons.extend(["person-circle", "box-arrow-right"])
+
 
 # ==================== SIDEBAR CON OPTION MENU ====================
 _user_initial = _current_user['full_name'][0].upper() if _current_user and _current_user.get('full_name') else '?'
 _user_display = _current_user['full_name'] if _current_user else 'Usuario'
 _role_info_topbar = get_role_info(_user_role) if _current_user else {'label': '', 'icon': ''}
 
-# Íconos para cada opción del menú (bootstrap-icons)
-_menu_icons = [
-    "plus-circle",        # Nueva Evaluación
-    "folder2-open",       # Evaluaciones
-    "hdd-stack",          # Activos
-    "clipboard-check",    # Cuestionarios
-    "robot",              # IA Evaluación
-    "graph-down-arrow",   # Degradación
-    "shield-exclamation", # Vulnerabilidades
-    "bandaid",            # Tratamiento
-    "speedometer2",       # Dashboard
-    "award",              # Madurez
-    "grid-3x3",           # Matriz MAGERIT
-    "arrows-angle-contract",  # Comparativas
-    "journal-check",      # Auditoría
-    "check2-circle",      # Validación IA
-]
+# Etiqueta del primer separador depende del rol
+_first_sep_label = "ADMINISTRACION" if _user_role == "admin" else "CUENTA"
 
-# Opciones admin con íconos
-if _user_role == "admin":
-    _menu_icons.extend(["pencil-square", "people", "file-earmark-text"])
-
-# Agregar separador y opciones de usuario al final
-_menu_options.append("Mi Perfil")
-_menu_options.append("Cerrar Sesión")
-_menu_icons.extend(["person-circle", "box-arrow-right"])
+# CSS para etiquetas de seccion en el menu
+_sep_label_css = f"""
+<style>
+/* Etiqueta OPERACIONES como primer hijo del contenedor nav */
+[data-testid="stSidebar"] nav.nav > div:first-child::before,
+[data-testid="stSidebar"] .nav-pills > li:first-child::before,
+[data-testid="stSidebar"] ul.nav > li:first-child::before {{
+    content: "OPERACIONES";
+    display: block;
+    color: #5a7a8a;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    padding: 2px 12px 4px 12px;
+}}
+/* Separadores con etiquetas de seccion */
+[data-testid="stSidebar"] hr:nth-of-type(1) {{
+    border-color: rgba(46, 196, 182, 0.12);
+    margin: 12px 8px 2px 8px;
+}}
+[data-testid="stSidebar"] hr:nth-of-type(1)::after {{
+    content: "{_first_sep_label}";
+    display: block;
+    color: #5a7a8a;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    padding: 4px 4px 2px 4px;
+}}
+""" + ("""
+[data-testid="stSidebar"] hr:nth-of-type(2) {
+    border-color: rgba(46, 196, 182, 0.12);
+    margin: 12px 8px 2px 8px;
+}
+[data-testid="stSidebar"] hr:nth-of-type(2)::after {
+    content: "CUENTA";
+    display: block;
+    color: #5a7a8a;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    padding: 4px 4px 2px 4px;
+}
+""" if _user_role == "admin" else "") + """
+</style>
+"""
 
 with st.sidebar:
+    # Inyectar CSS de etiquetas de seccion
+    st.markdown(_sep_label_css, unsafe_allow_html=True)
+
     # Badge de usuario
     st.markdown(f"""
     <div style="
@@ -1048,7 +1099,7 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 # Manejar Cerrar Sesión
-if pagina == "Cerrar Sesión":
+if pagina == "Cerrar Sesion":
     logout()
     st.rerun()
 
@@ -1084,7 +1135,7 @@ def _eval_badge():
         """, unsafe_allow_html=True)
 
 # ==================== PÁGINA: NUEVA EVALUACIÓN (WIZARD) ====================
-if pagina == "Nueva Evaluación":
+if pagina == "Nueva Evaluacion":
     from pages.wizard_evaluacion import render_wizard
     render_wizard(_styled_header)
 
@@ -1108,12 +1159,12 @@ if pagina == "Cuestionarios":
 
 
 # ==================== PÁGINA: IA EVALUACIÓN ====================
-if pagina == "IA Evaluación":
+if pagina == "IA Evaluacion":
     from pages.ia_evaluacion import render_ia_evaluacion
     render_ia_evaluacion(_styled_header)
 
 # ==================== TAB DEGRADACIÓN: GESTIÓN DE DEGRADACIÓN MAGERIT ====================
-if pagina == "Degradación":
+if pagina == "Degradacion":
     if not st.session_state.get("eval_actual"):
         st.error("⚠️ EVALUACIÓN REQUERIDA")
         st.warning("Ve a la pestaña **Evaluaciones** y selecciona una evaluación primero.")
@@ -1424,7 +1475,7 @@ if pagina == "Comparativas":
 
 
 # ==================== PÁGINA: AUDITORÍA ====================
-if pagina == "Auditoría":
+if pagina == "Auditoria":
     try:
         from components.auditoria_ui import render_auditoria_tab
         render_auditoria_tab()
@@ -1433,7 +1484,7 @@ if pagina == "Auditoría":
 
 
 # ==================== PÁGINA: VALIDACIÓN IA ====================
-if pagina == "Validación IA":
+if pagina == "Validacion IA":
     from pages.validacion_ia import render_validacion_ia
     render_validacion_ia(_styled_header)
 
