@@ -88,37 +88,6 @@ def render_evaluaciones(_styled_header):
                 if st.button("Eliminar", key="t0_eliminar", type="secondary", use_container_width=True):
                     st.session_state["eval_a_eliminar"] = eval_selec
 
-            st.markdown("---")
-            st.markdown("#### Acciones Rápidas")
-            st.markdown(f"Accede directamente a los módulos para la evaluación **{eval_selec}**:")
-
-            c1, c2, c3, c4, c5, c6 = st.columns(6)
-            
-            def _navigate_to(page_name):
-                st.session_state["eval_actual"] = eval_selec
-                st.session_state["eval_nombre"] = eval_name
-                st.session_state["nav_pagina"] = page_name
-                st.rerun()
-
-            with c1:
-                if st.button("🖴 Activos", key="btn_activos", use_container_width=True):
-                    _navigate_to("Activos")
-            with c2:
-                if st.button("📋 Cuest.", key="btn_cuestionarios", use_container_width=True):
-                    _navigate_to("Cuestionarios")
-            with c3:
-                if st.button("📉 Degrad.", key="btn_degradacion", use_container_width=True):
-                    _navigate_to("Degradación")
-            with c4:
-                if st.button("🛡️ Vuln.", key="btn_vuln", use_container_width=True):
-                    _navigate_to("Vulnerabilidades")
-            with c5:
-                if st.button("🏅 Madurez", key="btn_madurez", use_container_width=True):
-                    _navigate_to("Madurez")
-            with c6:
-                if st.button("🩹 Tratam.", key="btn_tratamiento", use_container_width=True):
-                    _navigate_to("Tratamiento")
-
             # Diálogo de confirmación para eliminar
             if st.session_state.get("eval_a_eliminar") == eval_selec:
                 st.warning(f"¿Seguro que deseas eliminar la evaluación **{eval_selec}**? Esta acción eliminará todos sus activos, cuestionarios y resultados.")
