@@ -26,13 +26,13 @@ def render_carga_masiva(eval_id: str, eval_nombre: str):
         eval_nombre: Nombre de la evaluación para mostrar
     """
     from utils.ui_styles import styled_header
-    styled_header("📤", "Carga Masiva de Activos", f"Evaluación destino: {eval_nombre}")
+    styled_header("", "Carga Masiva de Activos", f"Evaluación destino: {eval_nombre}")
     
     # Tabs para diferentes formatos
     tab_json, tab_excel, tab_ayuda = st.tabs([
-        "📄 JSON (Recomendado)", 
-        "📊 Excel",
-        "❓ Ayuda y Plantillas"
+        "JSON (Recomendado)", 
+        "Excel",
+        "Ayuda y Plantillas"
     ])
     
     with tab_json:
@@ -47,7 +47,7 @@ def render_carga_masiva(eval_id: str, eval_nombre: str):
 
 def _render_carga_json(eval_id: str):
     """Renderiza la sección de carga JSON"""
-    st.markdown("### 📄 Importar desde JSON")
+    st.markdown("### Importar desde JSON")
     
     st.markdown("""
     **Formato JSON** es el recomendado porque:
@@ -79,7 +79,7 @@ def _render_carga_json(eval_id: str):
                 _carga_progress = st.progress(0, text="Validando estructura JSON...")
                 _carga_progress.progress(0.3, text="Procesando activos...")
                 resultado = procesar_json(contenido, eval_id)
-                _carga_progress.progress(1.0, text="✅ Procesamiento completado")
+                _carga_progress.progress(1.0, text="Procesamiento completado")
                 _mostrar_resultado(resultado)
     
     st.divider()
@@ -95,20 +95,20 @@ def _render_carga_json(eval_id: str):
     )
     
     if json_texto.strip():
-        if st.button("🚀 Procesar JSON Pegado", type="primary", key="btn_procesar_json_texto"):
+        if st.button("Procesar JSON Pegado", type="primary", key="btn_procesar_json_texto"):
             _carga_progress2 = st.progress(0, text="Validando estructura JSON...")
             _carga_progress2.progress(0.3, text="Procesando activos...")
             resultado = procesar_json(json_texto, eval_id)
-            _carga_progress2.progress(1.0, text="✅ Procesamiento completado")
+            _carga_progress2.progress(1.0, text="Procesamiento completado")
             _mostrar_resultado(resultado)
 
 
 def _render_carga_excel(eval_id: str):
     """Renderiza la sección de carga Excel"""
-    st.markdown("### 📊 Importar desde Excel")
+    st.markdown("###Importar desde Excel")
     
     st.warning("""
-    **⚠️ Excel es formato de compatibilidad.**  
+    **Excel es formato de compatibilidad.**  
     Recomendamos JSON para mayor seguridad y validación.
     
     **Precauciones aplicadas:**
@@ -129,7 +129,7 @@ def _render_carga_excel(eval_id: str):
             # Preview del archivo
             df_preview = pd.read_excel(archivo_excel, engine='openpyxl', nrows=5)
             
-            with st.expander("👁️ Vista previa (primeras 5 filas)", expanded=True):
+            with st.expander("Vista previa (primeras 5 filas)", expanded=True):
                 st.dataframe(df_preview, use_container_width=True)
             
             # Resetear posición del archivo
@@ -137,41 +137,41 @@ def _render_carga_excel(eval_id: str):
             
             col1, col2 = st.columns([1, 3])
             with col1:
-                if st.button("🚀 Procesar Excel", type="primary", key="btn_procesar_excel"):
+                if st.button("Procesar Excel", type="primary", key="btn_procesar_excel"):
                     _carga_xl_progress = st.progress(0, text="Leyendo archivo Excel...")
                     archivo_bytes = archivo_excel.read()
                     _carga_xl_progress.progress(0.4, text="Procesando activos...")
                     resultado = procesar_excel(archivo_bytes, eval_id)
-                    _carga_xl_progress.progress(1.0, text="✅ Procesamiento completado")
+                    _carga_xl_progress.progress(1.0, text="Procesamiento completado")
                     _mostrar_resultado(resultado)
         
         except Exception as e:
-            st.error(f"❌ Error al leer el archivo: {str(e)}")
+            st.error(f"Error al leer el archivo: {str(e)}")
 
 
 def _render_ayuda_plantillas():
     """Renderiza sección de ayuda y descarga de plantillas"""
-    st.markdown("### ❓ Ayuda y Plantillas")
+    st.markdown("###Ayuda y Plantillas")
     
     # Información de campos
     campos_info = get_campos_info()
     
-    st.markdown("#### 📋 Campos Requeridos")
+    st.markdown("####Campos Requeridos")
     df_requeridos = pd.DataFrame(campos_info["requeridos"])
     st.dataframe(df_requeridos, use_container_width=True, hide_index=True)
     
-    st.markdown("#### 📋 Campos Opcionales")
+    st.markdown("####Campos Opcionales")
     df_opcionales = pd.DataFrame(campos_info["opcionales"])
     st.dataframe(df_opcionales, use_container_width=True, hide_index=True)
     
-    st.markdown("#### 🏷️ Tipos de Activo Válidos")
+    st.markdown("####Tipos de Activo Válidos")
     for tipo in campos_info["tipos_validos"]:
         st.markdown(f"- `{tipo}`")
     
     st.divider()
     
     # Descargar plantillas
-    st.markdown("### 📥 Descargar Plantillas")
+    st.markdown("### Descargar Plantillas")
     
     col1, col2 = st.columns(2)
     
@@ -179,7 +179,7 @@ def _render_ayuda_plantillas():
         st.markdown("#### Plantilla JSON")
         plantilla_json = generar_plantilla_json()
         st.download_button(
-            label="⬇️ Descargar plantilla.json",
+            label="Descargar plantilla.json",
             data=plantilla_json,
             file_name="plantilla_activos.json",
             mime="application/json",
@@ -199,7 +199,7 @@ def _render_ayuda_plantillas():
             df_plantilla.to_excel(writer, index=False, sheet_name='Activos')
         
         st.download_button(
-            label="⬇️ Descargar plantilla.xlsx",
+            label="Descargar plantilla.xlsx",
             data=buffer.getvalue(),
             file_name="plantilla_activos.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -217,17 +217,17 @@ def _mostrar_resultado(resultado: ResultadoCarga):
     if resultado.exito:
         st.success(resultado.mensaje)
     else:
-        st.error(resultado.mensaje if resultado.mensaje else "❌ No se insertaron activos")
+        st.error(resultado.mensaje if resultado.mensaje else " No se insertaron activos")
     
     # Métricas resumen
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("📊 Procesados", resultado.total_procesados)
-    col2.metric("✅ Insertados", resultado.total_insertados)
-    col3.metric("⚠️ Duplicados", resultado.total_duplicados)
-    col4.metric("❌ Errores", resultado.total_errores)
+    col1.metric("Procesados", resultado.total_procesados)
+    col2.metric("Insertados", resultado.total_insertados)
+    col3.metric("Duplicados", resultado.total_duplicados)
+    col4.metric("Errores", resultado.total_errores)
     
     # Detalles de auditoría
-    with st.expander("🔍 Detalles de Auditoría", expanded=False):
+    with st.expander("Detalles de Auditoría", expanded=False):
         st.markdown(f"""
         - **Formato origen:** {resultado.formato_origen}
         - **Timestamp:** {resultado.timestamp}
@@ -236,19 +236,19 @@ def _mostrar_resultado(resultado: ResultadoCarga):
     
     # Activos insertados
     if resultado.insertados:
-        with st.expander(f"✅ Activos Insertados ({len(resultado.insertados)})", expanded=True):
+        with st.expander(f"Activos Insertados ({len(resultado.insertados)})", expanded=True):
             for activo in resultado.insertados:
                 st.markdown(f"- {activo}")
     
     # Duplicados
     if resultado.duplicados:
-        with st.expander(f"⚠️ Duplicados Omitidos ({len(resultado.duplicados)})", expanded=False):
+        with st.expander(f"Duplicados Omitidos ({len(resultado.duplicados)})", expanded=False):
             for dup in resultado.duplicados:
                 st.warning(dup)
     
     # Errores de validación
     if resultado.errores:
-        with st.expander(f"❌ Errores de Validación ({len(resultado.errores)})", expanded=True):
+        with st.expander(f"Errores de Validación ({len(resultado.errores)})", expanded=True):
             for error in resultado.errores:
                 st.error(f"**Fila {error.fila}** - Campo `{error.campo}`: {error.mensaje}")
                 if error.valor_recibido:
@@ -262,7 +262,7 @@ def render_carga_masiva_modal(eval_id: str, eval_nombre: str) -> bool:
     Returns:
         True si se insertaron activos (para refrescar la vista)
     """
-    st.markdown(f"### 📤 Carga Masiva → {eval_nombre}")
+    st.markdown(f"###Carga Masiva → {eval_nombre}")
     
     formato = st.radio(
         "Selecciona formato:",
