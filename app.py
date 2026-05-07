@@ -115,14 +115,6 @@ except ImportError as e:
     CONCENTRACION_DISPONIBLE = False
     print(f"Warning: Concentration Risk not available: {e}")
 
-# Componentes de IA Avanzada
-try:
-    from components.ia_advanced_ui import render_ia_avanzada_ui
-    IA_AVANZADA_DISPONIBLE = True
-except ImportError as e:
-    IA_AVANZADA_DISPONIBLE = False
-    print(f"Warning: IA Avanzada not available: {e}")
-
 # Componentes de Degradación MAGERIT
 try:
     from components.degradacion_ui import render_degradacion_tab, render_resumen_degradacion_evaluacion
@@ -846,7 +838,6 @@ st.markdown("""
 
 # Opciones de menú base
 _menu_options = [
-    "Estadísticas",
     "Nueva Evaluación",
     "Evaluaciones",
     "Activos",
@@ -876,7 +867,6 @@ _role_info_topbar = get_role_info(_user_role) if _current_user else {'label': ''
 
 # Íconos para cada opción del menú (bootstrap-icons)
 _menu_icons = [
-    "bar-chart-line",     # Estadísticas
     "plus-circle",        # Nueva Evaluación
     "folder2-open",       # Evaluaciones
     "hdd-stack",          # Activos
@@ -888,7 +878,6 @@ _menu_icons = [
     "speedometer2",       # Dashboard
     "award",              # Madurez
     "grid-3x3",           # Matriz MAGERIT
-    "cpu",                # IA Avanzada
     "arrows-angle-contract",  # Comparativas
     "journal-check",      # Auditoría
     "check2-circle",      # Validación IA
@@ -921,6 +910,55 @@ with st.sidebar:
         </p>
     </div>
     """, unsafe_allow_html=True)
+
+    # ── Widget de Estadísticas (siempre visible en sidebar) ──
+    if st.session_state.get("eval_actual"):
+        _sidebar_stats = get_estadisticas_evaluacion(st.session_state["eval_actual"])
+        st.markdown(f"""
+        <div style="
+            background: rgba(46,196,182,0.06);
+            border: 1px solid rgba(46,196,182,0.15);
+            border-radius: 10px;
+            padding: 10px 14px;
+            margin-bottom: 12px;
+        ">
+            <div style="color:#7eb8c9; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px;">
+                📊 Estadísticas — {st.session_state['eval_nombre']}
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+                <div style="background:rgba(10,22,40,0.5); border-radius:8px; padding:6px 10px; text-align:center;">
+                    <div style="color:#7eb8c9; font-size:0.62rem; text-transform:uppercase; letter-spacing:0.5px;">Activos</div>
+                    <div style="color:#e0eff8; font-weight:800; font-size:1.1rem;">{_sidebar_stats['total_activos']}</div>
+                </div>
+                <div style="background:rgba(10,22,40,0.5); border-radius:8px; padding:6px 10px; text-align:center;">
+                    <div style="color:#7eb8c9; font-size:0.62rem; text-transform:uppercase; letter-spacing:0.5px;">Progreso</div>
+                    <div style="color:#2ec4b6; font-weight:800; font-size:1.1rem;">{_sidebar_stats['progreso']}%</div>
+                </div>
+                <div style="background:rgba(10,22,40,0.5); border-radius:8px; padding:6px 10px; text-align:center;">
+                    <div style="color:#7eb8c9; font-size:0.62rem; text-transform:uppercase; letter-spacing:0.5px;">Evaluados</div>
+                    <div style="color:#66bb6a; font-weight:800; font-size:1.1rem;">{_sidebar_stats['evaluados']}</div>
+                </div>
+                <div style="background:rgba(10,22,40,0.5); border-radius:8px; padding:6px 10px; text-align:center;">
+                    <div style="color:#7eb8c9; font-size:0.62rem; text-transform:uppercase; letter-spacing:0.5px;">Pendientes</div>
+                    <div style="color:#ffb74d; font-weight:800; font-size:1.1rem;">{_sidebar_stats['pendientes']}</div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div style="
+            background: rgba(255,183,77,0.06);
+            border: 1px solid rgba(255,183,77,0.15);
+            border-radius: 10px;
+            padding: 10px 14px;
+            margin-bottom: 12px;
+            text-align: center;
+        ">
+            <div style="color:#ffb74d; font-size:0.75rem; font-weight:600;">⚠ Sin evaluación activa</div>
+            <div style="color:#5a8898; font-size:0.68rem; margin-top:2px;">Selecciona una en Evaluaciones</div>
+        </div>
+        """, unsafe_allow_html=True)
 
     pagina = option_menu(
         menu_title=None,
@@ -1001,12 +1039,6 @@ def _eval_badge():
             </div>
         </div>
         """, unsafe_allow_html=True)
-
-# ==================== PÁGINA: ESTADÍSTICAS (PRINCIPAL) ====================
-if pagina == "Estadísticas":
-    from pages.estadisticas import render_estadisticas
-    render_estadisticas(_styled_header)
-
 
 # ==================== PÁGINA: NUEVA EVALUACIÓN (WIZARD) ====================
 if pagina == "Nueva Evaluación":
@@ -1340,15 +1372,6 @@ if pagina == "Matriz MAGERIT":
                     """)
             else:
                 st.warning("No se pudieron generar datos para la matriz. Verifique que los activos tengan evaluación MAGERIT completada.")
-
-
-# ==================== PÁGINA: IA AVANZADA ====================
-if pagina == "IA Avanzada":
-    if not IA_AVANZADA_DISPONIBLE:
-        st.error("El módulo de IA Avanzada no está disponible.")
-    else:
-        render_ia_avanzada_ui()
-
 
 # ==================== PÁGINA: COMPARATIVAS ====================
 if pagina == "Comparativas":
