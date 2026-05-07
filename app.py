@@ -1420,7 +1420,7 @@ if pagina == "Matriz MAGERIT":
 if pagina == "Comparativas":
     from components.comparativa_ui import render_comparativa_tab
     _styled_header("", "Comparativas", "Compara evaluaciones para detectar cambios y tendencias")
-    render_comparativa_tab()
+    render_comparativa_tab(st.session_state.get("eval_actual"))
 
 
 # ==================== PÁGINA: AUDITORÍA ====================
