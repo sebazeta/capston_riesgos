@@ -93,16 +93,17 @@ def _render_stepper(current: int):
         cls_label = "done" if i < current else ("active" if i == current else "")
         cls_line = "done" if i < current else ""
 
-        html_parts.append(f"""
-        <div class="wizard-col">
-            <div class="wizard-node {cls_node}">{i if i >= current else "✓"}</div>
-            <div class="wizard-label {cls_label}">{label}</div>
-        </div>""")
+        html_parts.append(
+            f'<div class="wizard-col">'
+            f'<div class="wizard-node {cls_node}">{i if i >= current else "✓"}</div>'
+            f'<div class="wizard-label {cls_label}">{label}</div>'
+            f'</div>'
+        )
         if i < len(STEP_LABELS):
             html_parts.append(f'<div class="wizard-line {cls_line}"></div>')
 
     html_parts.append("</div>")
-    st.markdown(STEPPER_CSS + "\n".join(html_parts), unsafe_allow_html=True)
+    st.markdown(STEPPER_CSS + "".join(html_parts), unsafe_allow_html=True)
 
 
 def _guardar_fase(eval_id: str, fase: int):
